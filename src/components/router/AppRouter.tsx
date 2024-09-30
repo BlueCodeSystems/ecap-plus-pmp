@@ -11,19 +11,22 @@ import NewPasswordPage from '@app/pages/NewPasswordPage';
 import LockPage from '@app/pages/LockPage';
 
 import MainLayout from '@app/components/layouts/main/MainLayout/MainLayout';
-import ProfileLayout from '@app/components/profile/ProfileLayout';
+
+import CaregiverProfileLayout from '@app/components/profile/CaregiverProfileLayout';
+import VcaProfileLayout from '@app/components/profile/VcaProfileLayout';
+import MemberProfileLayout from '@app/components/profile/MemberProfileLayout';
+
 import RequireAuth from '@app/components/router/RequireAuth';
 import { withLoading } from '@app/hocs/withLoading.hoc';
 import NftDashboardPage from '@app/pages/DashboardPages/NftDashboardPage';
 import MedicalDashboardPage from '@app/pages/DashboardPages/MedicalDashboardPage';
 
 const HouseholdsPage = React.lazy(() => import('@app/pages/HouseholdsRegisterPage'));
-const HouseholdProfilePage = React.lazy(() => import('@app/pages/HouseholdProfilePage'));
-const VcaProfilePage = React.lazy(() => import('@app/pages/VcaProfilePage'));
-const MemberProfilePage = React.lazy(() => import('@app/pages/MemberProfilePage'));
+
 const VcasPage = React.lazy(() => import('@app/pages/VcasRegisterPage'));
 const UserManagementPage = React.lazy(() => import('@app/pages/UserManagementPage'));
 const MembersPage = React.lazy(() => import('@app/pages/MembersRegisterPage'));
+
 const DataTablesPage = React.lazy(() => import('@app/pages/DataTablesPage'));
 const ChartsPage = React.lazy(() => import('@app/pages/ChartsPage'));
 const ServerErrorPage = React.lazy(() => import('@app/pages/ServerErrorPage'));
@@ -34,10 +37,10 @@ const ProcurementAdvancedFormPage = React.lazy(() => import('@app/pages/Procurem
 const HumanResourceAdvancedFormsPage = React.lazy(() => import('@app/pages/HumanResourceDepartmentPage'));
 const FinanceAdvancedFormsPage = React.lazy(() => import('@app/pages/FinanceDepartmentPage'));
 
-const PersonalInfoPage = React.lazy(() => import('@app/pages/PersonalInfoPage'));
-const SecuritySettingsPage = React.lazy(() => import('@app/pages/SecuritySettingsPage'));
-const NotificationsPage = React.lazy(() => import('@app/pages/NotificationsPage'));
-const PaymentsPage = React.lazy(() => import('@app/pages/PaymentsPage'));
+const CaregiverPersonalInfoPage = React.lazy(() => import('@app/pages/CaregiverPersonalInfoPage'));
+const VcaPersonalInfoPage = React.lazy(() => import('@app/pages/VcaPersonalInfoPage'));
+const MemberPersonalInfoPage = React.lazy(() => import('@app/pages/MemberPersonalInfoPage'));
+
 const ButtonsPage = React.lazy(() => import('@app/pages/uiComponentsPages/ButtonsPage'));
 const SpinnersPage = React.lazy(() => import('@app/pages/uiComponentsPages/SpinnersPage'));
 const AvatarsPage = React.lazy(() => import('@app/pages/uiComponentsPages/dataDisplay/AvatarsPage'));
@@ -77,12 +80,11 @@ export const MEDICAL_DASHBOARD_PATH = '/supervisory-tools-dashboard';
 const MedicalDashboard = withLoading(MedicalDashboardPage);
 const NftDashboard = withLoading(NftDashboardPage);
 const HouseholdsRegister = withLoading(HouseholdsPage);
-const HouseholdProfile = withLoading(HouseholdProfilePage);
-const VcaProfile = withLoading(VcaProfilePage);
-const MemberProfile = withLoading(MemberProfilePage)
+
 const VcasRegister = withLoading(VcasPage);
 const MembersRegister = withLoading(MembersPage);
 const UsersPortal = withLoading(UserManagementPage);
+
 const AdvancedForm = withLoading(AdvancedFormsPage);
 const StoresAdvancedForm = withLoading(StoresAdvancedFormPage);
 const FinanceAdvancedForm = withLoading(FinanceAdvancedFormsPage);
@@ -131,10 +133,9 @@ const ServerError = withLoading(ServerErrorPage);
 const Error404 = withLoading(Error404Page);
 
 // Profile
-const PersonalInfo = withLoading(PersonalInfoPage);
-const SecuritySettings = withLoading(SecuritySettingsPage);
-const Notifications = withLoading(NotificationsPage);
-const Payments = withLoading(PaymentsPage);
+const CaregiverPersonalInfo = withLoading(CaregiverPersonalInfoPage);
+const VcaPersonalInfo = withLoading(VcaPersonalInfoPage);
+const MemberPersonalInfo = withLoading(MemberPersonalInfoPage);
 
 const AuthLayoutFallback = withLoading(AuthLayout);
 const LogoutFallback = withLoading(Logout);
@@ -152,10 +153,8 @@ export const AppRouter: React.FC = () => {
         <Route path={NFT_DASHBOARD_PATH} element={protectedLayout}>
           <Route index element={<NftDashboard />} />
           <Route path={MEDICAL_DASHBOARD_PATH} element={<MedicalDashboard />} />
-          <Route path="/household-profile/:household_id" element={<HouseholdProfile />} />
-          <Route path="/vca-profile/:unique_id" element={<VcaProfile />} />
+
           <Route path="/users-management-portal" element={<UsersPortal />} />
-          <Route path="/member-profile/:unique_id" element={<MemberProfile />} />
 
           <Route path="apps">
             <Route path="households-register" element={<HouseholdsRegister />} />
@@ -180,12 +179,19 @@ export const AppRouter: React.FC = () => {
           </Route>
           <Route path="server-error" element={<ServerError />} />
           <Route path="404" element={<Error404 />} />
-          <Route path="profile" element={<ProfileLayout />}>
-            <Route path="personal-info" element={<PersonalInfo />} />
-            <Route path="security-settings" element={<SecuritySettings />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="payments" element={<Payments />} />
+
+          <Route path="profile" element={<CaregiverProfileLayout />}>
+            <Route path="household-profile/:household_id" element={<CaregiverPersonalInfo />} />
           </Route>
+
+          <Route path="profile" element={<VcaProfileLayout />}>
+            <Route path="vca-profile/:household_id" element={<VcaPersonalInfo />} />
+          </Route>
+
+          <Route path="profile" element={<MemberProfileLayout />}>
+            <Route path="member-profile/:household_id" element={<MemberPersonalInfo />} />
+          </Route>
+
           <Route path="ui-components">
             <Route path="button" element={<Buttons />} />
             <Route path="spinner" element={<Spinners />} />

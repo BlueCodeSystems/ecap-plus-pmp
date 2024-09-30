@@ -11,6 +11,28 @@ export const GradientStackedAreaChart: React.FC = () => {
   const { t } = useTranslation();
   const theme = useAppSelector((state) => state.theme.theme);
 
+  // Sample months data (ensuring all 12 months are covered)
+  const months = [
+    t('January'),
+    t('February'),
+    t('March'),
+    t('April'),
+    t('May'),
+    t('June'),
+    t('July'),
+    t('August'),
+    t('September'),
+    t('October'),
+    t('November'),
+    t('December'),
+  ];
+
+  // Extended data arrays to cover all 12 months
+  const monthlyData = [120, 132, 101, 134, 90, 230, 210, 230, 145, 155, 166, 180];
+  const vcaServicesData = [150, 230, 224, 218, 135, 147, 260, 220, 180, 190, 200, 210];
+  const householdServicesData = [220, 182, 191, 234, 290, 330, 310, 320, 340, 350, 360, 370];
+  const referralsData = [320, 332, 301, 334, 390, 330, 320, 310, 315, 325, 335, 345];
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -22,7 +44,12 @@ export const GradientStackedAreaChart: React.FC = () => {
       },
     },
     legend: {
-      data: [`coal`, `hydro`, `nuclear`, `gas`, `oil`].map((item) => t(`charts.${item}`)),
+      data: [
+        'Caregiver Services',
+        'VCA Services',
+        'Household Services',
+        'Referrals'
+      ],
       top: 0,
       left: 10,
       textStyle: {
@@ -40,7 +67,7 @@ export const GradientStackedAreaChart: React.FC = () => {
       {
         type: 'category',
         boundaryGap: false,
-        data: ['Canada', 'China', 'Russia', 'Australia', 'Germany', 'France'],
+        data: months, // Updated to include all months
         axisLabel: {
           fontSize: FONT_SIZE.xxs,
           fontWeight: FONT_WEIGHT.light,
@@ -51,7 +78,6 @@ export const GradientStackedAreaChart: React.FC = () => {
     yAxis: [
       {
         type: 'value',
-        name: 'TWh',
         axisLabel: {
           fontSize: FONT_SIZE.xxs,
           fontWeight: FONT_WEIGHT.light,
@@ -61,7 +87,7 @@ export const GradientStackedAreaChart: React.FC = () => {
     ],
     series: [
       {
-        name: t('charts.coal'),
+        name: 'Caregiver Services',
         type: 'line',
         stack: 'Total',
         smooth: true,
@@ -85,10 +111,10 @@ export const GradientStackedAreaChart: React.FC = () => {
         emphasis: {
           focus: 'series',
         },
-        data: [140, 232, 101, 264, 90, 340, 250],
+        data: monthlyData,
       },
       {
-        name: t('charts.hydro'),
+        name: 'VCA Services',
         type: 'line',
         stack: 'Total',
         smooth: true,
@@ -112,10 +138,10 @@ export const GradientStackedAreaChart: React.FC = () => {
         emphasis: {
           focus: 'series',
         },
-        data: [120, 282, 111, 234, 220, 340, 310],
+        data: vcaServicesData,
       },
       {
-        name: t('charts.nuclear'),
+        name: 'Household Services',
         type: 'line',
         stack: 'Total',
         smooth: true,
@@ -139,10 +165,10 @@ export const GradientStackedAreaChart: React.FC = () => {
         emphasis: {
           focus: 'series',
         },
-        data: [320, 132, 201, 334, 190, 130, 220],
+        data: householdServicesData,
       },
       {
-        name: t('charts.gas'),
+        name: 'Referrals',
         type: 'line',
         stack: 'Total',
         smooth: true,
@@ -166,44 +192,13 @@ export const GradientStackedAreaChart: React.FC = () => {
         emphasis: {
           focus: 'series',
         },
-        data: [220, 402, 231, 134, 190, 230, 120],
-      },
-      {
-        name: t('charts.oil'),
-        type: 'line',
-        stack: 'Total',
-        smooth: true,
-        lineStyle: {
-          width: 0,
-        },
-        showSymbol: false,
-        label: {
-          show: true,
-          position: 'top',
-        },
-        areaStyle: {
-          opacity: 0.8,
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            {
-              offset: 0.4,
-              color: themeObject[theme].chartColor5,
-            },
-            {
-              offset: 1,
-              color: themeObject[theme].chartColor5Tint,
-            },
-          ]),
-        },
-        emphasis: {
-          focus: 'series',
-        },
-        data: [220, 302, 181, 234, 210, 290, 150],
+        data: referralsData,
       },
     ],
   };
 
   return (
-    <BaseCard padding="0 0 1.875rem" title={t('charts.gradientLabel')}>
+    <BaseCard padding="0 0 1.875rem" title="Services provided in a month">
       <BaseChart option={option} />
     </BaseCard>
   );

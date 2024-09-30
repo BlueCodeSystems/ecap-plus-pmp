@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import axios from 'axios';
-import { Button, Space, Tooltip, Spin, message, Modal, Form, Input, Popconfirm } from 'antd';
-import { SearchOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { SearchInput } from '@app/components/common/inputs/SearchInput/SearchInput.styles';
+import { Button, Space, Tooltip, Spin, message, Modal, Form, Input, Popconfirm, Divider, Alert, Tabs, Tag } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
+import TabPane from 'antd/lib/tabs/TabPane';
 
 interface User {
   id: string;
@@ -17,19 +19,32 @@ interface User {
   email: string;
   status: string;
   description: string;
+  role: string;
+}
+
+interface Role {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  admin_access: boolean;
+  app_access: boolean;
+  users: string[];
 }
 
 export const UserManagementTreeTable: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [deletedUsers, setDeletedUsers] = useState<string[]>([]);
   const [searchText, setSearchText] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
+  const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchUsers();
+    fetchCurrentUserRole();
   }, []);
 
   const fetchUsers = async () => {
@@ -41,11 +56,27 @@ export const UserManagementTreeTable: React.FC = () => {
         }
       });
 
-      setUsers(response.data.data); 
+      setUsers(response.data.data);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching users:', error);
       setLoading(false);
+    }
+  };
+
+  const fetchCurrentUserRole = async () => {
+    try {
+      const roleId = 'ad9d1ebb-f16c-4743-af1b-a1379c3d3e91'; // Adjust role ID if necessary
+      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/roles/${roleId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+
+      setCurrentUserRole(response.data.data);
+      console.log("roles id::", response.data.data);
+    } catch (error) {
+      console.error('Error fetching current user role:', error);
     }
   };
 
@@ -56,8 +87,6 @@ export const UserManagementTreeTable: React.FC = () => {
           Authorization: `Bearer ${localStorage.getItem('access_token')}`
         }
       });
-
-      console.log('User created:', response.data);
 
       setUsers(prevUsers => [...prevUsers, response.data]);
       message.success('User created successfully');
@@ -76,8 +105,6 @@ export const UserManagementTreeTable: React.FC = () => {
         }
       });
 
-      console.log('User updated:', response.data);
-
       setUsers(users.map(user => user.id === userId ? { ...user, ...updatedUser } : user));
       message.success('User updated successfully');
       setIsModalVisible(false);
@@ -95,34 +122,11 @@ export const UserManagementTreeTable: React.FC = () => {
         }
       });
 
-      console.log('User deleted successfully');
-
       setUsers(users.filter(user => user.id !== userId));
-      setDeletedUsers([...deletedUsers, userId]);
       message.success('User deleted successfully');
     } catch (error) {
       console.error('Error deleting user:', error);
       message.error('Failed to delete user');
-    }
-  };
-
-  const deleteMultipleUsers = async (userIds: string[]) => {
-    try {
-      await axios.delete(`${process.env.REACT_APP_BASE_URL}/users`, {
-        data: userIds,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-
-      console.log('Users deleted successfully');
-
-      setUsers(users.filter(user => !userIds.includes(user.id)));
-      setDeletedUsers([...deletedUsers, ...userIds]);
-      message.success('Users deleted successfully');
-    } catch (error) {
-      console.error('Error deleting users:', error);
-      message.error('Failed to delete users');
     }
   };
 
@@ -132,13 +136,13 @@ export const UserManagementTreeTable: React.FC = () => {
 
   const showModal = () => {
     setIsModalVisible(true);
-    setEditingUser(null); 
+    setEditingUser(null);
     form.resetFields(); // Reset form fields when opening modal
   };
 
   const showEditModal = (user: User) => {
     setIsModalVisible(true);
-    setEditingUser(user); 
+    setEditingUser(user);
     form.setFieldsValue(user); // Populate form fields with user data
   };
 
@@ -188,11 +192,11 @@ export const UserManagementTreeTable: React.FC = () => {
       dataIndex: 'location',
       width: '25%',
     },
-    {
-      title: 'Department',
-      dataIndex: 'description',
-      width: '25%',
-    },
+    // {
+    //   title: 'Department',
+    //   dataIndex: 'description',
+    //   width: '25%',
+    // },
     {
       title: 'Last Accessed PMP',
       dataIndex: 'last_access',
@@ -207,6 +211,30 @@ export const UserManagementTreeTable: React.FC = () => {
       title: 'Status',
       dataIndex: 'status',
       width: '25%',
+      render: (status: string) => {
+        let color = '';
+        let text = '';
+  
+        switch (status.toLowerCase()) {
+          case 'active':
+            color = '#198754';
+            text = 'Active';
+            break;
+          case 'inactive':
+            color = '#ffc107';
+            text = 'Inactive';
+            break;
+          case 'suspended':
+            color = '#dc3545';
+            text = 'Suspended';
+            break;
+          default:
+            color = 'default';
+            text = status;
+        }
+  
+        return <Tag color={color}>{text}</Tag>;
+      },
     },
     {
       title: 'Actions',
@@ -231,56 +259,68 @@ export const UserManagementTreeTable: React.FC = () => {
     },
   ];
 
+  const navigateToHQFeedback = () => {
+    navigate('/hq-province-supervisory-tools-feedback-dashboard');
+  };
+
   return (
     <>
-      <Space style={{ marginBottom: 16, width: "100%" }}>
-        <SearchInput
-          placeholder="Search for a user"
-          prefix={<SearchOutlined />}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={showModal}
-        >
-          Add User
-        </Button>
-      </Space>
-      <Spin spinning={loading}>
-        <BaseTable
-          bordered
-          dataSource={users.filter(user =>
-            (user.first_name && user.first_name.toLowerCase().includes(searchText.toLowerCase())) ||
-            (user.last_name && user.last_name.toLowerCase().includes(searchText.toLowerCase())) ||
-            (user.location && user.location.toLowerCase().includes(searchText.toLowerCase())) ||
-            (user.email && user.email.toLowerCase().includes(searchText.toLowerCase())) ||
-            (user.description && user.description.toLowerCase().includes(searchText.toLowerCase()))
-          )}
-          columns={columns}
-          rowClassName="editable-row"
-          pagination={false}
-          scroll={{ x: 800 }}
-        />
-      </Spin>
+      <Tabs defaultActiveKey="1">
+        <TabPane tab="User Management" key="1">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Button
+              onClick={showModal}
+              style={{ fontSize: '16px', cursor: 'pointer' }}
+              title="Add New User"
+              type='primary'
+              icon={<PlusOutlined />}
+            >
+              Add New User
+            </Button>
+            <Space>
+              <S.SearchInput
+                placeholder="Search for a user"
+                onChange={(e) => handleSearch(e.target.value)}
+                value={searchText}
+              />
+              {searchText && (
+                // Add clear search functionality if needed
+                ''
+              )}
+            </Space>
+          </div>
+          <Divider />
+          <Spin spinning={loading}>
+            <BaseTable
+              bordered
+              dataSource={users.filter(user =>
+                (user.first_name && user.first_name.toLowerCase().includes(searchText.toLowerCase())) ||
+                (user.last_name && user.last_name.toLowerCase().includes(searchText.toLowerCase())) ||
+                (user.location && user.location.toLowerCase().includes(searchText.toLowerCase())) ||
+                (user.email && user.email.toLowerCase().includes(searchText.toLowerCase())) ||
+                (user.description && user.description.toLowerCase().includes(searchText.toLowerCase()))
+              )}
+              columns={columns}
+              rowClassName="editable-row"
+              pagination={false}
+              scroll={{ x: 800 }}
+            />
+          </Spin>
+        </TabPane>
+      </Tabs>
+
       <Modal
-        title={editingUser ? 'Update User' : 'Add New User'}
-        open={isModalVisible}
+        title={editingUser ? 'Edit User' : 'Add New User'}
+        visible={isModalVisible}
         onOk={handleOk}
         onCancel={handleCancel}
-        footer={[
-          <Button key="cancel" onClick={handleCancel}>
-            Cancel
-          </Button>,
-          <Button key="submit" type="primary" onClick={handleOk}>
-            {editingUser ? 'Update' : 'Add'}
-          </Button>,
-        ]}
+        okText={editingUser ? 'Update' : 'Create'}
+        cancelText="Cancel"
       >
         <Form
           form={form}
           layout="vertical"
-          name="addUserForm"
+          name="user_form"
         >
           <Form.Item
             name="first_name"
@@ -298,56 +338,37 @@ export const UserManagementTreeTable: React.FC = () => {
           </Form.Item>
           <Form.Item
             name="email"
-            label="Email Address"
-            rules={[{ required: true, message: 'Please input the email address!' }]}
+            label="Email"
+            rules={[{ required: true, message: 'Please input the email!' }, { type: 'email', message: 'The input is not valid E-mail!' }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="title"
             label="Province"
-            rules={[{ required: true, message: 'Please enter the province!' }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="location"
             label="District"
-            rules={[{ required: true, message: 'Please enter the district!' }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="description"
             label="Department"
-            rules={[{ required: true, message: 'Please enter the department!' }]}
           >
             <Input />
           </Form.Item>
-          {editingUser ? (
-            <>
-              <Form.Item
-                name="last_access"
-                label="Last Accessed PMP"
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                name="last_page"
-                label="Last Page"
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                name="status"
-                label="Status"
-              >
-                <Input />
-              </Form.Item>
-            </>
-          ) : null}
+          <Form.Item
+            name="status"
+            label="Status"
+          >
+            <Input />
+          </Form.Item>
         </Form>
       </Modal>
     </>
   );
-};
+}  

@@ -7,6 +7,7 @@ import { doLogin } from '@app/store/slices/authSlice';
 import { notificationController } from '@app/controllers/notificationController';
 import * as S from './LoginForm.styles';
 import * as Auth from '@app/components/layouts/AuthLayout/AuthLayout.styles';
+import { Typography } from 'antd';
 
 interface LoginFormData {
   email: string;
@@ -43,11 +44,13 @@ export const LoginForm: React.FC = () => {
       <BaseForm layout="vertical" onFinish={handleSubmit} requiredMark="optional" initialValues={initValues}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <img
-            src="https://www.mcdss.gov.zm/wp-content/uploads/2021/12/Mcdsslogo.EDITED-1.png"
+            src="/logo512.png"
             alt="logo"
             style={{ width: '280px', height: 'auto' }}
           />
         </div>
+        <br />
+        <Typography style={{fontWeight: "bold", textAlign: "center"}}>Program Management Platform</Typography>
         <Auth.FormItem
           name="email"
           label={t('common.email')}

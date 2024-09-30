@@ -126,7 +126,7 @@ export const getTrendingActivities = (): Promise<TrendingActivity[]> => {
             process.env.REACT_APP_ASSETS_BUCKET + '/ACHIEVE - MIS PMP-activity/milad-fakurian-bMSA5-tLFao-unsplash_js8utz.webp',
           avatar:
             process.env.REACT_APP_ASSETS_BUCKET +
-            '/ACHIEVE - MIS PMP-activity/salvatore-andrea-santacroce-wGICoyAhEs4-unsplash_dfo8do.webp',
+            '/salvatore-andrea-santacroce-wGICoyAhEs4-unsplash_dfo8do.webp',
           usd_value: 1045,
         },
         {

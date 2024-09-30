@@ -14,6 +14,20 @@ export const camelize = (string: string): string => {
     .join('');
 };
 
+export const convertToYesNo = (value: string): string => {
+  if (value === '1') {
+    return 'Yes';
+  } else if (value === '0') {
+    return 'No';
+  }
+  return value; // Return the original value if it's neither '0' nor '1'
+};
+
+export const isoToDate = (isoString: string): Date => {
+  return new Date(isoString);
+}
+
+
 export const getCurrencyPrice = (price: number | string, currency: CurrencyTypeEnum, isIcon = true): string => {
   const currencySymbol = currencies[currency][isIcon ? 'icon' : 'text'];
 

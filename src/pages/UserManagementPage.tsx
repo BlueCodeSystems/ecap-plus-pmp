@@ -10,7 +10,7 @@ const UserManagementPage: React.FC = () => {
 
   return (
     <>
-      <Typography style={{ fontWeight: "bold", fontSize: "30px" }}> User Management Portal<br /> Headquarters Lusaka Province </Typography>
+      <Typography style={{ fontWeight: "bold", fontSize: "30px" }}> User Management Portal </Typography>
       <UserManagementTreeTable />
     </>
   );

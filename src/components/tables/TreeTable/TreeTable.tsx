@@ -1,30 +1,37 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { useTranslation } from 'react-i18next';
-import { BaseForm } from '@app/components/common/forms/BaseForm/BaseForm';
 import { BaseSpace } from '@app/components/common/BaseSpace/BaseSpace';
 import axios from 'axios';
-import moment from 'moment';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button, Tooltip, Spin, Space } from 'antd';
+import { Input, Button, Tooltip, Space, Row, Col, Select } from 'antd';
 import { BasicTableRow, Pagination } from 'api/table.api';
+import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
+import { Parser } from 'json2csv';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
-interface Vcas {
-  unique_id: string;
+interface Vca {
+  id: string;
+  uid: string;
+  lastname: string;
+  firstname: string;
+  birthdate: string;
+  vca_gender: string;
+  homeaddress: string | null;
+  facility: string;
   province: string;
   district: string;
-  cwac: string;
-  provider_name: string;
-  first_name: string;
-  last_name: string;
-  gender: string;
-  date_created: string;
-  last_interacted_with: string;
-  year: number;
-  village: string;
-  ward: string;
-  cwac_member_name: string;
+  ward: string | null;
+  calhiv: string;
+  hei: string;
+  cwlhiv: string;
+  agyw: string;
+  csv: string;
+  cfsw: string;
+  abym: string;
+  vl_suppressed: string | null;
 }
 
 interface User {
@@ -37,21 +44,52 @@ const initialPagination: Pagination = {
 };
 
 export const TreeTable: React.FC = () => {
-
-  const [vcas, setVcas] = useState<Vcas[]>([]);
-  const [form] = BaseForm.useForm();
-  const navigate = useNavigate();
+  const [vcas, setVcas] = useState<Vca[]>([]);
+  const [filteredVcas, setFilteredVcas] = useState<Vca[]>([]);
   const [tableData, setTableData] = useState<{ data: BasicTableRow[]; pagination: Pagination; loading: boolean }>({
     data: [],
     pagination: initialPagination,
     loading: false,
   });
-
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [clearingSearch, setClearingSearch] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
+
+  const [subPopulationFilters, setSubPopulationFilters] = useState({
+    calhiv: 'all',
+    hei: 'all',
+    cwlhiv: 'all',
+    agyw: 'all',
+    csv: 'all',
+    cfsw: 'all',
+    abym: 'all',
+  });
+
+  const [otherFilters, setOtherFilters] = useState({
+    gender: 'all',
+    virallySupressed: 'all',
+    age: '',
+    facility: '',
+  });
+
+  const subPopulationFilterLabels = {
+    calhiv: 'CALHIV',
+    hei: 'HEI',
+    cwlhiv: 'CWLHIV',
+    agyw: 'AGYW',
+    csv: 'CSV',
+    cfsw: 'CFSW',
+    abym: 'ABYM',
+  };
+
+  const otherFilterLabels = {
+    gender: 'Gender',
+    virallySupressed: 'Virally Suppressed',
+    age: 'Age',
+    facility: 'Facility',
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -70,22 +108,22 @@ export const TreeTable: React.FC = () => {
     fetchUserData();
   }, []);
 
-
   useEffect(() => {
     const fetchData = async () => {
-
       if (!user) return;
 
       try {
+        setTableData((prev) => ({ ...prev, loading: true }));
         const response = await axios.get(
-          `https://server.achieve-dqa.bluecodeltd.com/child/vcas-assessed-register/${user.location}`
+          `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-assessed-register`
         );
         setVcas(response.data.data);
+        console.log('vcas', response.data.data);
         localStorage.setItem('vcas', JSON.stringify(response.data.data));
       } catch (error) {
         console.error('Error fetching VCAs data:', error);
       } finally {
-        setLoading(false);
+        setTableData((prev) => ({ ...prev, loading: false }));
       }
     };
 
@@ -93,108 +131,207 @@ export const TreeTable: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    const mappedData = vcas.map((vca, index) => ({
-      key: index,
-      unique_id: vca.unique_id,
-      name: `${vca.first_name} ${vca.last_name}`,
-      gender: vca.gender,
-      age: vca.year,
-      address: `
-        Province: ${vca.province}, 
-        District: ${vca.district},
-        CWAC Name: ${vca.cwac}, 
-        Date Case Created: ${vca.date_created}, 
-        Date Last Visited: ${moment(vca.last_interacted_with).format('DD/MM/YYYY')}
-      `,
-    }));
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    const filtered = vcas.filter((vca) => {
+      const matchesSearch = 
+        (vca.uid?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (vca.firstname?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (vca.lastname?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (vca.homeaddress?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (vca.ward?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (vca.vca_gender?.toLowerCase() || '').includes(lowerCaseQuery);
 
-    setTableData({ data: mappedData, pagination: initialPagination, loading: false });
-  }, ["vcas state", vcas]);
+      const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([key, value]) => {
+        if (value === 'all') return true;
+        const vcaValue = vca[key as keyof Vca];
+        return value === 'yes' ? vcaValue === '1' || vcaValue === 'true' || vcaValue === true
+                                : vcaValue === '0' || vcaValue === 'false' || vcaValue === false;
+      });
 
-  const fetch = useCallback(
-    async (pagination: Pagination) => {
-      setLoading(true);
+      const matchesOtherFilters = Object.entries(otherFilters).every(([key, value]) => {
+        if (value === 'all' || value === '') return true;
+        
+        if (key === 'gender') {
+          return vca.vca_gender.toLowerCase() === value.toLowerCase();
+        }
+        
+        if (key === 'virallySupressed') {
+          if (value === 'suppressed') {
+            return vca.vl_suppressed === 'yes';
+          } else if (value === 'notSuppressed') {
+            return vca.vl_suppressed === 'no';
+          }
+        }
+        
+        if (key === 'age') {
+          const age = calculateAge(vca.birthdate);
+          return age === parseInt(value as string);
+        }
+        
+        if (key === 'facility') {
+          return (vca.facility?.toLowerCase() || '').includes(value.toLowerCase());
+        }
 
-      if (!user) return;
+        return true;
+      });
 
-      try {
-        const response = await axios.get(`https://server.achieve-dqa.bluecodeltd.com/child/vcas-assessed-register/${user.location}`, {
-          params: {
-            keyword: searchQuery,
-            page: pagination.current,
-            pageSize: pagination.pageSize,
-          },
-        });
-        const responseData = response.data.data;
-        const mappedData = responseData.map((vca: any, index: number) => ({
-          key: index,
-          unique_id: vca.unique_id,
-          name: `${vca.first_name} ${vca.last_name}`,
-          gender: vca.gender,
-          age: vca.year,
-          address: `
-            Province: ${vca.province}, 
-            District: ${vca.district},
-            CWAC Name: ${vca.cwac}, 
-            Date Case Created: ${vca.date_created}, 
-            Date Last Visited: ${moment(vca.last_interacted_with).format('DD/MM/YYYY')}
-          `,
-        }));
-        setTableData({ data: mappedData, pagination, loading: false });
-      } catch (error) {
-        console.error('Error fetching VCAs data:', error);
-        setLoading(false);
-      }
-    },
-    [searchQuery, user]
-  );
+      return matchesSearch && matchesSubPopulationFilters && matchesOtherFilters;
+    });
+    setFilteredVcas(filtered);
+  }, [searchQuery, vcas, subPopulationFilters, otherFilters]);
 
   useEffect(() => {
-    fetch(initialPagination);
-  }, [fetch]);
+    const mappedData = filteredVcas.map((vca, index) => ({
+      key: index,
+      unique_id: vca.uid,
+      name: `${vca.firstname} ${vca.lastname}`,
+      gender: vca.vca_gender,
+      age: calculateAge(vca.birthdate),
+      address: (
+        <div>
+          <div>Address: {vca.homeaddress || 'Unknown'}</div>
+          <div>Facility: {vca.facility || 'Unknown'}</div>
+          <div>Province: {vca.province || 'Unknown'}</div>
+          <div>District: {vca.district || 'Unknown'}</div>
+          <div>Ward: {vca.ward || 'Unknown'}</div>
+        </div>
+      )
+    }));
+  
+    setTableData({ data: mappedData, pagination: initialPagination, loading: false });
+  }, [filteredVcas]);
 
-  const handleTableChange = (pagination: Pagination) => {
-    fetch(pagination);
+  const calculateAge = (birthdate: string): number => {
+    if (!birthdate) return 0;
+  
+    const formats = [
+      /^(\d{1,2})-(\d{1,2})-(\d{4})$/,
+      /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    ];
+  
+    let parsedDate: Date | null = null;
+  
+    for (const format of formats) {
+      const parts = birthdate.match(format);
+      if (parts) {
+        if (format === formats[0]) {
+          parsedDate = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
+        } else if (format === formats[1]) {
+          parsedDate = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
+        } else {
+          parsedDate = new Date(parseInt(parts[3]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+        break;
+      }
+    }
+  
+    if (!parsedDate || isNaN(parsedDate.getTime())) {
+      console.warn(`Invalid date format: ${birthdate}`);
+      return 0;
+    }
+  
+    const today = new Date();
+    let age = today.getFullYear() - parsedDate.getFullYear();
+    const m = today.getMonth() - parsedDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < parsedDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
-  const handleView = (unique_id: string) => {
-    const selectedVca = vcas.find((vca) => vca.unique_id === unique_id);
-    navigate(`/vca-profile/${encodeURIComponent(unique_id)}`, { state: { vca: selectedVca } });
+  const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
+    setSubPopulationFilters(prevFilters => ({
+      ...prevFilters,
+      [filterName]: value
+    }));
   };
 
-  const clearSearch = () => {
-    setClearingSearch(true);
-    setSearchQuery('');
-    fetch(initialPagination);
-    setTimeout(() => {
-      setClearingSearch(false);
-    }, 1000);
+  const handleOtherFilterChange = (filterName: keyof typeof otherFilters, value: string) => {
+    setOtherFilters(prevFilters => ({
+      ...prevFilters,
+      [filterName]: value
+    }));
+  };
+
+  const exportToCSV = () => {
+    const fields = ['uid', 'firstname', 'lastname', 'vca_gender', 'homeaddress', 'province', 'district', 'ward', 'calhiv', 'hei', 'cwlhiv', 'agyw', 'csv', 'cfsw', 'abym'];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(filteredVcas);
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'vcas.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const tableColumn = ['ID', 'First Name', 'Last Name', 'Gender', 'Age', 'Address', 'Province', 'District', 'Ward'];
+    const tableRows: any[] = [];
+
+    filteredVcas.forEach((vca) => {
+      const rowData = [
+        vca.uid,
+        vca.firstname,
+        vca.lastname,
+        vca.vca_gender,
+        calculateAge(vca.birthdate),
+        vca.homeaddress,
+        vca.province,
+        vca.district,
+        vca.ward,
+      ];
+      tableRows.push(rowData);
+    });
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+    });
+
+    doc.save('vca.pdf');
+  };
+
+  const handleView = (uid: string) => {
+    console.log("selected uid", uid);
+    const selectedVca = vcas.find((vca) => vca.uid === uid);
+    console.log("selected vca", selectedVca);
+    navigate(`/profile/vca-profile/${encodeURIComponent(uid)}`, { state: { vca: selectedVca } });
   };
 
   const columns = [
     {
       title: t('Unique ID'),
       dataIndex: 'unique_id',
-      width: '25%',
+      width: '15%',
     },
     {
       title: t('Full Name'),
       dataIndex: 'name',
-      width: '25%',
+      width: '20%',
     },
     {
       title: t('Gender'),
       dataIndex: 'gender',
-      width: '25%',
+      width: '10%',
+    },
+    {
+      title: t('Age'),
+      dataIndex: 'age',
+      width: '10%',
     },
     {
       title: t('Household Details'),
       dataIndex: 'address',
-      width: '25%',
+      width: '35%',
     },
     {
-      title: t('tables.actions'),
-      width: '15%',
+      title: t('Actions'),
+      width: '10%',
       dataIndex: '',
       render: (text: string, record: BasicTableRow) => (
         <BaseSpace>
@@ -206,35 +343,117 @@ export const TreeTable: React.FC = () => {
     },
   ];
 
-  const searchTooltipContent = (
-    <div>
-      {t('You can search by Unique ID, Full Name, Gender, Province, District, CWAC Name, Date Case Created, and Date Last Visited.')}
-    </div>
-  );
-
   return (
-    <div style={{ margin: '20px' }}>
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <Tooltip title={searchTooltipContent}>
-          <Input
-            style={{ width: 400 }}
-            placeholder={t('Search for a VCA')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </Tooltip>
-        <Button type="primary" onClick={clearSearch} loading={clearingSearch}>
-          {clearingSearch ? <Spin size="small" /> : t('Clear Search')}
-        </Button>
+    <div style={{ margin: '20px', textTransform: 'capitalize' }}>
+      <Space direction="vertical" style={{ width: '100%'}}>
+        <Row gutter={[16, 16]} >
+          {/* Column for the sub-population filters */}
+          <Col span={16}>
+            <h3>{t('Filter by Sub Population')}</h3>
+            <Row gutter={[16, 16]} style={{fontSize: "12px" }}>
+              {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
+                <Col key={key} span={6}>
+                  <Space direction="vertical" size="small">
+                    <span>{label}</span>
+                    <Select
+                      style={{ width: '100%',  }}
+                      value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
+                      onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
+                    >
+                      <Select.Option value="all">{t('All')}</Select.Option>
+                      <Select.Option value="yes">{t('Yes')}</Select.Option>
+                      <Select.Option value="no">{t('No')}</Select.Option>
+                    </Select>
+                  </Space>
+                </Col>
+              ))}
+            </Row>
+          </Col>
+
+         {/* Search input */}
+          <Col span={8} style={{fontSize: "12px" }}>
+            <Tooltip title={t('You can search by Unique ID, Name, Gender, Ward, and other fields.')}>
+              <S.SearchInput
+                style={{ width: '100%' }}
+                placeholder={t('Search')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </Tooltip>
+          </Col>
+          
+        </Row>
+
+        {/* Column for the other filters */}
+        <Row>
+        <Col span={24} style={{ marginTop: '20px',  marginBottom: '20px'}}>
+            <h3>{t('Other Filters')}</h3>
+            <Row gutter={[16, 16]} style={{fontSize: "12px" }}>
+              {Object.entries(otherFilterLabels).map(([key, label]) => (
+                <Col key={key} span={6}>
+                  <Space direction="vertical" size="small" >
+                    <span>{label}</span>
+                    {key === 'gender' ? (
+                      <Select
+                        style={{ width: '100%', fontSize: "12px"  }}
+                        value={otherFilters[key as keyof typeof otherFilters]}
+                        onChange={(newValue) => handleOtherFilterChange(key as keyof typeof otherFilters, newValue)}
+                      >
+                        <Select.Option value="all">{t('All')}</Select.Option>
+                        <Select.Option value="female">{t('Female')}</Select.Option>
+                        <Select.Option value="male">{t('Male')}</Select.Option>
+                      </Select>
+                    ) : key === 'virallySupressed' ? (
+                      <Select
+                        style={{ width: '100%', fontSize: "12px"  }}
+                        value={otherFilters[key as keyof typeof otherFilters]}
+                        onChange={(newValue) => handleOtherFilterChange(key as keyof typeof otherFilters, newValue)}
+                      >
+                        <Select.Option value="all">{t('All')}</Select.Option>
+                        <Select.Option value="suppressed">{t('Suppressed')}</Select.Option>
+                        <Select.Option value="notSuppressed">{t('Not Suppressed')}</Select.Option>
+                      </Select>
+                    ) : (
+                      <Input
+                        style={{ width: '100%', fontSize: "12px"  }}
+                        value={otherFilters[key as keyof typeof otherFilters]}
+                        onChange={(e) => handleOtherFilterChange(key as keyof typeof otherFilters, e.target.value)}
+                        placeholder={t(`Enter ${key}`)}
+                      />
+                    )}
+                  </Space>
+                </Col>
+              ))}
+            </Row>
+          </Col>
+        </Row>
+
+        {/* Export buttons */}
+        {tableData.data.length > 0 && (
+          <Row justify="end" style={{ marginBottom: 16 }}>
+            <Col>
+              <Space>
+                <Button type="primary" onClick={exportToCSV}>
+                  {t('Export CSV')}
+                </Button>
+                <Button type="primary" onClick={exportToPDF}>
+                  {t('Export PDF')}
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        )}
+
+
+        {/* Table */}
         <BaseTable
           bordered
           dataSource={tableData.data}
           columns={columns}
-          rowClassName="editable-row"
           pagination={tableData.pagination}
-          onChange={handleTableChange}
+          onChange={(pagination) => {}}
           loading={tableData.loading}
-          scroll={{ x: 800 }}
+          tableLayout="fixed"
         />
       </Space>
     </div>

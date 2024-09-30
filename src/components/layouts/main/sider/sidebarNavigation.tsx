@@ -53,43 +53,5 @@ export const sidebarNavigation: SidebarNavigationItem[] = [
     key: 'medical-dashboard',
     url: '/users-management-portal',
     icon: <UserOutlined />,
-  },
-  {
-    title: 'Supervisory Modules',
-    key: 'medical-dashboard',
-    url: '/supervisory-tools-dashboard',
-    icon: <DashboardOutlined />,
-    children: [
-      {
-        title: 'District Performance',
-        key: 'district-dashboard',
-        url: '/supervisory-tools-dashboard',
-      },
-      {
-        title: 'Case Mgmt Assessment',
-        key: 'case-management',
-        url: '/forms/case-management-district-self-assessment',
-      },
-      {
-        title: 'Finance Assessment',
-        key: 'advanced-forms',
-        url: '/forms/finance-district-self-assessment',
-      },
-      {
-        title: 'Human Resource',
-        key: 'finance',
-        url: '/forms/human-resource-district-self-assessment',
-      },
-      {
-        title: 'Procurement Assessment',
-        key: 'procurement',
-        url: '/forms/procurement-district-self-assessment',
-      },
-      {
-        title: 'Stores Assessment',
-        key: 'stores',
-        url: '/forms/stores-district-self-assessment',
-      },
-    ],
-  },
+  }
 ];

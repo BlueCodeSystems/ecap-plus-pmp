@@ -19,13 +19,13 @@ export const SiderLogo: React.FC<SiderLogoProps> = ({ isSiderCollapsed, toggleSi
 
   return (
     <S.SiderLogoDiv>
-     <S.SiderLogoLink to="/">
+     {/* <S.SiderLogoLink to="/">
         <img
-          src="https://www.mcdss.gov.zm/wp-content/uploads/2021/12/Mcdsslogo.EDITED-1.png"
+          src="/logo512.png"
           alt="logo"
           style={{ width: '210px', height: 'auto' }}
         />
-      </S.SiderLogoLink>
+      </S.SiderLogoLink> */}
       {tabletOnly && (
         <S.CollapseButton
           shape="circle"

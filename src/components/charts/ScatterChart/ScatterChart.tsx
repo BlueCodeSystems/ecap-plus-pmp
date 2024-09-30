@@ -2,7 +2,6 @@ import React from 'react';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
 import { BaseChart } from 'components/common/charts/BaseChart';
 import { useTranslation } from 'react-i18next';
-import { Typography } from 'antd';
 
 const data = [
   [170.0, 59.0],
@@ -112,14 +111,8 @@ export const ScatterChart: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div style={{ position: 'relative' }}>
-    <BaseCard padding="0 0 30rem" title={t('Total score')}>
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-          <Typography style={{ fontWeight: 'bold', fontSize: '32px' }}>97.50%</Typography>
-          <Typography style={{ fontWeight: 'bold' }}>Date of Assessment</Typography>
-          <Typography style={{ fontWeight: 'bold' }}>12/06/2024</Typography>
-        </div>
-      </BaseCard>
-      </div>
+    <BaseCard padding="0 0 1.875rem" title={t('charts.scatter')}>
+      <BaseChart option={defaultOption} />
+    </BaseCard>
   );
 };

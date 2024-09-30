@@ -2,31 +2,24 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { useTranslation } from 'react-i18next';
-import { BaseForm } from '@app/components/common/forms/BaseForm/BaseForm';
 import { BaseSpace } from '@app/components/common/BaseSpace/BaseSpace';
 import axios from 'axios';
-import moment from 'moment';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button, Tooltip, Spin, Space } from 'antd';
+import { Input, Button, Tooltip, Space, Row, Col, Select } from 'antd';
 import { BasicTableRow, Pagination } from 'api/table.api';
+import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
+import { Parser } from 'json2csv';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface Household {
   household_id: string;
-  province: string;
-  district: string;
-  cwac: string;
-  provider_name: string;
   caregiver_name: string;
-  date_created: string;
-  last_interacted_with: string;
-  year: number;
-  village: string;
+  homeaddress: string;
+  facility: string;
+  province: string;
   ward: string;
-  cwac_member_name: string;
-}
-
-interface User {
-  location: string;
+  caseworker_name: string;
 }
 
 const initialPagination: Pagination = {
@@ -35,11 +28,8 @@ const initialPagination: Pagination = {
 };
 
 export const EditableTable: React.FC = () => {
-
   const [households, setHouseholds] = useState<Household[]>([]);
-  const [form] = BaseForm.useForm();
-  const navigate = useNavigate();
-
+  const [filteredHouseholds, setFilteredHouseholds] = useState<Household[]>([]);
   const [tableData, setTableData] = useState<{ data: BasicTableRow[]; pagination: Pagination; loading: boolean }>({
     data: [],
     pagination: initialPagination,
@@ -47,9 +37,29 @@ export const EditableTable: React.FC = () => {
   });
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [clearingSearch, setClearingSearch] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
+  const navigate = useNavigate();
+
+  
+  const [subPopulationFilters, setSubPopulationFilters] = useState({
+    calhiv: 'all',
+    hei: 'all',
+    cwlhiv: 'all',
+    agyw: 'all',
+    csv: 'all',
+    cfsw: 'all',
+    abym: 'all',
+  });
+
+  const subPopulationFilterLabels = {
+    calhiv: 'CALHIV',
+    hei: 'HEI',
+    cwlhiv: 'CWLHIV',
+    agyw: 'AGYW',
+    csv: 'CSV',
+    cfsw: 'CFSW',
+    abym: 'ABYM',
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -69,128 +79,143 @@ export const EditableTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchHouseholds = async () => {
       if (!user) return;
-
       try {
-        const response = await axios.get(
-          `https://server.achieve-dqa.bluecodeltd.com/household/all-households/${user.location}`
-        );
+        setTableData((prev) => ({ ...prev, loading: true }));
+        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households`);
         setHouseholds(response.data.data);
-        localStorage.setItem('households', JSON.stringify(response.data.data));
       } catch (error) {
         console.error('Error fetching households data:', error);
       } finally {
-        setLoading(false);
+        setTableData((prev) => ({ ...prev, loading: false }));
       }
     };
 
-    fetchData();
+    fetchHouseholds();
   }, [user]);
 
+  // Apply search filtering
   useEffect(() => {
-    const mappedData = households.map((household, index) => ({
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    const filtered = households.filter((household) => {
+      const matchesSearch = 
+      (household.household_id?.toLowerCase() || '').includes(lowerCaseQuery) ||
+      (household.caregiver_name?.toLowerCase() || '').includes(lowerCaseQuery) ||
+      (household.homeaddress?.toLowerCase() || '').includes(lowerCaseQuery) ||
+      (household.ward?.toLowerCase() || '').includes(lowerCaseQuery) ||
+      (household.caseworker_name?.toLowerCase() || '').includes(lowerCaseQuery);
+    
+
+    const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([key, value]) => {
+      if (value === 'all') return true;
+      const vcaValue = household[key as keyof Household];
+      return value === 'yes' ? vcaValue === '1' || vcaValue === 'true' || vcaValue === true
+                              : vcaValue === '0' || vcaValue === 'false' || vcaValue === false;
+    });
+
+    return matchesSearch && matchesSubPopulationFilters  ;
+  });
+  
+  setFilteredHouseholds(filtered);
+  }, [searchQuery, households, subPopulationFilters]);
+  
+
+  useEffect(() => {
+    const mappedData: BasicTableRow[] = filteredHouseholds.map((household, index) => ({
       key: index,
-      household_id: household.household_id,
       name: household.caregiver_name,
-      cwac_member_name: household.cwac_member_name,
-      age: household.year,
       address: `
-        Province: ${household.province}, 
-        District: ${household.district},
-        CWAC Name: ${household.cwac}, 
-        Date Case Created: ${household.date_created}, 
-        Date Last Visited: ${moment(household.last_interacted_with).format('DD/MM/YYYY')}
+        Address: ${household.homeaddress || 'Not Applicable'}
+        Facility: ${household.facility || 'Not Applicable'}
+        Province: ${household.province || 'Not Applicable'}
+        Ward: ${household.ward || 'Not Applicable'}
       `,
+      household_id: household.household_id,
+      caseworker_name: household.caseworker_name,
     }));
 
     setTableData({ data: mappedData, pagination: initialPagination, loading: false });
-  }, ["households state", households]);
+  }, [filteredHouseholds]);
 
-  const fetch = useCallback(
-    async (pagination: Pagination) => {
-      setLoading(true);
+  const exportToCSV = () => {
+    const fields = ['household_id', 'caregiver_name', 'homeaddress', 'facility', 'province', 'ward', 'caseworker_name'];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(households);
 
-      if (!user) return;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'households.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-      try {
-        const response = await axios.get(`https://server.achieve-dqa.bluecodeltd.com/household/all-households/${user.location}`, {
-          params: {
-            keyword: searchQuery,
-            page: pagination.current,
-            pageSize: pagination.pageSize,
-          },
-        });
-        const responseData = response.data.data;
-        const mappedData = responseData.map((household: any, index: number) => ({
-          key: index,
-          household_id: household.household_id,
-          name: household.caregiver_name,
-          cwac_member_name: household.cwac_member_name,
-          age: household.year,
-          address: `
-            Province: ${household.province}, 
-            District: ${household.district},
-            CWAC Name: ${household.cwac}, 
-            Date Case Created: ${household.date_created}, 
-            Date Last Visited: ${moment(household.last_interacted_with).format('DD/MM/YYYY')}
-          `,
-        }));
-        setTableData({ data: mappedData, pagination, loading: false });
-      } catch (error) {
-        console.error('Error fetching households data:', error);
-        setLoading(false);
-      }
-    },
-    [searchQuery, user]
-  );
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const tableColumn = ['Household ID', 'Caregiver Name', 'Address', 'Facility', 'Province', 'Ward', 'Caseworker Name'];
+    const tableRows: any[] = [];
 
-  useEffect(() => {
-    fetch(initialPagination);
-  }, [fetch]);
+    households.forEach((household) => {
+      const rowData = [
+        household.household_id,
+        household.caregiver_name,
+        household.homeaddress,
+        household.facility,
+        household.province,
+        household.ward,
+        household.caseworker_name,
+      ];
+      tableRows.push(rowData);
+    });
 
-  const handleTableChange = (pagination: Pagination) => {
-    fetch(pagination);
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+    });
+
+    doc.save('households.pdf');
   };
 
   const handleView = (household_id: string) => {
     const selectedHousehold = households.find(household => household.household_id === household_id);
-    navigate(`/household-profile/${encodeURIComponent(household_id)}`, { state: { household: selectedHousehold } });
+    navigate(`/profile/household-profile/${encodeURIComponent(household_id)}`, { state: { household: selectedHousehold } });
   };
 
-  const clearSearch = () => {
-    setClearingSearch(true);
-    setSearchQuery('');
-    fetch(initialPagination);
-    setTimeout(() => {
-      setClearingSearch(false);
-    }, 1000);
+  const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
+    setSubPopulationFilters(prevFilters => ({
+      ...prevFilters,
+      [filterName]: value
+    }));
   };
+
 
   const columns = [
     {
       title: t('Household ID'),
       dataIndex: 'household_id',
-      width: '25%',
+      width: '20%',
     },
     {
       title: t('Caregiver Name'),
       dataIndex: 'name',
-      width: '25%',
+      width: '20%',
     },
     {
       title: t('Household Details'),
       dataIndex: 'address',
-      width: '25%',
+      width: '30%',
+      render: (text: string) => <div style={{ whiteSpace: 'pre-line' }}>{text}</div>,
     },
     {
-      title: t('CWAC Member Name'),
-      dataIndex: 'cwac_member_name',
-      width: '25%',
+      title: t('Case Worker'),
+      dataIndex: 'caseworker_name',
+      width: '20%',
     },
     {
-      title: t('tables.actions'),
-      width: '15%',
+      title: t('Actions'),
+      width: '10%',
       dataIndex: '',
       render: (text: string, record: BasicTableRow) => (
         <BaseSpace>
@@ -204,33 +229,71 @@ export const EditableTable: React.FC = () => {
 
   const searchTooltipContent = (
     <div>
-      {t('You can search by Household ID, Caregiver Name, CWAC Member Name, Province, District, CWAC Name, Date Case Created, and Date Last Visited.')}
+      {t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}
     </div>
   );
 
   return (
-    <div style={{ margin: '20px' }}>
+    <div style={{ margin: '20px', textTransform: 'capitalize' }}>
       <Space direction="vertical" style={{ width: '100%' }}>
-        <Tooltip title={searchTooltipContent}>
-          <Input
-            style={{ width: 400 }}
-            placeholder={t('Search for a household')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </Tooltip>
-        <Button type="primary" onClick={clearSearch} loading={clearingSearch}>
-          {clearingSearch ? <Spin size="small" /> : t('Clear Search')}
-        </Button>
+      <Row gutter={[16, 16]} >
+          {/* Column for the sub-population filters */}
+          <Col span={16}>
+            <h3>{t('Filter by Sub Population')}</h3>
+            <Row gutter={[16, 16]} style={{fontSize: "12px" }}>
+              {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
+                <Col key={key} span={6}>
+                  <Space direction="vertical" size="small">
+                    <span>{label}</span>
+                    <Select
+                      style={{ width: '100%',  }}
+                      value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
+                      onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
+                    >
+                      <Select.Option value="all">{t('All')}</Select.Option>
+                      <Select.Option value="yes">{t('Yes')}</Select.Option>
+                      <Select.Option value="no">{t('No')}</Select.Option>
+                    </Select>
+                  </Space>
+                </Col>
+              ))}
+            </Row>
+          </Col>
+
+         {/* Search input */}
+          <Col span={8} style={{fontSize: "12px" }}>
+            <Tooltip title={t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}>
+              <S.SearchInput
+                style={{ width: '100%' }}
+                placeholder={t('Search')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </Tooltip>
+          </Col>
+          
+        </Row>
+       
+        <Row justify="end" style={{ marginBottom: 16 }}>
+          <Col>
+            <Space>
+              <Button type="primary" onClick={exportToCSV}>
+                {t('Export CSV')}
+              </Button>
+              <Button type="primary" onClick={exportToPDF}>
+                {t('Export PDF')}
+              </Button>
+            </Space>
+          </Col>
+        </Row>
         <BaseTable
           bordered
           dataSource={tableData.data}
           columns={columns}
-          rowClassName="editable-row"
           pagination={tableData.pagination}
-          onChange={handleTableChange}
+          onChange={(pagination) => {}}
           loading={tableData.loading}
-          scroll={{ x: 800 }}
+          tableLayout="fixed"
         />
       </Space>
     </div>

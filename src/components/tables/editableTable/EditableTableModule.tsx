@@ -44,7 +44,7 @@ export const EditableTableModule: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get(`https://server.achieve-dqa.bluecodeltd.com/household/all-households/`);
+        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households/`);
         setHouseholds(response.data.data);
       } catch (error) {
         console.error('Error fetching households data:', error);
