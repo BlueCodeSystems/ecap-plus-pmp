@@ -39,6 +39,7 @@
     "react-country-flag": "^3.0.2",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^1.3.0",
+    "react-highlight-words": "^0.20.0",
     "react-i18next": "^11.11.4",
     "react-infinite-scroll-component": "^6.1.0",
     "react-insta-stories": "^2.3.0",

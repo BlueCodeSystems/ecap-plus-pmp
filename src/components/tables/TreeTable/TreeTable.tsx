@@ -1,16 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { useTranslation } from 'react-i18next';
-import { BaseSpace } from '@app/components/common/BaseSpace/BaseSpace';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { Input, Button, Tooltip, Space, Row, Col, Select } from 'antd';
-import { BasicTableRow, Pagination } from 'api/table.api';
-import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
+import { Input, InputRef, Button, Tooltip, Row, Col, Select, Space } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { Parser } from 'json2csv';
+import Highlighter from 'react-highlight-words';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
+import { BasicTableRow, Pagination } from '@app/api/table.api';
+import { useNavigate } from 'react-router-dom';
+import { FilterDropdownProps } from 'antd/lib/table/interface';
+
+interface User {
+  location: string;
+}
 
 interface Vca {
   id: string;
@@ -34,10 +40,6 @@ interface Vca {
   vl_suppressed: string | null;
 }
 
-interface User {
-  location: string;
-}
-
 const initialPagination: Pagination = {
   current: 1,
   pageSize: 100,
@@ -55,7 +57,10 @@ export const TreeTable: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const searchInput = useRef<InputRef>(null);
   const navigate = useNavigate();
+  const [searchText, setSearchText] = useState<string>('');
+  const [searchedColumn, setSearchedColumn] = useState<string>('');
 
   const [subPopulationFilters, setSubPopulationFilters] = useState({
     calhiv: 'all',
@@ -65,13 +70,6 @@ export const TreeTable: React.FC = () => {
     csv: 'all',
     cfsw: 'all',
     abym: 'all',
-  });
-
-  const [otherFilters, setOtherFilters] = useState({
-    gender: 'all',
-    virallySupressed: 'all',
-    age: '',
-    facility: '',
   });
 
   const subPopulationFilterLabels = {
@@ -84,14 +82,8 @@ export const TreeTable: React.FC = () => {
     abym: 'ABYM',
   };
 
-  const otherFilterLabels = {
-    gender: 'Gender',
-    virallySupressed: 'Virally Suppressed',
-    age: 'Age',
-    facility: 'Facility',
-  };
-
   useEffect(() => {
+    // Fetch user data
     const fetchUserData = async () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
@@ -109,31 +101,29 @@ export const TreeTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Fetch VCAs data
     const fetchData = async () => {
       if (!user) return;
 
       try {
-        setTableData((prev) => ({ ...prev, loading: true }));
-        const response = await axios.get(
-          `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-assessed-register`
-        );
+        setLoading(true);
+        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-assessed-register`);
         setVcas(response.data.data);
-        console.log('vcas', response.data.data);
-        localStorage.setItem('vcas', JSON.stringify(response.data.data));
       } catch (error) {
         console.error('Error fetching VCAs data:', error);
       } finally {
-        setTableData((prev) => ({ ...prev, loading: false }));
+        setLoading(false);
       }
     };
 
     fetchData();
   }, [user]);
 
+  // Combined filtering logic
   useEffect(() => {
     const lowerCaseQuery = searchQuery.toLowerCase();
     const filtered = vcas.filter((vca) => {
-      const matchesSearch = 
+      const matchesSearch =
         (vca.uid?.toLowerCase() || '').includes(lowerCaseQuery) ||
         (vca.firstname?.toLowerCase() || '').includes(lowerCaseQuery) ||
         (vca.lastname?.toLowerCase() || '').includes(lowerCaseQuery) ||
@@ -141,47 +131,28 @@ export const TreeTable: React.FC = () => {
         (vca.ward?.toLowerCase() || '').includes(lowerCaseQuery) ||
         (vca.vca_gender?.toLowerCase() || '').includes(lowerCaseQuery);
 
-      const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([key, value]) => {
-        if (value === 'all') return true;
-        const vcaValue = vca[key as keyof Vca];
-        return value === 'yes' ? vcaValue === '1' || vcaValue === 'true' || vcaValue === true
-                                : vcaValue === '0' || vcaValue === 'false' || vcaValue === false;
-      });
-
-      const matchesOtherFilters = Object.entries(otherFilters).every(([key, value]) => {
-        if (value === 'all' || value === '') return true;
+        const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([key, value]) => {
+          if (value === 'all') return true; // If the filter is 'all', no need to check further.
         
-        if (key === 'gender') {
-          return vca.vca_gender.toLowerCase() === value.toLowerCase();
-        }
+          const vcaValue: string | null = vca[key as keyof Vca];
         
-        if (key === 'virallySupressed') {
-          if (value === 'suppressed') {
-            return vca.vl_suppressed === 'yes';
-          } else if (value === 'notSuppressed') {
-            return vca.vl_suppressed === 'no';
+          // Check if vcaValue is null before comparing
+          if (vcaValue === null) {
+            return false; // Or true, depending on your logic
           }
-        }
         
-        if (key === 'age') {
-          const age = calculateAge(vca.birthdate);
-          return age === parseInt(value as string);
-        }
-        
-        if (key === 'facility') {
-          return (vca.facility?.toLowerCase() || '').includes(value.toLowerCase());
-        }
+          // Now we can safely compare vcaValue since it's guaranteed to be a string
+          return value === 'yes' 
+            ? vcaValue === '1' || vcaValue === 'true'
+            : vcaValue === '0' || vcaValue === 'false';
+        });        
 
-        return true;
-      });
-
-      return matchesSearch && matchesSubPopulationFilters && matchesOtherFilters;
+      return matchesSearch && matchesSubPopulationFilters;
     });
-    setFilteredVcas(filtered);
-  }, [searchQuery, vcas, subPopulationFilters, otherFilters]);
 
-  useEffect(() => {
-    const mappedData = filteredVcas.map((vca, index) => ({
+    setFilteredVcas(filtered);
+    // Map filtered data for table
+    const mappedData = filtered.map((vca, index) => ({
       key: index,
       unique_id: vca.uid,
       name: `${vca.firstname} ${vca.lastname}`,
@@ -197,21 +168,21 @@ export const TreeTable: React.FC = () => {
         </div>
       )
     }));
-  
+
     setTableData({ data: mappedData, pagination: initialPagination, loading: false });
-  }, [filteredVcas]);
+  }, [searchQuery, vcas, subPopulationFilters]);
 
   const calculateAge = (birthdate: string): number => {
     if (!birthdate) return 0;
-  
+
     const formats = [
       /^(\d{1,2})-(\d{1,2})-(\d{4})$/,
       /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
       /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
     ];
-  
+
     let parsedDate: Date | null = null;
-  
+
     for (const format of formats) {
       const parts = birthdate.match(format);
       if (parts) {
@@ -225,12 +196,12 @@ export const TreeTable: React.FC = () => {
         break;
       }
     }
-  
+
     if (!parsedDate || isNaN(parsedDate.getTime())) {
       console.warn(`Invalid date format: ${birthdate}`);
       return 0;
     }
-  
+
     const today = new Date();
     let age = today.getFullYear() - parsedDate.getFullYear();
     const m = today.getMonth() - parsedDate.getMonth();
@@ -240,6 +211,17 @@ export const TreeTable: React.FC = () => {
     return age;
   };
 
+  const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
+    confirm();
+    setSearchText(selectedKeys[0]);
+    setSearchedColumn(dataIndex);
+  };
+
+  const handleReset = (clearFilters: () => void) => {
+    clearFilters();
+    setSearchText('');
+  };
+
   const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
     setSubPopulationFilters(prevFilters => ({
       ...prevFilters,
@@ -247,59 +229,82 @@ export const TreeTable: React.FC = () => {
     }));
   };
 
-  const handleOtherFilterChange = (filterName: keyof typeof otherFilters, value: string) => {
-    setOtherFilters(prevFilters => ({
-      ...prevFilters,
-      [filterName]: value
-    }));
-  };
-
-  const exportToCSV = () => {
-    const fields = ['uid', 'firstname', 'lastname', 'vca_gender', 'homeaddress', 'province', 'district', 'ward', 'calhiv', 'hei', 'cwlhiv', 'agyw', 'csv', 'cfsw', 'abym'];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(filteredVcas);
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'vcas.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    const tableColumn = ['ID', 'First Name', 'Last Name', 'Gender', 'Age', 'Address', 'Province', 'District', 'Ward'];
-    const tableRows: any[] = [];
-
-    filteredVcas.forEach((vca) => {
-      const rowData = [
-        vca.uid,
-        vca.firstname,
-        vca.lastname,
-        vca.vca_gender,
-        calculateAge(vca.birthdate),
-        vca.homeaddress,
-        vca.province,
-        vca.district,
-        vca.ward,
-      ];
-      tableRows.push(rowData);
-    });
-
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-    });
-
-    doc.save('vca.pdf');
-  };
+  const getColumnSearchProps = (dataIndex: string) => ({
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
+      <div style={{ padding: 8 }}>
+        <Input
+          ref={searchInput}
+          placeholder={`Search ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+          style={{ marginBottom: 8, display: 'block' }}
+        />
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+            icon={<SearchOutlined />}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Search
+          </Button>
+          <Button
+            onClick={() => clearFilters && handleReset(clearFilters)}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Clear
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => {
+              confirm({ closeDropdown: false });
+              setSearchText((selectedKeys as string[])[0]);
+              setSearchedColumn(dataIndex);
+            }}
+          >
+            Reset table
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={close}
+          >
+            Close
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: (filtered: any) => (
+      <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
+    ),
+    onFilter: (value: string, record: { [x: string]: any; }) => {
+      const fieldValue = record[dataIndex];
+      return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
+    },
+    onFilterDropdownVisibleChange: (visible: any) => {
+      if (visible) {
+        setTimeout(() => searchInput.current?.select(), 100);
+      }
+    },
+    render: (text: { toString: () => any; }) =>
+      searchedColumn === dataIndex ? (
+        <Highlighter
+          highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
+          searchWords={[searchText]}
+          autoEscape
+          textToHighlight={text ? text.toString() : ''}
+        />
+      ) : (
+        text
+      ),
+  });
 
   const handleView = (uid: string) => {
-    console.log("selected uid", uid);
     const selectedVca = vcas.find((vca) => vca.uid === uid);
-    console.log("selected vca", selectedVca);
     navigate(`/profile/vca-profile/${encodeURIComponent(uid)}`, { state: { vca: selectedVca } });
   };
 
@@ -308,154 +313,85 @@ export const TreeTable: React.FC = () => {
       title: t('Unique ID'),
       dataIndex: 'unique_id',
       width: '15%',
+      ...getColumnSearchProps('unique_id'),
     },
     {
       title: t('Full Name'),
       dataIndex: 'name',
       width: '20%',
+      ...getColumnSearchProps('name'),
     },
     {
       title: t('Gender'),
       dataIndex: 'gender',
       width: '10%',
+      ...getColumnSearchProps('gender'),
     },
     {
       title: t('Age'),
       dataIndex: 'age',
       width: '10%',
+      ...getColumnSearchProps('age'),
     },
     {
       title: t('Household Details'),
       dataIndex: 'address',
       width: '35%',
+      ...getColumnSearchProps('address'),
     },
     {
       title: t('Actions'),
       width: '10%',
       dataIndex: '',
       render: (text: string, record: BasicTableRow) => (
-        <BaseSpace>
-          <BaseButton type="primary" onClick={() => handleView(record.unique_id)}>
-            {t('View')}
-          </BaseButton>
-        </BaseSpace>
+        <BaseButton type="primary" onClick={() => handleView(record.unique_id)}>
+          {t('View')}
+        </BaseButton>
       ),
     },
   ];
 
   return (
-    <div style={{ margin: '20px', textTransform: 'capitalize' }}>
-      <Space direction="vertical" style={{ width: '100%'}}>
-        <Row gutter={[16, 16]} >
-          {/* Column for the sub-population filters */}
-          <Col span={16}>
-            <h3>{t('Filter by Sub Population')}</h3>
-            <Row gutter={[16, 16]} style={{fontSize: "12px" }}>
-              {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-                <Col key={key} span={6}>
-                  <Space direction="vertical" size="small">
-                    <span>{label}</span>
-                    <Select
-                      style={{ width: '100%',  }}
-                      value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
-                      onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
-                    >
-                      <Select.Option value="all">{t('All')}</Select.Option>
-                      <Select.Option value="yes">{t('Yes')}</Select.Option>
-                      <Select.Option value="no">{t('No')}</Select.Option>
-                    </Select>
-                  </Space>
-                </Col>
-              ))}
-            </Row>
-          </Col>
-
-         {/* Search input */}
-          <Col span={8} style={{fontSize: "12px" }}>
-            <Tooltip title={t('You can search by Unique ID, Name, Gender, Ward, and other fields.')}>
-              <S.SearchInput
-                style={{ width: '100%' }}
-                placeholder={t('Search')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </Tooltip>
-          </Col>
-          
-        </Row>
-
-        {/* Column for the other filters */}
-        <Row>
-        <Col span={24} style={{ marginTop: '20px',  marginBottom: '20px'}}>
-            <h3>{t('Other Filters')}</h3>
-            <Row gutter={[16, 16]} style={{fontSize: "12px" }}>
-              {Object.entries(otherFilterLabels).map(([key, label]) => (
-                <Col key={key} span={6}>
-                  <Space direction="vertical" size="small" >
-                    <span>{label}</span>
-                    {key === 'gender' ? (
-                      <Select
-                        style={{ width: '100%', fontSize: "12px"  }}
-                        value={otherFilters[key as keyof typeof otherFilters]}
-                        onChange={(newValue) => handleOtherFilterChange(key as keyof typeof otherFilters, newValue)}
-                      >
-                        <Select.Option value="all">{t('All')}</Select.Option>
-                        <Select.Option value="female">{t('Female')}</Select.Option>
-                        <Select.Option value="male">{t('Male')}</Select.Option>
-                      </Select>
-                    ) : key === 'virallySupressed' ? (
-                      <Select
-                        style={{ width: '100%', fontSize: "12px"  }}
-                        value={otherFilters[key as keyof typeof otherFilters]}
-                        onChange={(newValue) => handleOtherFilterChange(key as keyof typeof otherFilters, newValue)}
-                      >
-                        <Select.Option value="all">{t('All')}</Select.Option>
-                        <Select.Option value="suppressed">{t('Suppressed')}</Select.Option>
-                        <Select.Option value="notSuppressed">{t('Not Suppressed')}</Select.Option>
-                      </Select>
-                    ) : (
-                      <Input
-                        style={{ width: '100%', fontSize: "12px"  }}
-                        value={otherFilters[key as keyof typeof otherFilters]}
-                        onChange={(e) => handleOtherFilterChange(key as keyof typeof otherFilters, e.target.value)}
-                        placeholder={t(`Enter ${key}`)}
-                      />
-                    )}
-                  </Space>
-                </Col>
-              ))}
-            </Row>
-          </Col>
-        </Row>
-
-        {/* Export buttons */}
-        {tableData.data.length > 0 && (
-          <Row justify="end" style={{ marginBottom: 16 }}>
-            <Col>
-              <Space>
-                <Button type="primary" onClick={exportToCSV}>
-                  {t('Export CSV')}
-                </Button>
-                <Button type="primary" onClick={exportToPDF}>
-                  {t('Export PDF')}
-                </Button>
-              </Space>
-            </Col>
+    <div>
+      <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+        <Col>
+          <Tooltip title={t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}>
+            <S.SearchInput
+              placeholder={t('Global Search')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ marginRight: '16px' }}
+            />
+          </Tooltip>
+        </Col>
+        <Col>
+          <h5 style={{ margin: '0 16px 0 0' }}>{t('Filter by Sub Population')}</h5>
+          <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
+              <div key={key} style={{ marginRight: '8px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '12px' }}>{label}</span>
+                <Select
+                  style={{ width: '100px' }}
+                  value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
+                  onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
+                >
+                  <Select.Option value="all">{t('All')}</Select.Option>
+                  <Select.Option value="yes">{t('Yes')}</Select.Option>
+                  <Select.Option value="no">{t('No')}</Select.Option>
+                </Select>
+              </div>
+            ))}
           </Row>
-        )}
-
-
-        {/* Table */}
-        <BaseTable
-          bordered
-          dataSource={tableData.data}
-          columns={columns}
-          pagination={tableData.pagination}
-          onChange={(pagination) => {}}
-          loading={tableData.loading}
-          tableLayout="fixed"
-        />
-      </Space>
+        </Col>
+      </Row>
+      <BaseTable
+        columns={columns}
+        dataSource={tableData.data}
+        pagination={tableData.pagination}
+        loading={loading}
+      />
     </div>
   );
 };
+
+export default TreeTable;

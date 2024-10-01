@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { useTranslation } from 'react-i18next';
 import { BaseSpace } from '@app/components/common/BaseSpace/BaseSpace';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button, Tooltip, Space, Row, Col, Select } from 'antd';
+import { Input, InputRef, Button, Tooltip, Space, Row, Col, Select } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import Highlighter from 'react-highlight-words';
+import { FilterDropdownProps } from 'antd/es/table/interface';
 import { BasicTableRow, Pagination } from 'api/table.api';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import { Parser } from 'json2csv';
@@ -39,8 +42,10 @@ export const EditableTable: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [user, setUser] = useState<any | null>(null);
   const navigate = useNavigate();
+const searchInput = useRef<InputRef>(null);
+  const [searchText, setSearchText] = useState<string>('');
+  const [searchedColumn, setSearchedColumn] = useState<string>('');
 
-  
   const [subPopulationFilters, setSubPopulationFilters] = useState({
     calhiv: 'all',
     hei: 'all',
@@ -95,31 +100,160 @@ export const EditableTable: React.FC = () => {
     fetchHouseholds();
   }, [user]);
 
+  const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
+    confirm();
+    setSearchText(selectedKeys[0]);
+    setSearchedColumn(dataIndex);
+  };
+
+  const handleReset = (clearFilters: () => void) => {
+    clearFilters();
+    setSearchText('');
+  };
+
+  const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
+    setSubPopulationFilters(prevFilters => ({
+      ...prevFilters,
+      [filterName]: value
+    }));
+  };
+
+  const getColumnSearchProps = (dataIndex: string) => ({
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
+      <div style={{ padding: 8 }}>
+  <Input
+  ref={searchInput}
+  placeholder={`Search ${dataIndex}`}
+  value={selectedKeys[0]}
+  onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+  onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+  style={{ marginBottom: 8, display: 'block' }}
+/>;
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+            icon={<SearchOutlined />}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Search
+          </Button>
+          <Button
+            onClick={() => clearFilters && handleReset(clearFilters)}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Clear
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => {
+              confirm({ closeDropdown: false });
+              setSearchText((selectedKeys as string[])[0]);
+              setSearchedColumn(dataIndex);
+            }}
+          >
+            Reset table
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={close}
+          >
+            Close
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: (filtered: any) => (
+      <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
+    ),
+    onFilter: (value: string, record: { [x: string]: any; }) => {
+      const fieldValue = record[dataIndex];
+      return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
+    },
+    onFilterDropdownVisibleChange: (visible: any) => {
+      if (visible) {
+        setTimeout(() => searchInput.current?.select(), 100);
+      }
+    },
+    render: (text: { toString: () => any; }) =>
+      searchedColumn === dataIndex ? (
+        <Highlighter
+          highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
+          searchWords={[searchText]}
+          autoEscape
+          textToHighlight={text ? text.toString() : ''}
+        />
+      ) : (
+        text
+      ),
+  });
+
+  const columns = [
+    {
+      title: t('Household ID'),
+      dataIndex: 'household_id',
+      width: '20%',
+      ...getColumnSearchProps('household_id'),
+    },
+    {
+      title: t('Caregiver Name'),
+      dataIndex: 'name',
+      width: '20%',
+      ...getColumnSearchProps('name'),
+    },
+    {
+      title: t('Household Details'),
+      dataIndex: 'address',
+      width: '30%',
+      ...getColumnSearchProps('address'),
+      render: (text: string) => <div style={{ whiteSpace: 'pre-line' }}>{text}</div>,
+    },
+    {
+      title: t('Case Worker'),
+      dataIndex: 'caseworker_name',
+      width: '20%',
+      ...getColumnSearchProps('caseworker_name'),
+    },
+    {
+      title: t('Actions'),
+      width: '10%',
+      dataIndex: '',
+      render: (text: string, record: BasicTableRow) => (
+        <BaseSpace>
+          <BaseButton type="primary" onClick={() => handleView(record.household_id)}>
+            {t('View')}
+          </BaseButton>
+        </BaseSpace>
+      ),
+    },
+  ];
+
   // Apply search filtering
   useEffect(() => {
     const lowerCaseQuery = searchQuery.toLowerCase();
     const filtered = households.filter((household) => {
-      const matchesSearch = 
-      (household.household_id?.toLowerCase() || '').includes(lowerCaseQuery) ||
-      (household.caregiver_name?.toLowerCase() || '').includes(lowerCaseQuery) ||
-      (household.homeaddress?.toLowerCase() || '').includes(lowerCaseQuery) ||
-      (household.ward?.toLowerCase() || '').includes(lowerCaseQuery) ||
-      (household.caseworker_name?.toLowerCase() || '').includes(lowerCaseQuery);
-    
+      const matchesSearch =
+        (household.household_id?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (household.caregiver_name?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (household.homeaddress?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (household.ward?.toLowerCase() || '').includes(lowerCaseQuery) ||
+        (household.caseworker_name?.toLowerCase() || '').includes(lowerCaseQuery);
 
-    const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([key, value]) => {
-      if (value === 'all') return true;
-      const vcaValue = household[key as keyof Household];
-      return value === 'yes' ? vcaValue === '1' || vcaValue === 'true' || vcaValue === true
-                              : vcaValue === '0' || vcaValue === 'false' || vcaValue === false;
+      const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([key, value]) => {
+        const vcaValue = household[key as keyof Household];
+        if (value === 'all') return true;
+        return value === 'yes' ? vcaValue === '1' || vcaValue === 'true' : vcaValue === '0' || vcaValue === 'false';
+      });
+
+      return matchesSearch && matchesSubPopulationFilters;
     });
 
-    return matchesSearch && matchesSubPopulationFilters  ;
-  });
-  
-  setFilteredHouseholds(filtered);
+    setFilteredHouseholds(filtered);
   }, [searchQuery, households, subPopulationFilters]);
-  
 
   useEffect(() => {
     const mappedData: BasicTableRow[] = filteredHouseholds.map((household, index) => ({
@@ -138,164 +272,50 @@ export const EditableTable: React.FC = () => {
     setTableData({ data: mappedData, pagination: initialPagination, loading: false });
   }, [filteredHouseholds]);
 
-  const exportToCSV = () => {
-    const fields = ['household_id', 'caregiver_name', 'homeaddress', 'facility', 'province', 'ward', 'caseworker_name'];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(households);
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'households.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    const tableColumn = ['Household ID', 'Caregiver Name', 'Address', 'Facility', 'Province', 'Ward', 'Caseworker Name'];
-    const tableRows: any[] = [];
-
-    households.forEach((household) => {
-      const rowData = [
-        household.household_id,
-        household.caregiver_name,
-        household.homeaddress,
-        household.facility,
-        household.province,
-        household.ward,
-        household.caseworker_name,
-      ];
-      tableRows.push(rowData);
-    });
-
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-    });
-
-    doc.save('households.pdf');
-  };
-
   const handleView = (household_id: string) => {
     const selectedHousehold = households.find(household => household.household_id === household_id);
     navigate(`/profile/household-profile/${encodeURIComponent(household_id)}`, { state: { household: selectedHousehold } });
   };
-
-  const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
-    setSubPopulationFilters(prevFilters => ({
-      ...prevFilters,
-      [filterName]: value
-    }));
-  };
-
-
-  const columns = [
-    {
-      title: t('Household ID'),
-      dataIndex: 'household_id',
-      width: '20%',
-    },
-    {
-      title: t('Caregiver Name'),
-      dataIndex: 'name',
-      width: '20%',
-    },
-    {
-      title: t('Household Details'),
-      dataIndex: 'address',
-      width: '30%',
-      render: (text: string) => <div style={{ whiteSpace: 'pre-line' }}>{text}</div>,
-    },
-    {
-      title: t('Case Worker'),
-      dataIndex: 'caseworker_name',
-      width: '20%',
-    },
-    {
-      title: t('Actions'),
-      width: '10%',
-      dataIndex: '',
-      render: (text: string, record: BasicTableRow) => (
-        <BaseSpace>
-          <BaseButton type="primary" onClick={() => handleView(record.household_id)}>
-            {t('View')}
-          </BaseButton>
-        </BaseSpace>
-      ),
-    },
-  ];
-
-  const searchTooltipContent = (
-    <div>
-      {t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}
-    </div>
-  );
-
+  
   return (
-    <div style={{ margin: '20px', textTransform: 'capitalize' }}>
-      <Space direction="vertical" style={{ width: '100%' }}>
-      <Row gutter={[16, 16]} >
-          {/* Column for the sub-population filters */}
-          <Col span={16}>
-            <h3>{t('Filter by Sub Population')}</h3>
-            <Row gutter={[16, 16]} style={{fontSize: "12px" }}>
-              {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-                <Col key={key} span={6}>
-                  <Space direction="vertical" size="small">
-                    <span>{label}</span>
-                    <Select
-                      style={{ width: '100%',  }}
-                      value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
-                      onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
-                    >
-                      <Select.Option value="all">{t('All')}</Select.Option>
-                      <Select.Option value="yes">{t('Yes')}</Select.Option>
-                      <Select.Option value="no">{t('No')}</Select.Option>
-                    </Select>
-                  </Space>
-                </Col>
-              ))}
-            </Row>
-          </Col>
-
-         {/* Search input */}
-          <Col span={8} style={{fontSize: "12px" }}>
-            <Tooltip title={t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}>
-              <S.SearchInput
-                style={{ width: '100%' }}
-                placeholder={t('Search')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </Tooltip>
-          </Col>
-          
-        </Row>
-       
-        <Row justify="end" style={{ marginBottom: 16 }}>
-          <Col>
-            <Space>
-              <Button type="primary" onClick={exportToCSV}>
-                {t('Export CSV')}
-              </Button>
-              <Button type="primary" onClick={exportToPDF}>
-                {t('Export PDF')}
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-        <BaseTable
-          bordered
-          dataSource={tableData.data}
-          columns={columns}
-          pagination={tableData.pagination}
-          onChange={(pagination) => {}}
-          loading={tableData.loading}
-          tableLayout="fixed"
-        />
-      </Space>
+    <div>
+      <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
+        <Col>
+          <Tooltip title={t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}>
+            <S.SearchInput
+              placeholder={t('Global Search')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ marginRight: '16px' }}
+            />
+          </Tooltip>
+        </Col>
+        <Col>
+          <h5 style={{ margin: '0 16px 0 0' }}>{t('Filter by Sub Population')}</h5>
+          <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
+              <div key={key} style={{ marginRight: '8px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '12px' }}>{label}</span>
+                <Select
+                  style={{ width: '100px' }}
+                  value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
+                  onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
+                >
+                  <Select.Option value="all">{t('All')}</Select.Option>
+                  <Select.Option value="yes">{t('Yes')}</Select.Option>
+                  <Select.Option value="no">{t('No')}</Select.Option>
+                </Select>
+              </div>
+            ))}
+          </Row>
+        </Col>
+      </Row>
+      <BaseTable
+        columns={columns}
+        dataSource={tableData.data}
+        pagination={tableData.pagination}
+        loading={tableData.loading}
+      />
     </div>
   );
 };
