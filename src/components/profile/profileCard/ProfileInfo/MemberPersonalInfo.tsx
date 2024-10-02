@@ -161,8 +161,6 @@ export const MemberPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData })
   const location = useLocation();
   const vca: Vcas | undefined = location.state?.vca;
 
-  console.log("profile mebers",vca);
-
   const [isFieldsChanged, setFieldsChanged] = useState(false);
   const [isLoading, setLoading] = useState(false);
 

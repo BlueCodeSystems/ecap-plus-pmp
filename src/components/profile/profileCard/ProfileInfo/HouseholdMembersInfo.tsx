@@ -77,8 +77,7 @@ export const HouseholdMembersInfo: React.FC = () => {
       axios
         .get(`https://ecapplus.server.dqa.bluecodeltd.com/household/members/${household.household_id}`)
         .then((response) => {
-          const sortedMembers = response.data.data
-          console.log(response.data.data);
+          const sortedMembers = response.data.data;
           setMembers(sortedMembers);
           setLoading(false);
         })
@@ -134,6 +133,10 @@ export const HouseholdMembersInfo: React.FC = () => {
     );
   }
 
+  // Find the primary VCA and other members
+  const primaryVCA = members.filter(member => member.is_index);
+  const otherMembers = members.filter(member => !member.is_index);
+
   return (
     <Wrapper>
       {household && (
@@ -143,43 +146,65 @@ export const HouseholdMembersInfo: React.FC = () => {
           <br />
           <br />
           <BaseCard>
-            {members.map((member) => (
-              <div key={member.unique_id}>
-                {member.is_index && (
-                  <Alert
-                    message={'The primary VCA in this household is at the top in the list.'}
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: '10px' }}
-                  />
-                )}
-                <ListItemWrapper gutter={[16, 16]}>
-                  <Col span={8}>
-                    <InfoValue>
-                      {member.unique_id} - {member.firstname} {member.lastname}
-                    </InfoValue>
-                  </Col>
-                  <Col span={12}>
-                    <Row>
-                      <Col span={24}>
-                        <InfoValue>Birthdate: {member.birthdate}</InfoValue>
-                      </Col>
-                      <Col span={24}>
-                        <InfoValue>Gender: {member.vca_gender}</InfoValue>
-                      </Col>
-                      <Col span={24}>
-                        <InfoValue>Disability: {member.disability}</InfoValue>
-                      </Col>
-                      <Col span={24}>
-                        <InfoValue>Relationship: {member.relation}</InfoValue>
-                      </Col>
-                    </Row>
-                  </Col>
-                  {/* <Button type="primary" onClick={() => handleViewProfile(member.unique_id, member.is_index)}>
-                      View Profile
-                    </Button> */}
-                </ListItemWrapper>
+            {primaryVCA.length > 0 && (
+              <div>
+                <Alert
+                  message={'The primary VCA in this household is at the top in the list.'}
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: '10px' }}
+                />
+                {primaryVCA.map((member) => (
+                  <ListItemWrapper key={member.unique_id} gutter={[16, 16]}>
+                    <Col span={8}>
+                      <InfoValue>
+                        {member.unique_id} - {member.firstname} {member.lastname}
+                      </InfoValue>
+                    </Col>
+                    <Col span={12}>
+                      <Row>
+                        <Col span={24}>
+                          <InfoValue>Birthdate: {member.birthdate}</InfoValue>
+                        </Col>
+                        <Col span={24}>
+                          <InfoValue>Gender: {member.vca_gender}</InfoValue>
+                        </Col>
+                        <Col span={24}>
+                          <InfoValue>Disability: {member.disability}</InfoValue>
+                        </Col>
+                        <Col span={24}>
+                          <InfoValue>Relationship: {member.relation}</InfoValue>
+                        </Col>
+                      </Row>
+                    </Col>
+                  </ListItemWrapper>
+                ))}
               </div>
+            )}
+            {otherMembers.map((member) => (
+              <ListItemWrapper key={member.unique_id} gutter={[16, 16]}>
+                <Col span={8}>
+                  <InfoValue>
+                    {member.unique_id} - {member.firstname} {member.lastname}
+                  </InfoValue>
+                </Col>
+                <Col span={12}>
+                  <Row>
+                    <Col span={24}>
+                      <InfoValue>Birthdate: {member.birthdate}</InfoValue>
+                    </Col>
+                    <Col span={24}>
+                      <InfoValue>Gender: {member.vca_gender}</InfoValue>
+                    </Col>
+                    <Col span={24}>
+                      <InfoValue>Disability: {member.disability}</InfoValue>
+                    </Col>
+                    <Col span={24}>
+                      <InfoValue>Relationship: {member.relation}</InfoValue>
+                    </Col>
+                  </Row>
+                </Col>
+              </ListItemWrapper>
             ))}
           </BaseCard>
         </>

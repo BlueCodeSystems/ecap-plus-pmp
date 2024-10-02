@@ -246,60 +246,78 @@ export const CaregiverCasePlans: React.FC = () => {
       title: 'Service Date',
       dataIndex: 'service_date',
       key: 'service_date',
-      render: (text: string | null) => {
-        if (text) {
-          const date = isoToDate(text);
-          return date.toLocaleDateString();
-        } else {
-          return 'Not Applicable';
-        }
-      },
+    },
+    {
+      title: 'Is HIV Positive',
+      dataIndex: 'is_hiv_positive',
+      key: 'is_hiv_positive',
+    },
+    {
+      title: 'Last Viral Load Result',
+      dataIndex: 'vl_last_result',
+      key: 'vl_last_result',
     },
     {
       title: 'Health Services',
       dataIndex: 'health_services',
       key: 'health_services',
-      render: (text: string | null) => (text ? text : 'Not Applicable'),
+
     },
     {
       title: 'HIV Services',
       dataIndex: 'hiv_services',
       key: 'hiv_services',
-      render: (text: string | null) => (text ? text : 'Not Applicable'),
+
     },
     {
       title: 'Other Health Services',
       dataIndex: 'other_health_services',
       key: 'other_health_services',
-      render: (text: string | null) => (text ? text : 'Not Applicable'),
+
+    },
+    {
+      title: 'Other HIV Services',
+      dataIndex: 'other_hiv_services',
+      key: 'other_hiv_services',
+
+    },
+    {
+      title: 'Other Safe Services',
+      dataIndex: 'other_safe_services',
+      key: 'other_safe_services',
+
     },
     {
       title: 'Safe Services',
       dataIndex: 'safe_services',
       key: 'safe_services',
-      render: (text: string | null) => (text ? text : 'Not Applicable'),
+
     },
     {
-      title: 'School Services',
+      title: 'Other Schooled Services',
+      dataIndex: 'other_schooled_services',
+      key: 'other_schooled_services',
+
+    },
+    {
+      title: 'Schooled Services',
       dataIndex: 'schooled_services',
       key: 'schooled_services',
-      render: (text: string | null) => (text ? text : 'Not Applicable'),
+
+    },
+    {
+      title: 'Other Stable Services',
+      dataIndex: 'other_stable_services',
+      key: 'other_stable_services',
+
     },
     {
       title: 'Stable Services',
       dataIndex: 'stable_services',
       key: 'stable_services',
-      render: (text: string | null) => (text ? text : 'Not Applicable'),
+
     },
   ];
-
-  const searchTooltipContent = (
-    <div>
-      {t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}
-    </div>
-  );
-
-
 
   return (
     <div style={{ margin: '20px' }}>
@@ -319,10 +337,10 @@ export const CaregiverCasePlans: React.FC = () => {
         <BaseTable
           dataSource={tableData.data}
           columns={columns}
+          scroll={{ x: 200 }}
           pagination={tableData.pagination}
           onChange={(pagination) => { }}
           loading={tableData.loading}
-          tableLayout="fixed"
         />
       </Space>
 
@@ -356,6 +374,7 @@ export const CaregiverCasePlans: React.FC = () => {
               total: serviceRecords.length,
               onChange: handlePageChange,
             }}
+            scroll={{ x: 200 }}
             rowKey="service_date"
           />
         </Wrapper>

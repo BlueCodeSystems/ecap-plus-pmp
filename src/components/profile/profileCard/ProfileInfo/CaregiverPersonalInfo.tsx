@@ -138,7 +138,6 @@ interface PersonalInfoProps {
 export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) => {
   const location = useLocation();
   const household: Household | undefined = location.state?.household;
-  console.log(household)
 
   const user = useAppSelector((state) => state.user.user);
   const [isFieldsChanged, setFieldsChanged] = useState(false);
