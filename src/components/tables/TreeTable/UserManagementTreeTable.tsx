@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import axios from 'axios';
-import { Button, Space, Tooltip, Spin, message, Modal, Form, Input, Popconfirm, Divider, Alert, Tabs, Tag } from 'antd';
+import { Button, Space, Tooltip, Spin, message, Modal, Form, Input, Select, Popconfirm, Divider, Tabs } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import TabPane from 'antd/lib/tabs/TabPane';
@@ -17,8 +17,6 @@ interface User {
   last_access: string;
   last_page: string;
   email: string;
-  status: string;
-  description: string;
   role: string;
 }
 
@@ -32,6 +30,26 @@ interface Role {
   users: string[];
 }
 
+const roleId = '6cb62a51-f2d3-4618-b63a-e5678a3c2fc1'; // Specific role ID
+
+// Define the valid province names as a union type
+type Province = 'All' | 'Central Province' | 'Southern Province' | 'Western Province';
+
+const provinceOptions = [
+  { value: 'All', label: 'All' },
+  { value: 'Central Province', label: 'Central Province' },
+  { value: 'Southern Province', label: 'Southern Province' },
+  { value: 'Western Province', label: 'Western Province' },
+];
+
+// Define districts in each province
+const districtOptions: Record<Province, string[]> = {
+  'All': ['All'],
+  'Central Province': ['Kabwe', 'Mkushi', 'Chibombo', 'Mumbwa'],
+  'Southern Province': ['Choma', 'Livingstone', 'Kalomo', 'Mazabuka'],
+  'Western Province': ['Mongu', 'Senanga', 'Kalabo', 'Sesheke'],
+};
+
 export const UserManagementTreeTable: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState<string>('');
@@ -39,78 +57,85 @@ export const UserManagementTreeTable: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
-  const [currentUserRole, setCurrentUserRole] = useState<Role | null>(null);
+  const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
+  const [districtList, setDistrictList] = useState<string[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchUsers();
-    fetchCurrentUserRole();
+    fetchUsersByRole(); // Fetch users with the specific role
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsersByRole = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-
-      setUsers(response.data.data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      setLoading(false);
-    }
-  };
-
-  const fetchCurrentUserRole = async () => {
-    try {
-      const roleId = 'ad9d1ebb-f16c-4743-af1b-a1379c3d3e91'; // Adjust role ID if necessary
       const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/roles/${roleId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        },
       });
-
-      setCurrentUserRole(response.data.data);
-      console.log("roles id::", response.data.data);
+      const userIds = response.data.data.users; // Get user IDs from role
+      if (userIds.length > 0) {
+        const usersResponse = await axios.get(`${process.env.REACT_APP_BASE_URL}/users`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        });
+        const filteredUsers = usersResponse.data.data.filter((user: User) => userIds.includes(user.id));
+        setUsers(filteredUsers);
+      } else {
+        setUsers([]); // No users with this role
+      }
+      setLoading(false);
     } catch (error) {
-      console.error('Error fetching current user role:', error);
+      console.error('Error fetching users by role:', error);
+      setLoading(false);
     }
   };
 
   const createUser = async (newUser: any) => {
     try {
-      const response = await axios.post(`${process.env.REACT_APP_BASE_URL}/users`, newUser, {
+      // Automatically include the ECAP+ Users role ID in the user creation payload
+      const userWithRole = {
+        ...newUser,
+        role: roleId,  // Assign the ECAP+ Users role directly during user creation
+      };
+
+      // Step 1: Create the new user with the role already assigned
+      const response = await axios.post(`${process.env.REACT_APP_BASE_URL}/users`, userWithRole, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        },
       });
 
-      setUsers(prevUsers => [...prevUsers, response.data]);
-      message.success('User created successfully');
+      // Step 2: Refresh the user list by re-fetching users with the specific role
+      await fetchUsersByRole();
+
+      // Step 3: Show success message and close the modal
+      message.success('User created and assigned to role successfully');
+      setIsModalVisible(false);  // Close modal on success
+    } catch (error: any) {
+      console.error('Error creating user and assigning role:', error.response?.data || error);
+      message.error('Failed to create user or assign role: ' + (error.response?.data?.message || 'Unknown error'));
+    } finally {
+      // Ensure modal is closed even in case of an error
       setIsModalVisible(false);
-    } catch (error) {
-      console.error('Error creating user:', error);
-      message.error('Failed to create user');
     }
   };
 
   const editUser = async (userId: string, updatedUser: Partial<User>) => {
     try {
-      const response = await axios.patch(`${process.env.REACT_APP_BASE_URL}/users/${userId}`, updatedUser, {
+      await axios.patch(`${process.env.REACT_APP_BASE_URL}/users/${userId}`, updatedUser, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        },
       });
 
-      setUsers(users.map(user => user.id === userId ? { ...user, ...updatedUser } : user));
+      setUsers(users.map((user) => (user.id === userId ? { ...user, ...updatedUser } : user)));
       message.success('User updated successfully');
       setIsModalVisible(false);
     } catch (error) {
       console.error('Error updating user:', error);
-      message.error('Failed to update user');
+      message.success('User updated successfully');
     }
   };
 
@@ -155,15 +180,22 @@ export const UserManagementTreeTable: React.FC = () => {
         await createUser(values);
       }
       form.resetFields();
-      fetchUsers(); // Refresh user list after successful operation
+      fetchUsersByRole(); // Refresh user list after successful operation
     } catch (error) {
-      console.error('Failed to create or update user:', error);
+      console.error('Failed to create or update user:', error); // Log the error
     }
   };
 
   const handleCancel = () => {
     form.resetFields(); // Reset form fields on cancel
     setIsModalVisible(false);
+  };
+
+  // Handle province selection
+  const handleProvinceChange = (province: Province) => {
+    setSelectedProvince(province);
+    setDistrictList(districtOptions[province] || []);
+    form.setFieldsValue({ location: [] }); // Reset district selection when province changes
   };
 
   const columns = [
@@ -192,11 +224,6 @@ export const UserManagementTreeTable: React.FC = () => {
       dataIndex: 'location',
       width: '25%',
     },
-    // {
-    //   title: 'Department',
-    //   dataIndex: 'description',
-    //   width: '25%',
-    // },
     {
       title: 'Last Accessed PMP',
       dataIndex: 'last_access',
@@ -206,35 +233,6 @@ export const UserManagementTreeTable: React.FC = () => {
       title: 'Last Page',
       dataIndex: 'last_page',
       width: '25%',
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      width: '25%',
-      render: (status: string) => {
-        let color = '';
-        let text = '';
-  
-        switch (status.toLowerCase()) {
-          case 'active':
-            color = '#198754';
-            text = 'Active';
-            break;
-          case 'inactive':
-            color = '#ffc107';
-            text = 'Inactive';
-            break;
-          case 'suspended':
-            color = '#dc3545';
-            text = 'Suspended';
-            break;
-          default:
-            color = 'default';
-            text = status;
-        }
-  
-        return <Tag color={color}>{text}</Tag>;
-      },
     },
     {
       title: 'Actions',
@@ -259,10 +257,6 @@ export const UserManagementTreeTable: React.FC = () => {
     },
   ];
 
-  const navigateToHQFeedback = () => {
-    navigate('/hq-province-supervisory-tools-feedback-dashboard');
-  };
-
   return (
     <>
       <Tabs defaultActiveKey="1">
@@ -272,7 +266,7 @@ export const UserManagementTreeTable: React.FC = () => {
               onClick={showModal}
               style={{ fontSize: '16px', cursor: 'pointer' }}
               title="Add New User"
-              type='primary'
+              type="primary"
               icon={<PlusOutlined />}
             >
               Add New User
@@ -283,10 +277,6 @@ export const UserManagementTreeTable: React.FC = () => {
                 onChange={(e) => handleSearch(e.target.value)}
                 value={searchText}
               />
-              {searchText && (
-                // Add clear search functionality if needed
-                ''
-              )}
             </Space>
           </div>
           <Divider />
@@ -297,8 +287,7 @@ export const UserManagementTreeTable: React.FC = () => {
                 (user.first_name && user.first_name.toLowerCase().includes(searchText.toLowerCase())) ||
                 (user.last_name && user.last_name.toLowerCase().includes(searchText.toLowerCase())) ||
                 (user.location && user.location.toLowerCase().includes(searchText.toLowerCase())) ||
-                (user.email && user.email.toLowerCase().includes(searchText.toLowerCase())) ||
-                (user.description && user.description.toLowerCase().includes(searchText.toLowerCase()))
+                (user.email && user.email.toLowerCase().includes(searchText.toLowerCase()))
               )}
               columns={columns}
               rowClassName="editable-row"
@@ -346,29 +335,27 @@ export const UserManagementTreeTable: React.FC = () => {
           <Form.Item
             name="title"
             label="Province"
+            rules={[{ required: true, message: 'Please select the province!' }]}
           >
-            <Input />
+            <Select
+              options={provinceOptions}
+              onChange={handleProvinceChange}
+              placeholder="Select a province"
+            />
           </Form.Item>
           <Form.Item
             name="location"
-            label="District"
+            label="Districts"
+            rules={[{ required: true, message: 'Please select at least one district!' }]}
           >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="Department"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="status"
-            label="Status"
-          >
-            <Input />
+            <Select
+              mode="multiple"
+              options={districtList.map((district) => ({ label: district, value: district }))}
+              placeholder="Select districts"
+            />
           </Form.Item>
         </Form>
       </Modal>
     </>
   );
-}  
+};

@@ -5,3 +5,10 @@ export NODE_OPTIONS=--openssl-legacy-provider
 yarn buildTheme
 yarn start
     
+
+    echo "export NODE_OPTIONS=--openssl-legacy-provider" >> ~/.bashrc
+# or for zsh
+echo "export NODE_OPTIONS=--openssl-legacy-provider" >> ~/.zshrc
+source ~/.bashrc
+# or for zsh
+source ~/.zshrc
