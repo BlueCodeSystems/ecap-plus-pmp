@@ -345,6 +345,34 @@ export const UserManagementTreeTable: React.FC = () => {
             <Input />
           </Form.Item>
           <Form.Item
+            name="password"
+            label="Password"
+            rules={[
+              { required: true, message: 'Please input the password!' },
+              { min: 6, message: 'Password must be at least 6 characters!' },
+            ]}
+          >
+            <Input.Password />
+          </Form.Item>
+          <Form.Item
+            name="confirm_password"
+            label="Confirm Password"
+            dependencies={['password']}
+            rules={[
+              { required: true, message: 'Please confirm your password!' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('The two passwords do not match!'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password />
+          </Form.Item>
+          <Form.Item
             name="title"
             label="Province"
             rules={[{ required: true, message: 'Please select the province!' }]}
