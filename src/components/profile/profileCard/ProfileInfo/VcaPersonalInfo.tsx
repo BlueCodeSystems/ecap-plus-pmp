@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { Skeleton, Typography, Divider, Alert, Tag, Badge,Row, Col, } from 'antd';
+import { Skeleton, Typography, Divider, Alert, Tag, Badge,Row, Col, Button } from 'antd';
 import { BaseButtonsForm } from '@app/components/common/forms/BaseButtonsForm/BaseButtonsForm';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
@@ -9,6 +9,8 @@ import { BaseCol } from '@app/components/common/BaseCol/BaseCol';
 import { notificationController } from '@app/controllers/notificationController';
 import styled from 'styled-components';
 import { convertToYesNo, isoToDate } from '@app/utils/utils';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas'; // I
 
 
 const SectionTitle = styled(Typography.Title)`
@@ -208,18 +210,73 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     }
   };
 
-  const renderCol = (label: string, value: any, span: number = 6) => (
-    <BaseCol xs={24} md={span}>
-      <InfoLabel>{label}</InfoLabel>
-      <InfoValue>{value !== null && value !== undefined ? value : 'Not Applicable'}</InfoValue>
-    </BaseCol>
-  );
+  // Ref to capture the section for PDF
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const exportToPDF = useCallback(() => {
+    const input = contentRef.current;
+    if (input) {
+      html2canvas(input).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF();
+        const imgWidth = 190;
+        const pageHeight = pdf.internal.pageSize.height;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let position = 10;
+
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+
+        // Save the PDF
+        pdf.save('Vca_Personal_Info.pdf');
+      });
+    }
+  }, []);
+
+  if (isLoading || !vca) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Skeleton active />
+      </div>
+    );
+  }
+
+  const renderCol = (label: string, value: any, span: number = 6) => {
+    // Check if the value is "no", false, or an empty string
+    if (value === 'no' || value === 'No' || value === false || value === 'false' || value === null || value === '') {
+      return null; // Don't render this column
+    }
+  
+    return (
+      <BaseCol xs={24} md={span}>
+        <InfoLabel>{label}</InfoLabel>
+        <InfoValue>{value !== null && value !== undefined ? value : 'Not Applicable'}</InfoValue>
+      </BaseCol>
+    );
+  };
+
+  
 
   return (
     <Wrapper>
       {profileData && (
         <>
+        
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
+         
+          <Button type="primary" onClick={exportToPDF}>
+            {t('Export Rendered Data to PDF')}
+          </Button>
+        
+        </div>
+        <Divider />
           <Row>
             <Col span={24}>
               <Typography.Text strong>Household ID:</Typography.Text> {vca.household_id}
@@ -243,15 +300,8 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
           </Row>
           <br />
           <br />
-          {/* <Typography>Risk Level</Typography>
-          {getRiskLevelTag(vca.risk_level)}
-          <br />
-          <br /> */}
-          <Alert
-            message={t('Sensitive information is hidden for some users.')}
-            type="warning"
-            showIcon
-          />
+        
+          
           <br />
         </>
       )}

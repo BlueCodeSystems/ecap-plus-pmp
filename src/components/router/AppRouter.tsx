@@ -34,7 +34,7 @@ const Error404Page = React.lazy(() => import('@app/pages/Error404Page'));
 const AdvancedFormsPage = React.lazy(() => import('@app/pages/AdvancedFormsPage'));
 const StoresAdvancedFormPage = React.lazy(() => import('@app/pages/StoresDepartmentPage'));
 const ProcurementAdvancedFormPage = React.lazy(() => import('@app/pages/ProcurementDepartmentPage'));
-const HumanResourceAdvancedFormsPage = React.lazy(() => import('@app/pages/HumanResourceDepartmentPage'));
+const SuperSetPage = React.lazy(() => import('@app/pages/SuperSetPage'));
 const FinanceAdvancedFormsPage = React.lazy(() => import('@app/pages/FinanceDepartmentPage'));
 
 const CaregiverPersonalInfoPage = React.lazy(() => import('@app/pages/CaregiverPersonalInfoPage'));
@@ -89,7 +89,7 @@ const AdvancedForm = withLoading(AdvancedFormsPage);
 const StoresAdvancedForm = withLoading(StoresAdvancedFormPage);
 const FinanceAdvancedForm = withLoading(FinanceAdvancedFormsPage);
 const ProcurementAdvancedForm = withLoading(ProcurementAdvancedFormPage);
-const HumanResourceAdvancedForm = withLoading(HumanResourceAdvancedFormsPage);
+const SuperSetPageDashboards = withLoading(SuperSetPage);
 
 // UI Components
 const Buttons = withLoading(ButtonsPage);
@@ -155,6 +155,7 @@ export const AppRouter: React.FC = () => {
           <Route path={MEDICAL_DASHBOARD_PATH} element={<MedicalDashboard />} />
 
           <Route path="/users-management-portal" element={<UsersPortal />} />
+          <Route path="visualization-dashboards" element={<SuperSetPageDashboards />} />
 
           <Route path="apps">
             <Route path="households-register" element={<HouseholdsRegister />} />
@@ -166,7 +167,6 @@ export const AppRouter: React.FC = () => {
             <Route path="case-management-district-self-assessment" element={<AdvancedForm />} />
             <Route path="stores-district-self-assessment" element={<StoresAdvancedForm />} />
             <Route path="procurement-district-self-assessment" element={<ProcurementAdvancedForm />} />
-            <Route path="human-resource-district-self-assessment" element={<HumanResourceAdvancedForm />} />
             <Route path="finance-district-self-assessment" element={<FinanceAdvancedForm />} />
           </Route>
           <Route path="data-tables" element={<DataTables />} />

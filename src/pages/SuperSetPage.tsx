@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
-import { StepForm } from '@app/components/forms/StepForm/StepForm';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
 import { BaseCol } from '@app/components/common/BaseCol/BaseCol';
-import { Typography, Spin } from 'antd';
+import { Skeleton, Typography } from 'antd';
+import { TitleHeader } from '@app/components/apps/newsFeed/NewsFilter/NewsFilter.styles';
 
 interface User {
   id: string;
@@ -15,8 +15,8 @@ interface User {
   location: string;
 }
 
-const HumanResourceDepartmentPage: React.FC = () => {
- 
+const SuperSetPage: React.FC = () => {
+
   const { t } = useTranslation();
 
   const [user, setUser] = useState<User | null>(null);
@@ -43,14 +43,16 @@ const HumanResourceDepartmentPage: React.FC = () => {
 
   return (
     <>
-      <Typography style={{ fontWeight: 'bold', fontSize: "30px" }}>
-          {loading ? <Spin size="small" /> : `${user?.location}`} District
-        </Typography>
-      <Typography style={{fontWeight: "bold", fontSize: "30px"}}>Human Resource Department</Typography>
+      <br />
+      <Typography.Title level={4}>Visualizations</Typography.Title>
+      <Typography.Title level={5}>{loading ? <Skeleton active paragraph={{ rows: 1 }} /> : `${user?.location}`} District</Typography.Title>
+      <TitleHeader>
+      Guide: Implement state filters to refine displayed data.
+      </TitleHeader> <br />
       <BaseRow gutter={[30, 30]}>
         <BaseCol xs={24} sm={24} md={24} lg={24} xl={24}>
           <BaseCard id="step-form" title={t('forms.stepForm')} padding="1.25rem">
-            <StepForm />
+       
           </BaseCard>
         </BaseCol>
       </BaseRow>
@@ -58,4 +60,4 @@ const HumanResourceDepartmentPage: React.FC = () => {
   );
 };
 
-export default HumanResourceDepartmentPage;
+export default SuperSetPage;

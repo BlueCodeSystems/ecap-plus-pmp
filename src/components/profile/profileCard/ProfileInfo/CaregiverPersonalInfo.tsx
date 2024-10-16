@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useRef  } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { Skeleton, Typography, Divider, Alert, Tag, Badge, Col } from 'antd';
+import { Skeleton, Typography, Divider, Alert, Tag, Badge, Row, Col, Button } from 'antd';
 import { BaseButtonsForm } from '@app/components/common/forms/BaseButtonsForm/BaseButtonsForm';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
@@ -10,6 +10,8 @@ import { useAppSelector } from '@app/hooks/reduxHooks';
 import { notificationController } from '@app/controllers/notificationController';
 import styled from 'styled-components';
 import { convertToYesNo, isoToDate } from '@app/utils/utils';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas'; // I
 
 const SectionTitle = styled(Typography.Title)`
   font-size: 18px;
@@ -29,6 +31,7 @@ const InfoValue = styled(Typography.Text)`
 
 const Wrapper = styled.div`
   width: 100%;
+  text-transform: capitalize; 
 `;
 
 const Title = styled(Typography.Title)`
@@ -191,35 +194,99 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
     }
   };
 
-  const renderCol = (label: string, value: any, span: number = 6) => (
-    <BaseCol xs={24} md={span}>
-      <InfoLabel>{label}</InfoLabel>
-      <InfoValue>{value !== null && value !== undefined ? value : 'Not Applicable'}</InfoValue>
-    </BaseCol>
-  );
+  const renderCol = (label: string, value: any, span: number = 6) => {
+    // Check if the value is "no", false, or an empty string
+    if (value === 'no' || value === 'No' || value === false || value === 'false' || value === null || value === '') {
+      return null; // Don't render this column
+    }
+  
+    return (
+      <BaseCol xs={24} md={span}>
+        <InfoLabel>{label}</InfoLabel>
+        <InfoValue>{value !== null && value !== undefined ? value : 'Not Applicable'}</InfoValue>
+      </BaseCol>
+    );
+  };
+
+   // Ref to capture the section for PDF
+   const contentRef = useRef<HTMLDivElement>(null);
+
+   const exportToPDF = useCallback(() => {
+     const input = contentRef.current;
+     if (input) {
+       html2canvas(input).then((canvas) => {
+         const imgData = canvas.toDataURL('image/png');
+         const pdf = new jsPDF();
+         const imgWidth = 190;
+         const pageHeight = pdf.internal.pageSize.height;
+         const imgHeight = (canvas.height * imgWidth) / canvas.width;
+         let position = 10;
+ 
+         pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+ 
+         // Save the PDF
+         pdf.save('Caregiver_Personal_Info.pdf');
+       });
+     }
+   }, []);
+ 
+   if (isLoading || !household) {
+     return (
+       <div
+         style={{
+           display: 'flex',
+           flexDirection: 'column',
+           justifyContent: 'center',
+           alignItems: 'center',
+         }}
+       >
+         <Skeleton active />
+       </div>
+     );
+   }
+  
 
   return (
     <Wrapper>
       {profileData && (
         <>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <Title>{household.caregiver_name}</Title>
-          <Typography>Household ID</Typography>
-          <Subtitle>{household.household_id}</Subtitle>
-          <Col span={24}>
-            <Typography>Case Status</Typography>
-            <Badge
-              count={household.case_status === '1' || household.case_status === "yes" ? "Active" : "Inactive"}
-              style={{ backgroundColor: household.case_status === '1' || household.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
-            />
-          </Col>
+         
+          <Button type="primary" onClick={exportToPDF}>
+            {t('Export Rendered Data to PDF')}
+          </Button>
+        
+        </div>
+        <Divider />
+         
+
+          <Row>
+            <Col span={24}>
+              <Typography.Text strong>Household ID:</Typography.Text> {household.household_id}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong>Unique ID:</Typography.Text> {household.uid}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong>Case Status:</Typography.Text> 
+              <Badge 
+                count={household.case_status === '1' || household.case_status === "yes" ? "Active" : "Inactive"} 
+                style={{ backgroundColor: household.case_status === '1' || household.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
+              />
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong>Partner:</Typography.Text> {household.partner}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong>Date Created:</Typography.Text> {isoToDate(household.datecreated).toLocaleDateString()}
+            </Col>
+          </Row>
+          
           <br />
           <br />
-          <Alert
-            message={t('Sensitive information is hidden for some users.')}
-            type="warning"
-            showIcon
-          />
-          <br />
+          
+        
         </>
       )}
       <BaseCard>
@@ -244,7 +311,7 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
             {renderCol('Facility', household.facility)}
             {renderCol('Ward', household.ward)}
             {renderCol('VCA Gender', household.vca_gender)}
-            {renderCol('Acceptance', household.acceptance)}
+            {renderCol('Relation', household.relation)}
             {renderCol('Active On Treatment', household.active_on_treatment)}
             {renderCol('Adolescent Birthdate', household.adolescent_birthdate)}
             {renderCol('AGYW', convertToYesNo(household.agyw))}
@@ -260,6 +327,7 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
             {renderCol('Caregiver Name', household.caregiver_name)}
             {renderCol('Caregiver Phone', household.caregiver_phone)}
             {renderCol('Caregiver Sex', household.caregiver_sex)}
+            
 
             <Divider />
             <BaseCol span={24}>
@@ -274,7 +342,7 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
             {renderCol('Client Screened', household.client_screened)}
             {renderCol('Consent Check Box', household.consent_check_box)}
             {renderCol('Contact Number', household.contact_number)}
-            {renderCol('CSV', convertToYesNo(household.csv))}
+            {renderCol('C/SV', convertToYesNo(household.csv))}
             {renderCol('CWLHIV', convertToYesNo(household.cwlhiv))}
             {renderCol('District', household.district)}
             {renderCol('Education', household.education)}
@@ -301,8 +369,8 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
 
             {renderCol('Pregnant Women', household.pregnant_woment)}
             {renderCol('Provider ID', household.provider_id)}
-            {renderCol('Relation', household.relation)}
-            {renderCol('Relationship', household.relationship)}
+            {/* {renderCol('Relationship', household.relationship)} */}
+            {renderCol('Acceptance', household.acceptance)}
             {renderCol('School', household.school)}
             {renderCol('Screened', household.screened)}
             {renderCol('Screening Date', household.screening_date)}
@@ -311,17 +379,17 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
             {renderCol('Takes Drugs to Prevent Other Diseases', household.takes_drugs_to_prevent_other_diseases)}
             {renderCol('TPT Client Eligibility', household.tpt_client_eligibility)}
             {renderCol('TPT Client Initiated', household.tpt_client_initiated)}
-            {renderCol('Violence Six Months', household.violence_six_months)}
+            {/* {renderCol('Violence Six Months', household.violence_six_months)}
             {renderCol('Viral Load Results on File', household.viral_load_results_on_file)}
-            {renderCol('VL Check Box', household.vl_check_box)}
+            {renderCol('VL Check Box', household.vl_check_box)} */}
 
             <Divider />
             <BaseCol span={24}>
               <SectionTitle level={5}>{t('Date History')}</SectionTitle>
             </BaseCol>
-
+{/* 
             {renderCol('Date Edited', convertToYesNo(household.date_edited))}
-            {renderCol('Date Edited Check', convertToYesNo(household.date_edited_check))}
+            {renderCol('Date Edited Check', convertToYesNo(household.date_edited_check))} */}
             {renderCol('Date Enrolled', household.date_enrolled)}
             {renderCol('Date HIV Known', household.date_hiv_known)}
             {renderCol('Date Offered Enrollment', household.date_offered_enrollment)}

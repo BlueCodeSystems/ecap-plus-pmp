@@ -5,9 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { BaseSpace } from '@app/components/common/BaseSpace/BaseSpace';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Input, InputRef, Button, Tooltip, Space, Row, Col, Select } from 'antd';
+import { Input, InputRef, Button, Tooltip, Space, Row, Col, Select, Tag } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
+import styled from 'styled-components';
 import { FilterDropdownProps } from 'antd/es/table/interface';
 import { BasicTableRow, Pagination } from 'api/table.api';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
@@ -21,6 +22,7 @@ interface Household {
   homeaddress: string;
   facility: string;
   province: string;
+  district: string;
   ward: string;
   caseworker_name: string;
 }
@@ -29,6 +31,22 @@ const initialPagination: Pagination = {
   current: 1,
   pageSize: 100,
 };
+
+const initialSubPopulationFilters = {
+  calhiv: 'all',
+  hei: 'all',
+  cwlhiv: 'all',
+  agyw: 'all',
+  csv: 'all',
+  cfsw: 'all',
+  abym: 'all',
+};
+
+const ExportWrapper = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+`;
 
 export const EditableTable: React.FC = () => {
   const [households, setHouseholds] = useState<Household[]>([]);
@@ -42,26 +60,30 @@ export const EditableTable: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [user, setUser] = useState<any | null>(null);
   const navigate = useNavigate();
-const searchInput = useRef<InputRef>(null);
+  const searchInput = useRef<InputRef>(null);
   const [searchText, setSearchText] = useState<string>('');
   const [searchedColumn, setSearchedColumn] = useState<string>('');
+  const [subPopulationFilters, setSubPopulationFilters] = useState(initialSubPopulationFilters);
 
-  const [subPopulationFilters, setSubPopulationFilters] = useState({
-    calhiv: 'all',
-    hei: 'all',
-    cwlhiv: 'all',
-    agyw: 'all',
-    csv: 'all',
-    cfsw: 'all',
-    abym: 'all',
-  });
+
+
+
+  // const [subPopulationFilters, setSubPopulationFilters] = useState({
+  //   calhiv: 'all',
+  //   hei: 'all',
+  //   cwlhiv: 'all',
+  //   agyw: 'all',
+  //   csv: 'all',
+  //   cfsw: 'all',
+  //   abym: 'all',
+  // });
 
   const subPopulationFilterLabels = {
     calhiv: 'CALHIV',
     hei: 'HEI',
     cwlhiv: 'CWLHIV',
     agyw: 'AGYW',
-    csv: 'CSV',
+    csv: 'C/SV',
     cfsw: 'CFSW',
     abym: 'ABYM',
   };
@@ -83,12 +105,13 @@ const searchInput = useRef<InputRef>(null);
     fetchUserData();
   }, []);
 
+
   useEffect(() => {
     const fetchHouseholds = async () => {
       if (!user) return;
       try {
         setTableData((prev) => ({ ...prev, loading: true }));
-        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households`);
+        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households/${user?.location}`);
         setHouseholds(response.data.data);
       } catch (error) {
         console.error('Error fetching households data:', error);
@@ -99,6 +122,29 @@ const searchInput = useRef<InputRef>(null);
 
     fetchHouseholds();
   }, [user]);
+
+  // Function to clear all filters and search
+  const clearAllFiltersAndSearch = () => {
+    setSearchText(''); // Clear search text
+    setSearchQuery('');
+    setSearchedColumn('')
+    setSubPopulationFilters(initialSubPopulationFilters); // Reset filters to their initial values
+  };
+
+  const exportToCSV = () => {
+    try {
+      const parser = new Parser();
+      const csvData = parser.parse(filteredHouseholds);
+      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'households_data.csv';
+      link.click();
+    } catch (error) {
+      console.error('Error exporting data:', error);
+    }
+  };
+
 
   const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
     confirm();
@@ -121,14 +167,14 @@ const searchInput = useRef<InputRef>(null);
   const getColumnSearchProps = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
       <div style={{ padding: 8 }}>
-  <Input
-  ref={searchInput}
-  placeholder={`Search ${dataIndex}`}
-  value={selectedKeys[0]}
-  onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-  onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
-  style={{ marginBottom: 8, display: 'block' }}
-/>;
+        <Input
+          ref={searchInput}
+          placeholder={`Search ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+          style={{ marginBottom: 8, display: 'block' }}
+        />;
         <Space>
           <Button
             type="primary"
@@ -196,13 +242,13 @@ const searchInput = useRef<InputRef>(null);
     {
       title: t('Household ID'),
       dataIndex: 'household_id',
-      width: '20%',
+      width: '15%',
       ...getColumnSearchProps('household_id'),
     },
     {
       title: t('Caregiver Name'),
       dataIndex: 'name',
-      width: '20%',
+      width: '15%',
       ...getColumnSearchProps('name'),
     },
     {
@@ -215,8 +261,31 @@ const searchInput = useRef<InputRef>(null);
     {
       title: t('Case Worker'),
       dataIndex: 'caseworker_name',
-      width: '20%',
+      width: '15%',
       ...getColumnSearchProps('caseworker_name'),
+    },
+    {
+      title: t('Applied Filters & Search'),
+      dataIndex: 'appliedFilters',
+      width: '20%',
+      render: (text: string, record: Household) => {
+        const appliedFilters = Object.entries(subPopulationFilters)
+          .filter(([key, value]) => value !== 'all') // Only show filters that are applied
+          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]) // Get labels for applied filters
+          .join(', ');
+
+        // Combine search text and applied filters
+        const searchValue = searchText ? `${searchText}` : '';
+        const filtersText = appliedFilters ? `${appliedFilters}` : '';
+        
+        const combinedText = [searchValue, filtersText].filter(Boolean).join(' | ');
+
+        return (
+          <Tag color={appliedFilters || searchText ? 'cyan' : 'black'}>
+            {combinedText}
+          </Tag>
+        );
+      },
     },
     {
       title: t('Actions'),
@@ -234,7 +303,7 @@ const searchInput = useRef<InputRef>(null);
 
   // Apply search filtering
   useEffect(() => {
-    const lowerCaseQuery = searchQuery.toLowerCase();
+    const lowerCaseQuery = searchText.toLowerCase();
     const filtered = households.filter((household) => {
       const matchesSearch =
         (household.household_id?.toLowerCase() || '').includes(lowerCaseQuery) ||
@@ -253,7 +322,8 @@ const searchInput = useRef<InputRef>(null);
     });
 
     setFilteredHouseholds(filtered);
-  }, [searchQuery, households, subPopulationFilters]);
+  }, [searchText, households, subPopulationFilters]);
+
 
   useEffect(() => {
     const mappedData: BasicTableRow[] = filteredHouseholds.map((household, index) => ({
@@ -263,6 +333,7 @@ const searchInput = useRef<InputRef>(null);
         Address: ${household.homeaddress || 'Not Applicable'}
         Facility: ${household.facility || 'Not Applicable'}
         Province: ${household.province || 'Not Applicable'}
+        District: ${household.district || 'Not Applicable'}
         Ward: ${household.ward || 'Not Applicable'}
       `,
       household_id: household.household_id,
@@ -276,7 +347,7 @@ const searchInput = useRef<InputRef>(null);
     const selectedHousehold = households.find(household => household.household_id === household_id);
     navigate(`/profile/household-profile/${encodeURIComponent(household_id)}`, { state: { household: selectedHousehold } });
   };
-  
+
   return (
     <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
@@ -308,6 +379,22 @@ const searchInput = useRef<InputRef>(null);
               </div>
             ))}
           </Row>
+        </Col>
+        <Col>
+          <ExportWrapper>
+            <Space>
+              {/* Button to clear all filters and search */}
+              <Button type="default" onClick={clearAllFiltersAndSearch}>
+                {t('Clear All Filters and Search')}
+              </Button>
+              {/* Button to export to CSV */}
+              <Button type="primary" onClick={exportToCSV}>
+                {t('Export to CSV')}
+              </Button>
+            </Space>
+
+          </ExportWrapper>
+          
         </Col>
       </Row>
       <BaseTable

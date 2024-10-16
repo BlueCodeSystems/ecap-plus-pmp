@@ -41,11 +41,11 @@ export const sidebarNavigation: SidebarNavigationItem[] = [
         key: 'vcas-register',
         url: '/apps/vcas-register',
       },
-      {
-        title: 'common.households-members-register',
-        key: 'households-members-register',
-        url: '/apps/households-members-register',
-      },
+      // {
+      //   title: 'common.households-members-register',
+      //   key: 'households-members-register',
+      //   url: '/apps/households-members-register',
+      // },
     ],
   },
   {
