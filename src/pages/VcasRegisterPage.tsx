@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Typography from 'antd/lib/typography/Typography';
-import { Skeleton, Spin } from 'antd';
+import { Skeleton, Typography } from 'antd';
 import { TreeTable } from '@app/components/tables/TreeTable/TreeTable';
 import axios from 'axios';
 
@@ -45,9 +44,7 @@ const VcasRegisterPage: React.FC = () => {
   }, []);
 
   const content = (
-    <Typography style={{ fontWeight: "bold", fontSize: "30px" }}>
-      {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Register
-    </Typography>
+    <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Register</Typography.Title>
   );
 
   return (

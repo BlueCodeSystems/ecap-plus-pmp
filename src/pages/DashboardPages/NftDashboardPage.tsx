@@ -7,12 +7,11 @@ import * as S from './DashboardPage.styles';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
 import { BaseCol } from '@app/components/common/BaseCol/BaseCol';
 import { VisitorsPieChart } from '@app/components/charts/VisitorsPieChart';
-import Typography from 'antd/lib/typography/Typography';
-import { Spin } from 'antd';
+import { Button, Skeleton, Spin, Typography } from 'antd';
 import axios from 'axios';
 import { GradientStackedAreaChart } from '@app/components/charts/GradientStackedAreaChart/GradientStackedAreaChart';
-import { LineRaceChart } from '@app/components/charts/LineRaceChart/LineRaceChart';
-import { ScatterChart } from '@app/components/charts/ScatterChart/ScatterChart';
+import { DashboardOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -24,6 +23,7 @@ interface User {
 
 const MedicalDashboardPage: React.FC = () => {
   const { isDesktop } = useResponsive();
+  const navigate = useNavigate();
 
   const [user, setUser] = useState<User | null>(null);
   const [vcasCount, setVCAsCount] = useState(0);
@@ -55,9 +55,9 @@ const MedicalDashboardPage: React.FC = () => {
       try {
         setDistrictLoading(true);
         const response = await axios.get(
-          `https://ecapplus.server.dqa.bluecodeltd.com/household/households-count`
+          `https://ecapplus.server.dqa.bluecodeltd.com/household/households-count/${user?.location}`
         );
-        setHouseholdCount(response.data.count.count);
+        setHouseholdCount(response.data.count);
       } catch (error) {
         console.error('Error fetching household count data:', error);
       } finally {
@@ -72,9 +72,9 @@ const MedicalDashboardPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const response = await axios.get(
-          `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-count`
+          `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-count/${user?.location}`
         );
-        setVCAsCount(response.data.count.count);
+        setVCAsCount(response.data.count);
       } catch (error) {
         console.error('Error fetching VCAs data:', error);
       }
@@ -85,56 +85,46 @@ const MedicalDashboardPage: React.FC = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(
-          `https://ecapplus.server.dqa.bluecodeltd.com/household/members-count`
-        );
-        setMembersCount(response.data.count.count);
-      } catch (error) {
-        console.error('Error fetching household members data:', error);
-      }
-    };
-
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
+  const handleViewDashboards = () => {
+    navigate('/visualization-dashboards');
+  };
 
   const desktopLayout = (
-
-    <S.LeftSideCol xxl={16} id="desktop-content">
-      <>
+    <>
+      <div style={{ margin: '20px' }}>
         <br />
-        <br />
+        <BaseRow gutter={[80, 80]} justify="end">
+          <BaseCol>
+            <Button
+              type="dashed"
+              style={{ borderRadius: '100px' }}
+              icon={<DashboardOutlined />}
+              size="large"
+              onClick={handleViewDashboards} // Use the handle function
+            >
+              View Dashboards
+            </Button>
+            <br />
+            <br />
+          </BaseCol>
+        </BaseRow>
         <BaseRow gutter={[80, 80]}>
           <BaseCol span={6}>
-            <br />
-            <br />
-            <Typography style={{ fontSize: "35px", textAlign: "center", fontWeight: "bold" }}>
-              {districtLoading ? <Spin size="small" /> : `${user?.location}`} District
-            </Typography>
+            <Typography.Title style={{ textAlign: "center" }} level={4}>Location</Typography.Title>
+            <Typography.Title style={{ textAlign: "center" }} level={4}>   {districtLoading ? <Skeleton /> : `${user?.location}`} District</Typography.Title>
           </BaseCol>
-          <BaseCol span={6}>
+          <BaseCol xs={24} lg={9}>
             <div id="balance" style={{ marginBottom: '20px' }}>
               <Balance title="Households" count={householdCount} />
             </div>
           </BaseCol>
-          <BaseCol span={6}>
+          <BaseCol xs={24} lg={9}>
             <div id="balance" style={{ marginBottom: '20px' }}>
               <Balance title="VCAs" count={vcasCount} />
             </div>
           </BaseCol>
-          <BaseCol span={6}>
-            <div id="balance" style={{ marginBottom: '20px' }}>
-              <Balance title="Household Members" count={membersCount} />
-            </div>
-          </BaseCol>
         </BaseRow>
-
         <BaseRow gutter={[60, 60]} style={{ marginTop: '40px' }}>
-
           <BaseCol xs={24} lg={12}>
             <VisitorsPieChart />
           </BaseCol>
@@ -142,10 +132,9 @@ const MedicalDashboardPage: React.FC = () => {
             <GradientStackedAreaChart />
           </BaseCol>
         </BaseRow>
-
-      </>
-      <References />
-    </S.LeftSideCol>
+        <References />
+      </div>
+    </>
 
   );
 
@@ -155,9 +144,22 @@ const MedicalDashboardPage: React.FC = () => {
         <BaseRow gutter={[60, 60]}>
           <BaseCol xs={24} sm={12} md={8} lg={6} xl={6}>
             <br />
-            <Typography style={{ fontSize: "35px", textAlign: "center", fontWeight: "bold" }}>
-              {districtLoading ? <Spin size="small" /> : `${user?.location}`} District
-            </Typography>
+            <br />
+            <BaseCol>
+              <Typography.Title style={{ textAlign: "center" }} level={4}>Location</Typography.Title>
+              <Typography.Title style={{ textAlign: "center" }} level={4}>   {districtLoading ? <Skeleton /> : `${user?.location}`} District</Typography.Title>
+            </BaseCol>
+          </BaseCol>
+          <BaseCol xs={24} sm={12} md={8} lg={6} xl={6} style={{ textAlign: 'center' }}>
+            <Button
+              type="dashed"
+              style={{ borderRadius: '100px' }}
+              icon={<DashboardOutlined />}
+              size="large"
+              onClick={handleViewDashboards}
+            >
+              View Dashboards
+            </Button>
           </BaseCol>
           <BaseCol xs={24} sm={12} md={8} lg={6} xl={6}>
             <div id="balance">
@@ -169,15 +171,8 @@ const MedicalDashboardPage: React.FC = () => {
               <Balance title="VCAs" count={vcasCount} />
             </div>
           </BaseCol>
-          <BaseCol xs={24} sm={12} md={8} lg={6} xl={6}>
-            <div id="balance">
-              <Balance title="Household Members" count={membersCount} />
-            </div>
-          </BaseCol>
         </BaseRow>
-
         <BaseRow gutter={[60, 60]} style={{ marginTop: '40px' }}>
-
           <BaseCol xs={24} lg={12}>
             <VisitorsPieChart />
           </BaseCol>
@@ -185,7 +180,6 @@ const MedicalDashboardPage: React.FC = () => {
             <GradientStackedAreaChart />
           </BaseCol>
         </BaseRow>
-
       </BaseRow>
     </>
   );

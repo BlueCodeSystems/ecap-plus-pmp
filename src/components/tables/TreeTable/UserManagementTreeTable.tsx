@@ -45,9 +45,9 @@ const provinceOptions = [
 // Define districts in each province
 const districtOptions: Record<Province, string[]> = {
   'All': ['All'],
-  'Central Province': ['Kabwe', 'Mkushi', 'Chibombo', 'Mumbwa'],
-  'Southern Province': ['Choma', 'Livingstone', 'Kalomo', 'Mazabuka'],
-  'Western Province': ['Mongu', 'Senanga', 'Kalabo', 'Sesheke'],
+  'Central Province': ['Serenje', 'Kapiri Mposhi', 'Mkushi', 'Mumbwa'],
+  'Southern Province': ['Monze', 'Mazabuka', 'Kazungula'],
+  'Western Province': ['Mongu', 'Limulunga', 'Kalabo', 'Sesheke'],
 };
 
 export const UserManagementTreeTable: React.FC = () => {
@@ -94,20 +94,24 @@ export const UserManagementTreeTable: React.FC = () => {
 
   const createUser = async (newUser: any) => {
     try {
-      // Automatically include the ECAP+ Users role ID in the user creation payload
+      // Ensure location is formatted correctly (string, comma-separated for multiple districts)
+      if (newUser.location && Array.isArray(newUser.location)) {
+        newUser.location = newUser.location.join(', '); // Join array into a single string
+      }
+
       const userWithRole = {
         ...newUser,
-        role: roleId,  // Assign the ECAP+ Users role directly during user creation
+        role: roleId,  // Assign the specific role directly during user creation
       };
 
-      // Step 1: Create the new user with the role already assigned
+      // Step 1: Create the new user
       const response = await axios.post(`${process.env.REACT_APP_BASE_URL}/users`, userWithRole, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('access_token')}`,
         },
       });
 
-      // Step 2: Refresh the user list by re-fetching users with the specific role
+      // Step 2: Refresh the user list
       await fetchUsersByRole();
 
       // Step 3: Show success message and close the modal
@@ -117,13 +121,17 @@ export const UserManagementTreeTable: React.FC = () => {
       console.error('Error creating user and assigning role:', error.response?.data || error);
       message.error('Failed to create user or assign role: ' + (error.response?.data?.message || 'Unknown error'));
     } finally {
-      // Ensure modal is closed even in case of an error
       setIsModalVisible(false);
     }
   };
 
   const editUser = async (userId: string, updatedUser: Partial<User>) => {
     try {
+      // Ensure location is formatted correctly (string, comma-separated for multiple districts)
+      if (updatedUser.location && Array.isArray(updatedUser.location)) {
+        updatedUser.location = updatedUser.location.join(', '); // Join array into a single string
+      }
+
       await axios.patch(`${process.env.REACT_APP_BASE_URL}/users/${userId}`, updatedUser, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('access_token')}`,
@@ -135,7 +143,7 @@ export const UserManagementTreeTable: React.FC = () => {
       setIsModalVisible(false);
     } catch (error) {
       console.error('Error updating user:', error);
-      message.success('User updated successfully');
+      message.error('Failed to update user');
     }
   };
 
@@ -223,6 +231,10 @@ export const UserManagementTreeTable: React.FC = () => {
       title: 'District',
       dataIndex: 'location',
       width: '25%',
+      render: (location: string | string[]) => {
+        // Display the location cleanly, already formatted as a string (comma-separated)
+        return location;
+      },
     },
     {
       title: 'Last Accessed PMP',

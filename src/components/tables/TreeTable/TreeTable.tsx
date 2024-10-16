@@ -169,7 +169,7 @@ export const TreeTable: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-assessed-register`);
+        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-assessed-register/${user?.location}`);
         setVcas(response.data.data);
         setInitialVcas(response.data.data);
       } catch (error) {
@@ -202,16 +202,16 @@ export const TreeTable: React.FC = () => {
 
       const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([filterKey, value]) => {
         if (value === 'all') return true;
-        
+
         let dataKey = filterKey;
         if (filterKey in filterKeyToDataKey) {
           dataKey = filterKeyToDataKey[filterKey as keyof typeof filterKeyToDataKey];
         }
-        
+
         const vcaValue = vca[dataKey as keyof Vca];
         return vcaValue === null ? false :
           value === 'yes' ? vcaValue === '1' || vcaValue === 'true' :
-          vcaValue === '0' || vcaValue === 'false';
+            vcaValue === '0' || vcaValue === 'false';
       });
 
       return matchesSearch && matchesSubPopulationFilters;
@@ -321,7 +321,7 @@ export const TreeTable: React.FC = () => {
     setSearchText('');
     setSearchedColumn('');
     combinedText = '';
-    
+
     // Reset all sub-population filters to 'all'
     setSubPopulationFilters(
       Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({
@@ -333,7 +333,7 @@ export const TreeTable: React.FC = () => {
     setVcas(initialvcas);
 
     getColumnSearchProps('');
-  
+
     // // Reset table data to show all VCAs
     // const mappedData: TableDataItem[] = vcas.map((vca, index) => ({
     //   key: index,
@@ -349,7 +349,7 @@ export const TreeTable: React.FC = () => {
     //     ward: vca.ward
     //   }
     // }));
-  
+
     // setTableData({
     //   data: mappedData,
     //   pagination: initialPagination,
@@ -412,11 +412,11 @@ export const TreeTable: React.FC = () => {
         const addressString = addressFields.join(' ').toLowerCase();
         return addressString.includes(value.toLowerCase());
       }
-      
+
       if (typeof record[dataIndex as keyof TableDataItem] === 'object') {
         return false;
       }
-      
+
       const fieldValue = record[dataIndex as keyof TableDataItem];
       return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
     },
@@ -432,7 +432,7 @@ export const TreeTable: React.FC = () => {
           </div>
         );
       }
-      
+
       return searchedColumn === dataIndex ? (
         <Highlighter
           highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
@@ -495,7 +495,7 @@ export const TreeTable: React.FC = () => {
         // Combine search text and applied filters
         const searchValue = searchText ? `${searchText}` : '';
         const filtersText = appliedFilters ? `${appliedFilters}` : '';
-        
+
         combinedText = [searchValue, filtersText].filter(Boolean).join(' | ');
 
         return (
@@ -531,9 +531,9 @@ export const TreeTable: React.FC = () => {
           </Tooltip>
         </Col>
         <Col>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <h3 style={{ margin: '8px 16px 0 0' }}>{t('Filter by Sub Population')}</h3>
-              <Tooltip title="View filter key descriptions">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: '8px 16px 0 0' }}>{t('Filter by Sub Population')}</h3>
+            <Tooltip title="View filter key descriptions">
               <Alert
                 message={t('View Key')}
                 type="info"
@@ -541,7 +541,7 @@ export const TreeTable: React.FC = () => {
                 style={{ padding: '4px', width: '150px', cursor: 'pointer', margin: '10px 0' }}
                 showIcon
               />
-                {/* <Button 
+              {/* <Button 
                   type="text" 
                   icon={<InfoCircleOutlined />} 
                   onClick={showModal}
@@ -549,9 +549,9 @@ export const TreeTable: React.FC = () => {
                 >
                   {t('View Key')}
               </Button> */}
-              </Tooltip>
-            </div>
-          <Row align="middle" style={{ display: 'flex'}}>
+            </Tooltip>
+          </div>
+          <Row align="middle" style={{ display: 'flex' }}>
             {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
               <div key={key} style={{ marginRight: '8px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <span style={{ fontSize: '12px' }}>{label}</span>
@@ -569,8 +569,8 @@ export const TreeTable: React.FC = () => {
           </Row>
         </Col>
         <Col>
-         <div style={{ display: 'flex', justifyContent: 'flex-end'}} >
-           <ExportWrapper>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }} >
+            <ExportWrapper>
               <Space>
                 {/* Button to clear all filters and search */}
                 <Button type="primary" onClick={handleClearFilters}>
@@ -583,7 +583,7 @@ export const TreeTable: React.FC = () => {
               </Space>
 
             </ExportWrapper>
-         </div>
+          </div>
         </Col>
       </Row>
 

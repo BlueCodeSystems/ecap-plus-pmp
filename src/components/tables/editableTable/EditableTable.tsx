@@ -22,6 +22,7 @@ interface Household {
   homeaddress: string;
   facility: string;
   province: string;
+  district: string;
   ward: string;
   caseworker_name: string;
 }
@@ -110,7 +111,7 @@ export const EditableTable: React.FC = () => {
       if (!user) return;
       try {
         setTableData((prev) => ({ ...prev, loading: true }));
-        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households`);
+        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households/${user?.location}`);
         setHouseholds(response.data.data);
       } catch (error) {
         console.error('Error fetching households data:', error);
@@ -332,6 +333,7 @@ export const EditableTable: React.FC = () => {
         Address: ${household.homeaddress || 'Not Applicable'}
         Facility: ${household.facility || 'Not Applicable'}
         Province: ${household.province || 'Not Applicable'}
+        District: ${household.district || 'Not Applicable'}
         Ward: ${household.ward || 'Not Applicable'}
       `,
       household_id: household.household_id,
