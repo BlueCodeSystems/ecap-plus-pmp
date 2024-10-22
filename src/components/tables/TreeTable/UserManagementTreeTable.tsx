@@ -59,7 +59,12 @@ export const UserManagementTreeTable: React.FC = () => {
   const [form] = Form.useForm();
   const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
   const [districtList, setDistrictList] = useState<string[]>([]);
-  const navigate = useNavigate();
+
+  const canCreateUser = () => {
+    // Check if the user has the "All" location
+    const currentUserLocation = localStorage.getItem('location'); // Assuming user location is stored in localStorage
+    return currentUserLocation === 'All';
+  };
 
   useEffect(() => {
     fetchUsersByRole(); // Fetch users with the specific role
@@ -82,6 +87,7 @@ export const UserManagementTreeTable: React.FC = () => {
         });
         const filteredUsers = usersResponse.data.data.filter((user: User) => userIds.includes(user.id));
         setUsers(filteredUsers);
+        console.log(usersResponse.data.data)
       } else {
         setUsers([]); // No users with this role
       }
@@ -93,6 +99,17 @@ export const UserManagementTreeTable: React.FC = () => {
   };
 
   const createUser = async (newUser: any) => {
+    if (!canCreateUser()) {
+      message.error(
+        <>
+          You do not have permissions to create new users.
+          <br />
+          Contact administrator for help.
+        </>
+      ); // Use a fragment with <br /> for line break
+      return; // Exit if the user is not authorized
+    }
+
     try {
       // Ensure location is formatted correctly (string, comma-separated for multiple districts)
       if (newUser.location && Array.isArray(newUser.location)) {
@@ -314,6 +331,7 @@ export const UserManagementTreeTable: React.FC = () => {
         title={editingUser ? 'Edit User' : 'Add New User'}
         visible={isModalVisible}
         onOk={handleOk}
+        width={600}
         onCancel={handleCancel}
         okText={editingUser ? 'Update' : 'Create'}
         cancelText="Cancel"
