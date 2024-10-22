@@ -114,7 +114,7 @@ export const UserManagementTreeTable: React.FC = () => {
   const createUser = async (newUser: any) => {
     if (!hasPermission()) {
       notificationController.error({
-        message: 'You do not have permission to create users.',
+        message: 'You do not have permission to create users. Contact IT support for help.',
       });
       return;
     }
@@ -147,7 +147,7 @@ export const UserManagementTreeTable: React.FC = () => {
   const editUser = async (userId: string, updatedUser: Partial<User>) => {
     if (!hasPermission()) {
       notificationController.error({
-        message: 'You do not have permission to edit users.',
+        message: 'You do not have permission to create users. Contact IT support for help.',
       });
       return;
     }
@@ -175,7 +175,7 @@ export const UserManagementTreeTable: React.FC = () => {
   const deleteUser = async (userId: string) => {
     if (!hasPermission()) {
       notificationController.error({
-        message: 'You do not have permission to delete users.',
+        message: 'You do not have permission to create users. Contact IT support for help.',
       });
       return;
     }
