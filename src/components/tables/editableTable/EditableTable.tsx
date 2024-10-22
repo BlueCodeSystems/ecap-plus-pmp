@@ -13,8 +13,6 @@ import { FilterDropdownProps } from 'antd/es/table/interface';
 import { BasicTableRow, Pagination } from 'api/table.api';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import { Parser } from 'json2csv';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 interface Household {
   household_id: string;
@@ -25,6 +23,7 @@ interface Household {
   district: string;
   ward: string;
   caseworker_name: string;
+  [key: string]: string | undefined;
 }
 
 const initialPagination: Pagination = {
@@ -48,6 +47,16 @@ const ExportWrapper = styled.div`
   margin-bottom: 16px;
 `;
 
+const subPopulationFilterLabels = {
+  calhiv: 'CALHIV',
+  hei: 'HEI',
+  cwlhiv: 'CWLHIV',
+  agyw: 'AGYW',
+  csv: 'C/SV',
+  cfsw: 'CFSW',
+  abym: 'ABYM',
+};
+
 export const EditableTable: React.FC = () => {
   const [households, setHouseholds] = useState<Household[]>([]);
   const [filteredHouseholds, setFilteredHouseholds] = useState<Household[]>([]);
@@ -64,29 +73,6 @@ export const EditableTable: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [searchedColumn, setSearchedColumn] = useState<string>('');
   const [subPopulationFilters, setSubPopulationFilters] = useState(initialSubPopulationFilters);
-
-
-
-
-  // const [subPopulationFilters, setSubPopulationFilters] = useState({
-  //   calhiv: 'all',
-  //   hei: 'all',
-  //   cwlhiv: 'all',
-  //   agyw: 'all',
-  //   csv: 'all',
-  //   cfsw: 'all',
-  //   abym: 'all',
-  // });
-
-  const subPopulationFilterLabels = {
-    calhiv: 'CALHIV',
-    hei: 'HEI',
-    cwlhiv: 'CWLHIV',
-    agyw: 'AGYW',
-    csv: 'C/SV',
-    cfsw: 'CFSW',
-    abym: 'ABYM',
-  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -105,7 +91,6 @@ export const EditableTable: React.FC = () => {
     fetchUserData();
   }, []);
 
-
   useEffect(() => {
     const fetchHouseholds = async () => {
       if (!user) return;
@@ -123,12 +108,11 @@ export const EditableTable: React.FC = () => {
     fetchHouseholds();
   }, [user]);
 
-  // Function to clear all filters and search
   const clearAllFiltersAndSearch = () => {
-    setSearchText(''); // Clear search text
+    setSearchText('');
     setSearchQuery('');
-    setSearchedColumn('')
-    setSubPopulationFilters(initialSubPopulationFilters); // Reset filters to their initial values
+    setSearchedColumn('');
+    setSubPopulationFilters(initialSubPopulationFilters);
   };
 
   const exportToCSV = () => {
@@ -144,7 +128,6 @@ export const EditableTable: React.FC = () => {
       console.error('Error exporting data:', error);
     }
   };
-
 
   const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
     confirm();
@@ -164,6 +147,63 @@ export const EditableTable: React.FC = () => {
     }));
   };
 
+  // Updated filtering logic to handle both global search and column-specific search
+  useEffect(() => {
+    const applyFilters = () => {
+      return households.filter((household) => {
+        // Global search
+        const matchesGlobalSearch = searchQuery
+          ? Object.values(household).some(
+              (value) =>
+                value && value.toString().toLowerCase().includes(searchQuery.toLowerCase())
+            )
+          : true;
+
+        // Column-specific search
+        const matchesColumnSearch = searchText
+          ? searchedColumn
+            ? household[searchedColumn]?.toString().toLowerCase().includes(searchText.toLowerCase())
+            : true
+          : true;
+
+        // Sub-population filters
+        const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(
+          ([key, value]) => {
+            if (value === 'all') return true;
+            const vcaValue = household[key];
+            return value === 'yes'
+              ? vcaValue === '1' || vcaValue === 'true'
+              : vcaValue === '0' || vcaValue === 'false';
+          }
+        );
+
+        return matchesGlobalSearch && matchesColumnSearch && matchesSubPopulationFilters;
+      });
+    };
+
+    const filtered = applyFilters();
+    setFilteredHouseholds(filtered);
+  }, [searchQuery, searchText, searchedColumn, households, subPopulationFilters]);
+
+  // Map filtered households to table data
+  useEffect(() => {
+    const mappedData: BasicTableRow[] = filteredHouseholds.map((household, index) => ({
+      key: index,
+      name: household.caregiver_name,
+      address: `
+        Address: ${household.homeaddress || 'Not Applicable'}
+        Facility: ${household.facility || 'Not Applicable'}
+        Province: ${household.province || 'Not Applicable'}
+        District: ${household.district || 'Not Applicable'}
+        Ward: ${household.ward || 'Not Applicable'}
+      `,
+      household_id: household.household_id,
+      caseworker_name: household.caseworker_name,
+    }));
+
+    setTableData({ data: mappedData, pagination: initialPagination, loading: false });
+  }, [filteredHouseholds]);
+
   const getColumnSearchProps = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
       <div style={{ padding: 8 }}>
@@ -174,7 +214,7 @@ export const EditableTable: React.FC = () => {
           onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
           onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
           style={{ marginBottom: 8, display: 'block' }}
-        />;
+        />
         <Space>
           <Button
             type="primary"
@@ -213,19 +253,19 @@ export const EditableTable: React.FC = () => {
         </Space>
       </div>
     ),
-    filterIcon: (filtered: any) => (
+    filterIcon: (filtered: boolean) => (
       <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
     ),
-    onFilter: (value: string, record: { [x: string]: any; }) => {
+    onFilter: (value: string, record: { [x: string]: any }) => {
       const fieldValue = record[dataIndex];
       return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
     },
-    onFilterDropdownVisibleChange: (visible: any) => {
+    onFilterDropdownOpenChange: (visible: boolean) => {
       if (visible) {
         setTimeout(() => searchInput.current?.select(), 100);
       }
     },
-    render: (text: { toString: () => any; }) =>
+    render: (text: string) =>
       searchedColumn === dataIndex ? (
         <Highlighter
           highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
@@ -268,30 +308,28 @@ export const EditableTable: React.FC = () => {
       title: t('Applied Filters & Search'),
       dataIndex: 'appliedFilters',
       width: '20%',
-      render: (text: string, record: Household) => {
+      render: () => {
         const appliedFilters = Object.entries(subPopulationFilters)
-          .filter(([key, value]) => value !== 'all') // Only show filters that are applied
-          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]) // Get labels for applied filters
+          .filter(([_, value]) => value !== 'all')
+          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels])
           .join(', ');
 
-        // Combine search text and applied filters
-        const searchValue = searchText ? `${searchText}` : '';
-        const filtersText = appliedFilters ? `${appliedFilters}` : '';
+        const searchValue = searchQuery || searchText;
+        const filtersText = appliedFilters;
         
         const combinedText = [searchValue, filtersText].filter(Boolean).join(' | ');
 
-        return (
-          <Tag color={appliedFilters || searchText ? 'cyan' : 'black'}>
-            {combinedText}
-          </Tag>
+        return combinedText ? (
+          <Tag color="cyan">{combinedText}</Tag>
+        ) : (
+          <Tag color="default">No filters applied</Tag>
         );
       },
     },
     {
       title: t('Actions'),
       width: '10%',
-      dataIndex: '',
-      render: (text: string, record: BasicTableRow) => (
+      render: (_: any, record: BasicTableRow) => (
         <BaseSpace>
           <BaseButton type="primary" onClick={() => handleView(record.household_id)}>
             {t('View')}
@@ -300,48 +338,6 @@ export const EditableTable: React.FC = () => {
       ),
     },
   ];
-
-  // Apply search filtering
-  useEffect(() => {
-    const lowerCaseQuery = searchText.toLowerCase();
-    const filtered = households.filter((household) => {
-      const matchesSearch =
-        (household.household_id?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        (household.caregiver_name?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        (household.homeaddress?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        (household.ward?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        (household.caseworker_name?.toLowerCase() || '').includes(lowerCaseQuery);
-
-      const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([key, value]) => {
-        const vcaValue = household[key as keyof Household];
-        if (value === 'all') return true;
-        return value === 'yes' ? vcaValue === '1' || vcaValue === 'true' : vcaValue === '0' || vcaValue === 'false';
-      });
-
-      return matchesSearch && matchesSubPopulationFilters;
-    });
-
-    setFilteredHouseholds(filtered);
-  }, [searchText, households, subPopulationFilters]);
-
-
-  useEffect(() => {
-    const mappedData: BasicTableRow[] = filteredHouseholds.map((household, index) => ({
-      key: index,
-      name: household.caregiver_name,
-      address: `
-        Address: ${household.homeaddress || 'Not Applicable'}
-        Facility: ${household.facility || 'Not Applicable'}
-        Province: ${household.province || 'Not Applicable'}
-        District: ${household.district || 'Not Applicable'}
-        Ward: ${household.ward || 'Not Applicable'}
-      `,
-      household_id: household.household_id,
-      caseworker_name: household.caseworker_name,
-    }));
-
-    setTableData({ data: mappedData, pagination: initialPagination, loading: false });
-  }, [filteredHouseholds]);
 
   const handleView = (household_id: string) => {
     const selectedHousehold = households.find(household => household.household_id === household_id);
@@ -383,18 +379,14 @@ export const EditableTable: React.FC = () => {
         <Col>
           <ExportWrapper>
             <Space>
-              {/* Button to clear all filters and search */}
               <Button type="default" onClick={clearAllFiltersAndSearch}>
                 {t('Clear All Filters and Search')}
               </Button>
-              {/* Button to export to CSV */}
               <Button type="primary" onClick={exportToCSV}>
                 {t('Export to CSV')}
               </Button>
             </Space>
-
           </ExportWrapper>
-          
         </Col>
       </Row>
       <BaseTable

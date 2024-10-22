@@ -413,12 +413,30 @@ export const TreeTable: React.FC = () => {
         return addressString.includes(value.toLowerCase());
       }
 
+      // Special handling for age column - exact match
+      if (dataIndex === 'age') {
+        return record.age === Number(value);
+      }
+
+      // Special handling for gender column - exact match (case-insensitive)
+      if (dataIndex === 'gender') {
+        return record.gender.toLowerCase() === value.toLowerCase();
+      }
+
+      // For other columns, if the value is an object, skip filtering
       if (typeof record[dataIndex as keyof TableDataItem] === 'object') {
         return false;
       }
 
       const fieldValue = record[dataIndex as keyof TableDataItem];
-      return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
+      
+      // For unique_id and name, use includes for partial matching
+      if (dataIndex === 'unique_id' || dataIndex === 'name') {
+        return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
+      }
+
+      // For all other fields, use exact matching
+      return fieldValue ? fieldValue.toString().toLowerCase() === value.toLowerCase() : false;
     },
     render: (text: any, record: TableDataItem) => {
       if (dataIndex === 'address') {
