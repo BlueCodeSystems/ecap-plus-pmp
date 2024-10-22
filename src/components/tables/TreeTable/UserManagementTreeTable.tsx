@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import axios from 'axios';
-import { Button, Space, Tooltip, Spin, message, Modal, Form, Input, Select, Popconfirm, Divider, Tabs } from 'antd';
+import { Button, Space, Tooltip, Spin, message, Modal, Form, Input, Select, Popconfirm, Divider, Tabs, notification } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import TabPane from 'antd/lib/tabs/TabPane';
+import { notificationController } from '@app/controllers/notificationController';
 
 interface User {
   id: string;
@@ -14,20 +15,11 @@ interface User {
   gender: string;
   location: string;
   title: string;
+  description?: string; // Add this if you need to check user roles or descriptions
   last_access: string;
   last_page: string;
   email: string;
   role: string;
-}
-
-interface Role {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  admin_access: boolean;
-  app_access: boolean;
-  users: string[];
 }
 
 const roleId = '6cb62a51-f2d3-4618-b63a-e5678a3c2fc1'; // Specific role ID
@@ -50,6 +42,11 @@ const districtOptions: Record<Province, string[]> = {
   'Western Province': ['Mongu', 'Limulunga', 'Kalabo', 'Sesheke'],
 };
 
+const roleOptions = [
+  { value: 'Administrator', label: 'Administrator' },
+  { value: 'System User', label: 'System User' },
+];
+
 export const UserManagementTreeTable: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState<string>('');
@@ -60,14 +57,27 @@ export const UserManagementTreeTable: React.FC = () => {
   const [selectedProvince, setSelectedProvince] = useState<Province | null>(null);
   const [districtList, setDistrictList] = useState<string[]>([]);
 
-  const canCreateUser = () => {
-    // Check if the user has the "All" location
-    const currentUserLocation = localStorage.getItem('location'); // Assuming user location is stored in localStorage
-    return currentUserLocation === 'All';
-  };
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
-    fetchUsersByRole(); // Fetch users with the specific role
+    const fetchUserData = async () => {
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        });
+        setCurrentUser(response.data.data);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    fetchUsersByRole(); // Fetch users with the specific role when component mounts
   }, []);
 
   const fetchUsersByRole = async () => {
@@ -78,7 +88,9 @@ export const UserManagementTreeTable: React.FC = () => {
           Authorization: `Bearer ${localStorage.getItem('access_token')}`,
         },
       });
-      const userIds = response.data.data.users; // Get user IDs from role
+
+      const userIds = response.data.data.users;
+
       if (userIds.length > 0) {
         const usersResponse = await axios.get(`${process.env.REACT_APP_BASE_URL}/users`, {
           headers: {
@@ -87,9 +99,8 @@ export const UserManagementTreeTable: React.FC = () => {
         });
         const filteredUsers = usersResponse.data.data.filter((user: User) => userIds.includes(user.id));
         setUsers(filteredUsers);
-        console.log(usersResponse.data.data)
       } else {
-        setUsers([]); // No users with this role
+        setUsers([]);
       }
       setLoading(false);
     } catch (error) {
@@ -98,55 +109,52 @@ export const UserManagementTreeTable: React.FC = () => {
     }
   };
 
+  const hasPermission = () => currentUser?.description === 'Administrator';
+
   const createUser = async (newUser: any) => {
-    if (!canCreateUser()) {
-      message.error(
-        <>
-          You do not have permissions to create new users.
-          <br />
-          Contact administrator for help.
-        </>
-      ); // Use a fragment with <br /> for line break
-      return; // Exit if the user is not authorized
+    if (!hasPermission()) {
+      notificationController.error({
+        message: 'You do not have permission to create users.',
+      });
+      return;
     }
 
     try {
-      // Ensure location is formatted correctly (string, comma-separated for multiple districts)
       if (newUser.location && Array.isArray(newUser.location)) {
-        newUser.location = newUser.location.join(', '); // Join array into a single string
+        newUser.location = newUser.location.join(', ');
       }
 
       const userWithRole = {
         ...newUser,
-        role: roleId,  // Assign the specific role directly during user creation
+        role: roleId,
       };
 
-      // Step 1: Create the new user
-      const response = await axios.post(`${process.env.REACT_APP_BASE_URL}/users`, userWithRole, {
+      await axios.post(`${process.env.REACT_APP_BASE_URL}/users`, userWithRole, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('access_token')}`,
         },
       });
 
-      // Step 2: Refresh the user list
       await fetchUsersByRole();
-
-      // Step 3: Show success message and close the modal
-      message.success('User created and assigned to role successfully');
-      setIsModalVisible(false);  // Close modal on success
-    } catch (error: any) {
-      console.error('Error creating user and assigning role:', error.response?.data || error);
-      message.error('Failed to create user or assign role: ' + (error.response?.data?.message || 'Unknown error'));
-    } finally {
+      message.success('User created successfully');
       setIsModalVisible(false);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      message.error('Failed to create user.');
     }
   };
 
   const editUser = async (userId: string, updatedUser: Partial<User>) => {
+    if (!hasPermission()) {
+      notificationController.error({
+        message: 'You do not have permission to edit users.',
+      });
+      return;
+    }
+
     try {
-      // Ensure location is formatted correctly (string, comma-separated for multiple districts)
       if (updatedUser.location && Array.isArray(updatedUser.location)) {
-        updatedUser.location = updatedUser.location.join(', '); // Join array into a single string
+        updatedUser.location = updatedUser.location.join(', ');
       }
 
       await axios.patch(`${process.env.REACT_APP_BASE_URL}/users/${userId}`, updatedUser, {
@@ -159,24 +167,31 @@ export const UserManagementTreeTable: React.FC = () => {
       message.success('User updated successfully');
       setIsModalVisible(false);
     } catch (error) {
-      console.error('Error updating user:', error);
-      message.error('Failed to update user');
+      console.error('Error editing user:', error);
+      message.error('Failed to edit user.');
     }
   };
 
   const deleteUser = async (userId: string) => {
+    if (!hasPermission()) {
+      notificationController.error({
+        message: 'You do not have permission to delete users.',
+      });
+      return;
+    }
+
     try {
       await axios.delete(`${process.env.REACT_APP_BASE_URL}/users/${userId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        },
       });
 
-      setUsers(users.filter(user => user.id !== userId));
+      setUsers(users.filter((user) => user.id !== userId));
       message.success('User deleted successfully');
     } catch (error) {
       console.error('Error deleting user:', error);
-      message.error('Failed to delete user');
+      message.error('Failed to delete user.');
     }
   };
 
@@ -243,8 +258,7 @@ export const UserManagementTreeTable: React.FC = () => {
       title: 'Province',
       dataIndex: 'title',
       width: '25%',
-    },
-    {
+    }, {
       title: 'District',
       dataIndex: 'location',
       width: '25%',
@@ -253,6 +267,12 @@ export const UserManagementTreeTable: React.FC = () => {
         return location;
       },
     },
+    {
+      title: 'Role',
+      dataIndex: 'description',
+      width: '25%',
+    },
+
     {
       title: 'Last Accessed PMP',
       dataIndex: 'last_access',
@@ -329,7 +349,7 @@ export const UserManagementTreeTable: React.FC = () => {
 
       <Modal
         title={editingUser ? 'Edit User' : 'Add New User'}
-        visible={isModalVisible}
+        open={isModalVisible}
         onOk={handleOk}
         width={600}
         onCancel={handleCancel}
@@ -363,6 +383,38 @@ export const UserManagementTreeTable: React.FC = () => {
             <Input />
           </Form.Item>
           <Form.Item
+            name="description"
+            label="User Role"
+            rules={[{ required: true, message: 'Please select a user role!' }]}
+          >
+            <Select
+              options={roleOptions}
+              placeholder="Select a user role"
+            />
+          </Form.Item>
+          <Form.Item
+            name="title"
+            label="Province"
+            rules={[{ required: true, message: 'Please select the province!' }]}
+          >
+            <Select
+              options={provinceOptions}
+              onChange={handleProvinceChange}
+              placeholder="Select a province"
+            />
+          </Form.Item>
+          <Form.Item
+            name="location"
+            label="Districts"
+            rules={[{ required: true, message: 'Please select at least one district!' }]}
+          >
+            <Select
+              mode="multiple"
+              options={districtList.map((district) => ({ label: district, value: district }))}
+              placeholder="Select districts"
+            />
+          </Form.Item>
+          <Form.Item
             name="password"
             label="Password"
             rules={[
@@ -389,28 +441,6 @@ export const UserManagementTreeTable: React.FC = () => {
             ]}
           >
             <Input.Password />
-          </Form.Item>
-          <Form.Item
-            name="title"
-            label="Province"
-            rules={[{ required: true, message: 'Please select the province!' }]}
-          >
-            <Select
-              options={provinceOptions}
-              onChange={handleProvinceChange}
-              placeholder="Select a province"
-            />
-          </Form.Item>
-          <Form.Item
-            name="location"
-            label="Districts"
-            rules={[{ required: true, message: 'Please select at least one district!' }]}
-          >
-            <Select
-              mode="multiple"
-              options={districtList.map((district) => ({ label: district, value: district }))}
-              placeholder="Select districts"
-            />
           </Form.Item>
         </Form>
       </Modal>
