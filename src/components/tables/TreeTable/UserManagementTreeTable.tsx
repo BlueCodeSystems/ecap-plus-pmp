@@ -37,9 +37,9 @@ const provinceOptions = [
 // Define districts in each province
 const districtOptions: Record<Province, string[]> = {
   'All': ['All'],
-  'Central Province': ['Serenje', 'Kapiri Mposhi', 'Mkushi', 'Mumbwa'],
-  'Southern Province': ['Monze', 'Mazabuka', 'Kazungula'],
-  'Western Province': ['Mongu', 'Limulunga', 'Kalabo', 'Sesheke'],
+  'Central Province': ['Serenje', 'Kapiri Mposhi', 'Mkushi', 'Mumbwa', 'Chibombo', 'Chisamba', 'Ngabwe', 'Shibuyunji', 'Chitambo'],
+  'Southern Province': ['Monze', 'Mazabuka', 'Kazungula', 'Choma', 'Gwembe', 'Kalomo', 'Livingstone', 'Namwala', 'Siavonga', 'Zimba', 'Sesheke', 'Mwandi'],
+  'Western Province': ['Mongu', 'Limulunga', 'Kalabo', 'Sesheke', 'Barotse', 'Nkeyema', 'Shangombo', 'Liunga', 'Senanga', 'Kaoma'],
 };
 
 const roleOptions = [
@@ -111,10 +111,36 @@ export const UserManagementTreeTable: React.FC = () => {
 
   const hasPermission = () => currentUser?.description === 'Administrator';
 
+  const checkEmailExists = async (email: string) => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        params: {
+          filter: { email: { _eq: email } }, // Adjust based on Directus filtering syntax
+        },
+      });
+      return response.data.data.length > 0; // Check if any users were returned
+    } catch (error) {
+      console.error('Error checking email existence:', error);
+      return false; // Assume email does not exist in case of error
+    }
+  };
+
   const createUser = async (newUser: any) => {
     if (!hasPermission()) {
       notificationController.error({
         message: 'You do not have permission to create users. Contact IT support for help.',
+      });
+      return;
+    }
+
+    // Check if email already exists
+    const emailExists = await checkEmailExists(newUser.email);
+    if (emailExists) {
+      notificationController.error({
+        message: 'This email address already exists. Please use a different email.',
       });
       return;
     }
