@@ -316,7 +316,7 @@ export const UserManagementTreeTable: React.FC = () => {
         </Tag>
       ),
     },
-    {
+    ...(hasAdminPermission() ? [{
       title: 'Actions',
       key: 'actions',
       width: "23%",
@@ -337,7 +337,7 @@ export const UserManagementTreeTable: React.FC = () => {
           </Popconfirm>
         </Space>
       ),
-    }
+    }] : []),
   ];
 
   const inactiveColumns = [
@@ -377,7 +377,7 @@ export const UserManagementTreeTable: React.FC = () => {
         </Tag>
       ),
     },
-    {
+    ...(hasAdminPermission() ? [{
       title: 'Actions',
       key: 'actions',
       render: (text: any, record: User) => (
@@ -410,7 +410,7 @@ export const UserManagementTreeTable: React.FC = () => {
           </Popconfirm>
         </Space>
       ),
-    }
+    }] : []),
   ];
 
   return (
