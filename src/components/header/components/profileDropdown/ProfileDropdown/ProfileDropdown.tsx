@@ -36,10 +36,8 @@ export const ProfileDropdown: React.FC = () => {
   }, []);
 
   return user ? (
-    <BasePopover content={<ProfileOverlay />} trigger="click">
       <BaseCol>
       <b>Welcome back, 👋 <br />{user.first_name}!</b><br />
       </BaseCol>
-    </BasePopover>
   ) : null;
 };
