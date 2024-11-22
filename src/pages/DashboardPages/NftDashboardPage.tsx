@@ -93,7 +93,16 @@ const MedicalDashboardPage: React.FC = () => {
         <BaseRow justify="end" align="middle" style={{ marginBottom: '20px' }}>
           <BaseCol>
           <Button
-          style={{width: '100%', borderTopRightRadius: '50%'}}
+          style={{
+            borderRadius: '50px',
+            background: 'linear-gradient(to right, #f5af19, #f12711)',
+            color: 'white',
+            borderTopRightRadius: '90%',
+            border: 'none',
+            padding: '10px 20px',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          }}
              type="ghost"
             onClick={handleViewDashboards}
           >
@@ -156,7 +165,15 @@ const MedicalDashboardPage: React.FC = () => {
         </BaseCol>
         <BaseCol span={24}>
           <Button
-          style={{width: '100%', borderTopRightRadius: '50%'}}
+          style={{ borderRadius: '50px',
+            background: 'linear-gradient(to right, #f5af19, #f12711)',
+            color: 'white',
+            borderTopRightRadius: '90%',
+            border: 'none',
+            padding: '10px 20px',
+          width: '100%',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',}}
             type="primary"
             onClick={handleViewDashboards}
           >
