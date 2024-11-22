@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
-import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
-import { BaseCol } from '@app/components/common/BaseCol/BaseCol';
-import { Skeleton, Typography } from 'antd';
+import { Skeleton, Typography, Alert } from 'antd';
 import { TitleHeader } from '@app/components/apps/newsFeed/NewsFilter/NewsFilter.styles';
 
 interface User {
@@ -16,9 +13,7 @@ interface User {
 }
 
 const SuperSetPage: React.FC = () => {
-
   const { t } = useTranslation();
-
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +22,7 @@ const SuperSetPage: React.FC = () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
           },
         });
         setUser(response.data.data);
@@ -44,18 +39,21 @@ const SuperSetPage: React.FC = () => {
   return (
     <>
       <br />
-      <Typography.Title level={4}>Visualizations</Typography.Title>
-      <Typography.Title level={5}>{loading ? <Skeleton active paragraph={{ rows: 1 }} /> : `${user?.location}`} District</Typography.Title>
-      <TitleHeader>
-      Guide: Implement state filters to refine displayed data.
-      </TitleHeader> <br />
-      <BaseRow gutter={[30, 30]}>
-        <BaseCol xs={24} sm={24} md={24} lg={24} xl={24}>
-          <BaseCard id="step-form" title={t('forms.stepForm')} padding="1.25rem">
-       
-          </BaseCard>
-        </BaseCol>
-      </BaseRow>
+      <Typography.Title level={4}>
+        {loading ? <Skeleton active paragraph={{ rows: 1 }} /> : `${user?.location}`} District
+      </Typography.Title>
+      <Alert
+        message="Notice"
+        description="Some features, such as filtering and interaction with charts, depend on your permissions and they are not filtered charts based on user or province location. Contact admin or support for access."
+        type="info"
+        showIcon
+        style={{ marginBottom: '20px' }}
+      />
+      <iframe
+        src="https://superset.ccms.bluecodeltd.com/superset/dashboard/p/bPr1NLOxjkQ/"
+        style={{ width: '100%', height: '80vh', border: 'none' }}
+        title="Superset Dashboard"
+      />
     </>
   );
 };

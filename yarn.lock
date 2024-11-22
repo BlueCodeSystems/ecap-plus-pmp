@@ -2357,6 +2357,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@superset-ui/embedded-sdk@npm:^0.1.2":
+  version: 0.1.2
+  resolution: "@superset-ui/embedded-sdk@npm:0.1.2"
+  dependencies:
+    "@superset-ui/switchboard": ^0.20.2
+    jwt-decode: ^4.0.0
+  checksum: cf420e1502fff7b1703fd53b7932f78e19e36e20d6b584ab392f0010544c21d2082785afbea6a75fefac5e3d02438050175999be40e094c789aae61ce76605b5
+  languageName: node
+  linkType: hard
+
+"@superset-ui/switchboard@npm:^0.20.2":
+  version: 0.20.2
+  resolution: "@superset-ui/switchboard@npm:0.20.2"
+  checksum: 35365809402dd9c1277a2bd74d64467c64b601493a793ae6c9d2dbe6ae4a1a7a31f6ca9f88f007f44fba89ac6ce1aa5d3a2a4640485022e588257bd959222acb
+  languageName: node
+  linkType: hard
+
 "@surma/rollup-plugin-off-main-thread@npm:^1.1.1":
   version: 1.4.2
   resolution: "@surma/rollup-plugin-off-main-thread@npm:1.4.2"
@@ -11001,6 +11018,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jwt-decode@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "jwt-decode@npm:4.0.0"
+  checksum: 390e2edcb31a92e86c8cbdd1edeea4c0d62acd371f8a8f0a8878e499390c0ecf4c658b365c4e941e4ef37d0170e4ca650aaa49f99a45c0b9695a235b210154b0
+  languageName: node
+  linkType: hard
+
 "kdbush@npm:^3.0.0":
   version: 3.0.0
   resolution: "kdbush@npm:3.0.0"
@@ -11188,6 +11212,7 @@ __metadata:
     "@lit-labs/react": ^1.0.2
     "@react-google-maps/api": ^2.18.1
     "@reduxjs/toolkit": ^1.7.1
+    "@superset-ui/embedded-sdk": ^0.1.2
     "@types/country-list": ^2.1.0
     "@types/leaflet": ^1.7.9
     "@types/react": ^18.0.28
