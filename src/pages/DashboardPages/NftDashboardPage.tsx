@@ -92,22 +92,13 @@ const MedicalDashboardPage: React.FC = () => {
       <div style={{ margin: '20px' }}>
         <BaseRow justify="end" align="middle" style={{ marginBottom: '20px' }}>
           <BaseCol>
-          <Button
-          style={{
-            borderRadius: '50px',
-            background: 'linear-gradient(to right, #f5af19, #f12711)',
-            color: 'white',
-            borderTopRightRadius: '90%',
-            border: 'none',
-            padding: '10px 20px',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          }}
-             type="ghost"
-            onClick={handleViewDashboards}
-          >
-            View Dashboards <RiseOutlined />
-          </Button>
+            <Button
+              style={{ width: '100%', borderTopRightRadius: '50%', borderBottomLeftRadius: '20%' }}
+              type="ghost"
+              onClick={handleViewDashboards}
+            >
+              View Dashboards <RiseOutlined />
+            </Button>
           </BaseCol>
         </BaseRow>
         <BaseRow gutter={[80, 80]}>
@@ -165,15 +156,17 @@ const MedicalDashboardPage: React.FC = () => {
         </BaseCol>
         <BaseCol span={24}>
           <Button
-          style={{ borderRadius: '50px',
-            background: 'linear-gradient(to right, #f5af19, #f12711)',
-            color: 'white',
-            borderTopRightRadius: '90%',
-            border: 'none',
-            padding: '10px 20px',
-          width: '100%',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',}}
+            style={{
+              borderRadius: '50px',
+              background: 'linear-gradient(to right, #f5af19, #f12711)',
+              color: 'white',
+              borderTopRightRadius: '90%',
+              border: 'none',
+              padding: '10px 20px',
+              width: '100%',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            }}
             type="primary"
             onClick={handleViewDashboards}
           >
