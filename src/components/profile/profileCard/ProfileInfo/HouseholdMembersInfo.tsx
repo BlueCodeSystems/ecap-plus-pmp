@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Skeleton, Typography, Alert, List, Button, Row, Col } from 'antd';
+import { Skeleton, Typography, Alert, Row, Col, Button } from 'antd';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
 import styled from 'styled-components';
 import axios from 'axios';
@@ -65,7 +65,6 @@ export const HouseholdMembersInfo: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const household: Household | undefined = location.state?.household;
-  const householdId: Household | undefined = location.state?.household_id;
 
   const [isLoading, setLoading] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
@@ -77,8 +76,8 @@ export const HouseholdMembersInfo: React.FC = () => {
       axios
         .get(`https://ecapplus.server.dqa.bluecodeltd.com/household/members/${household.household_id}`)
         .then((response) => {
-          const sortedMembers = response.data.data;
-          setMembers(sortedMembers);
+          const fetchedMembers = response.data.data;
+          setMembers(fetchedMembers);
           setLoading(false);
         })
         .catch((err) => {
@@ -88,15 +87,10 @@ export const HouseholdMembersInfo: React.FC = () => {
     }
   }, [household]);
 
-  const handleViewProfile = (unique_id: string, is_index: string | number) => {
+  const handleViewProfile = (unique_id: string) => {
     const encodedId = encodeURIComponent(unique_id);
-    const route =
-      is_index === 1 || is_index === '1' || is_index === 'yes' || is_index === 'Yes'
-        ? `/profile/vca-profile/${encodedId}`
-        : `/profile/member-profile/${encodedId}`;
-
-    // Pass the entire household object in the state
-    navigate(route, { state: { unique_id, is_index, household } });
+    const route = `/profile/child-profile/${encodedId}`;
+    navigate(route, { state: { unique_id, household } });
   };
 
   if (isLoading) {
@@ -133,10 +127,6 @@ export const HouseholdMembersInfo: React.FC = () => {
     );
   }
 
-  // Find the primary VCA and other members
-  const primaryVCA = members.filter(member => member.is_index);
-  const otherMembers = members.filter(member => !member.is_index);
-
   return (
     <Wrapper>
       {household && (
@@ -146,42 +136,7 @@ export const HouseholdMembersInfo: React.FC = () => {
           <br />
           <br />
           <BaseCard>
-            {primaryVCA.length > 0 && (
-              <div>
-                <Alert
-                  message={'The primary VCA in this household is at the top in the list.'}
-                  type="warning"
-                  showIcon
-                  style={{ marginBottom: '10px' }}
-                />
-                {primaryVCA.map((member) => (
-                  <ListItemWrapper key={member.unique_id} gutter={[16, 16]}>
-                    <Col span={8}>
-                      <InfoValue>
-                        {member.unique_id} - {member.firstname} {member.lastname}
-                      </InfoValue>
-                    </Col>
-                    <Col span={12}>
-                      <Row>
-                        <Col span={24}>
-                          <InfoValue>Birthdate: {member.birthdate}</InfoValue>
-                        </Col>
-                        <Col span={24}>
-                          <InfoValue>Gender: {member.vca_gender}</InfoValue>
-                        </Col>
-                        <Col span={24}>
-                          <InfoValue>Disability: {member.disability}</InfoValue>
-                        </Col>
-                        <Col span={24}>
-                          <InfoValue>Relationship: {member.relation}</InfoValue>
-                        </Col>
-                      </Row>
-                    </Col>
-                  </ListItemWrapper>
-                ))}
-              </div>
-            )}
-            {otherMembers.map((member) => (
+            {members.map((member) => (
               <ListItemWrapper key={member.unique_id} gutter={[16, 16]}>
                 <Col span={8}>
                   <InfoValue>
@@ -204,6 +159,14 @@ export const HouseholdMembersInfo: React.FC = () => {
                     </Col>
                   </Row>
                 </Col>
+                {/* <Col span={4}>
+                  <Button 
+                    type="primary" 
+                    onClick={() => handleViewProfile(member.unique_id)}
+                  >
+                    View
+                  </Button>
+                </Col> */}
               </ListItemWrapper>
             ))}
           </BaseCard>

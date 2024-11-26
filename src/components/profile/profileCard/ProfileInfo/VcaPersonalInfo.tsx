@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { Skeleton, Typography, Divider, Alert, Tag, Badge,Row, Col, Button } from 'antd';
+import { Skeleton, Typography, Divider, Alert, Tag, Badge, Row, Col, Button } from 'antd';
 import { BaseButtonsForm } from '@app/components/common/forms/BaseButtonsForm/BaseButtonsForm';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
@@ -11,6 +11,8 @@ import styled from 'styled-components';
 import { convertToYesNo, isoToDate } from '@app/utils/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas'; // I
+import { FileExcelFilled } from '@ant-design/icons';
+import moment from 'moment';
 
 
 const SectionTitle = styled(Typography.Title)`
@@ -197,19 +199,6 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     );
   }
 
-  const getRiskLevelTag = (riskLevel?: string) => {
-    switch (riskLevel) {
-      case '1':
-        return <Tag color="green">Low</Tag>;
-      case '2':
-        return <Tag color="orange">Medium</Tag>;
-      case '3':
-        return <Tag color="red">High</Tag>;
-      default:
-        return <Tag color="default">Unknown</Tag>;
-    }
-  };
-
   // Ref to capture the section for PDF
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -252,7 +241,7 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     if (value === 'no' || value === 'No' || value === false || value === 'false' || value === null || value === '') {
       return null; // Don't render this column
     }
-  
+
     return (
       <BaseCol xs={24} md={span}>
         <InfoLabel>{label}</InfoLabel>
@@ -261,47 +250,48 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     );
   };
 
-  
+
 
   return (
     <Wrapper>
       {profileData && (
         <>
-        
+
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
-         
-          <Button type="primary" onClick={exportToPDF}>
-            {t('Export Rendered Data to PDF')}
-          </Button>
-        
-        </div>
-        <Divider />
+            <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
+
+            {/* <Button type="ghost" onClick={exportToPDF} icon={<FileExcelFilled />}>
+              {t('Export Profile')}
+            </Button> */}
+
+          </div>
+
+          <Divider />
+
           <Row>
             <Col span={24}>
-              <Typography.Text strong>Household ID:</Typography.Text> {vca.household_id}
+              <Typography.Text strong>Household ID </Typography.Text> {vca.household_id}
             </Col>
             <Col span={24}>
-              <Typography.Text strong>Unique ID:</Typography.Text> {vca.uid}
+              <Typography.Text strong>Unique ID </Typography.Text> {vca.uid}
             </Col>
             <Col span={24}>
-              <Typography.Text strong>Case Status:</Typography.Text> 
-              <Badge 
-                count={vca.case_status === '1' || vca.case_status === "yes" ? "Active" : "Inactive"} 
-                style={{ backgroundColor: vca.case_status === '1' || vca.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
+              <Typography.Text strong>Case status </Typography.Text>
+              <Badge
+                count={vca.case_status === '1' || vca.case_status === "yes" ? "Active" : "Inactive"}
+                style={{ fontWeight: 'bold', backgroundColor: vca.case_status === '1' || vca.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
               />
             </Col>
             <Col span={24}>
-              <Typography.Text strong>Partner:</Typography.Text> {vca.partner}
+              <Typography.Text strong>Partner</Typography.Text> {vca.partner}
             </Col>
             <Col span={24}>
-              <Typography.Text strong>Date Created:</Typography.Text> {isoToDate(vca.datecreated).toLocaleDateString()}
+            <Typography.Text strong>Date enrolled </Typography.Text>
+            {vca.date_enrolled}
             </Col>
           </Row>
           <br />
           <br />
-        
-          
           <br />
         </>
       )}
@@ -343,7 +333,6 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
             {renderCol('Date Last VL', vca.date_last_vl, 8)}
             {renderCol('Date Next VL', vca.date_next_vl, 8)}
 
-        
             <Divider />
 
             <BaseCol span={24}>
@@ -354,9 +343,8 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
             {renderCol('Facility', vca.facility, 8)}
             {renderCol('School', vca.school, 8)}
             {renderCol('School Name', vca.school_name, 8)}
-            
-            <Divider />
 
+            <Divider />
 
             <BaseCol span={24}>
               <SectionTitle level={5}>{t('Current Caregiver Information')}</SectionTitle>
@@ -387,7 +375,7 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
             {renderCol('Acceptance', vca.acceptance, 8)}
             {renderCol('AGYW', convertToYesNo(vca.agyw), 8)}
             {renderCol('Birthdate Approx', vca.birthdateapprox, 8)}
-            {renderCol('CALHIV', convertToYesNo( vca.calhiv), 8)}
+            {renderCol('CALHIV', convertToYesNo(vca.calhiv), 8)}
             {renderCol('CFSW', convertToYesNo(vca.cfsw), 8)}
             {renderCol('Child Adolescent in Aged-Headed Household', vca.child_adolescent_in_aged_headed_household, 8)}
             {renderCol('Child Adolescent in Child-Headed Household', vca.child_adolescent_in_child_headed_household, 8)}
@@ -419,7 +407,6 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
             {renderCol('VL Next Result', vca.vl_next_result, 8)}
             {renderCol('VL Suppressed', vca.vl_suppressed, 8)}
 
-
             <Divider />
 
             <BaseCol span={24}>
@@ -435,7 +422,6 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
             {renderCol('De-Registration Date', vca.de_registration_date, 8)}
             {renderCol('Death Date Approx', vca.deathdateapprox, 8)}
 
-
             <Divider />
 
             <BaseCol span={24}>
@@ -444,9 +430,6 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
 
             {renderCol('Name', vca.caseworker_name, 8)}
             {renderCol('Phone', vca.caseworker_phone, 8)}
-
-
-           
 
           </BaseRow>
         </BaseButtonsForm>
