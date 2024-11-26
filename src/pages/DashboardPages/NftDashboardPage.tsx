@@ -5,11 +5,10 @@ import { useResponsive } from '@app/hooks/useResponsive';
 import { Balance } from '@app/components/nft-dashboard/Balance/Balance';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
 import { BaseCol } from '@app/components/common/BaseCol/BaseCol';
-import { VisitorsPieChart } from '@app/components/charts/VisitorsPieChart';
 import { Button, Skeleton, Typography } from 'antd';
 import axios from 'axios';
 import { GradientStackedAreaChart } from '@app/components/charts/GradientStackedAreaChart/GradientStackedAreaChart';
-import { RightOutlined, RiseOutlined } from '@ant-design/icons';
+import { RiseOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 interface User {
@@ -21,9 +20,8 @@ interface User {
 }
 
 const MedicalDashboardPage: React.FC = () => {
-  const { isDesktop } = useResponsive();
-  const navigate = useNavigate();
-
+  
+  const { isDesktop, isMobile, isTablet } = useResponsive();
   const [user, setUser] = useState<User | null>(null);
   const [vcasCount, setVCAsCount] = useState(0);
   const [householdCount, setHouseholdCount] = useState(0);
@@ -83,24 +81,9 @@ const MedicalDashboardPage: React.FC = () => {
     }
   }, [user]);
 
-  const handleViewDashboards = () => {
-    navigate('/visualization-dashboards');
-  };
-
   const desktopLayout = (
     <>
       <div style={{ margin: '20px' }}>
-        <BaseRow justify="end" align="middle" style={{ marginBottom: '20px' }}>
-          <BaseCol>
-            <Button
-              style={{ width: '100%', borderTopRightRadius: '50%', borderBottomLeftRadius: '20%' }}
-              type="ghost"
-              onClick={handleViewDashboards}
-            >
-              View Dashboards <RiseOutlined />
-            </Button>
-          </BaseCol>
-        </BaseRow>
         <BaseRow gutter={[80, 80]}>
           <BaseCol span={6}>
             <Typography.Title style={{ textAlign: 'center' }} level={4}>
@@ -153,25 +136,6 @@ const MedicalDashboardPage: React.FC = () => {
           <div id="balance">
             <Balance title="VCAs" count={vcasCount} />
           </div>
-        </BaseCol>
-        <BaseCol span={24}>
-          <Button
-            style={{
-              borderRadius: '50px',
-              background: 'linear-gradient(to right, #f5af19, #f12711)',
-              color: 'white',
-              borderTopRightRadius: '90%',
-              border: 'none',
-              padding: '10px 20px',
-              width: '100%',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-            }}
-            type="primary"
-            onClick={handleViewDashboards}
-          >
-            View Dashboards <RiseOutlined />
-          </Button>
         </BaseCol>
         <BaseCol xs={24} lg={12}>
           <GradientStackedAreaChart />
