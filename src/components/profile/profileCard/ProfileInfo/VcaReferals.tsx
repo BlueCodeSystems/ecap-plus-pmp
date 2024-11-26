@@ -3,9 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { Skeleton, Typography, Alert, Table, Button } from 'antd';
 import axios from 'axios';
 import styled from 'styled-components';
-import Papa from 'papaparse';
-import { jsPDF } from 'jspdf';  // Import jsPDF
-import 'jspdf-autotable';  // Import jsPDF autoTable
 
 const { Title } = Typography;
 
@@ -344,26 +341,6 @@ export const VcaReferals: React.FC = () => {
     }
   }, [vcaId]);
 
-  const exportCSV = () => {
-    const csv = Papa.unparse(serviceRecords);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'vca-referrals.csv');
-    link.click();
-  };
-
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Vca Referrals', 14, 10);
-    doc.autoTable({
-      head: [columns.map(col => col.title)],
-      body: serviceRecords.map(record => columns.map(col => record[col.dataIndex])),
-    });
-    doc.save('vca-referrals.pdf');
-  };
-
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
@@ -387,19 +364,11 @@ export const VcaReferals: React.FC = () => {
   return (
     <Wrapper>
       <Title>Vca Referrals</Title>
-      <ExportWrapper>
-        <Button onClick={exportCSV} type="primary" style={{ marginRight: 8 }}>
-          Export CSV
-        </Button>
-        <Button onClick={exportPDF} type="primary">
-          Export PDF
-        </Button>
-      </ExportWrapper>
       <Table
+        scroll={{ x: 200 }}
         columns={columns}
         dataSource={serviceRecords}
         pagination={false}
-        scroll={{ x: 'max-content' }}
         rowKey="referred_date"
       />
     </Wrapper>

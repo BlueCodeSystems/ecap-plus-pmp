@@ -4,14 +4,9 @@ import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { BaseSpace } from '@app/components/common/BaseSpace/BaseSpace';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Skeleton, Typography, Alert, Table, Button, Tooltip, Space, Row, Col, Modal } from 'antd';
+import { Skeleton, Typography, Alert, Table, Button, Space, Modal } from 'antd';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import styled from 'styled-components';
-import Papa from 'papaparse';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import { BasicTableRow, Pagination } from 'api/table.api';
 import { isoToDate } from '@app/utils/utils';
 
@@ -23,18 +18,10 @@ const Wrapper = styled.div`
   text-transform: capitalize;
 `;
 
-const ExportWrapper = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 16px;
-`;
 const initialPagination: Pagination = {
   current: 1,
   pageSize: 100,
 };
-
-
-
 
 const cleanData = (data: any[]) => {
   return data.map((record) => {
@@ -77,21 +64,19 @@ export const VcaServicesPlan: React.FC = () => {
   const [filteredCasePlans, setFilteredCasePlans] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-
   const handlePageChange = (page: number, pageSize?: number) => {
     setCurrentPage(page);
     if (pageSize) setPageSize(pageSize);
   };
 
-
   // Apply search filtering
   useEffect(() => {
     const lowerCaseQuery = searchQuery.toLowerCase();
-    const filtered = casePlans.filter((records) => 
+    const filtered = casePlans.filter((records) =>
       (records.health_services?.toLowerCase() || '').includes(lowerCaseQuery) ||
       (records.other_health_services?.toLowerCase() || '').includes(lowerCaseQuery) ||
-      (records.safe_services?.toLowerCase() || '').includes(lowerCaseQuery) 
-      
+      (records.safe_services?.toLowerCase() || '').includes(lowerCaseQuery)
+
     );
     setFilteredCasePlans(filtered);
   }, [searchQuery, casePlans]);
@@ -128,47 +113,6 @@ export const VcaServicesPlan: React.FC = () => {
     }
   }, [vcaId]);
 
-  const exportCSV = () => {
-    const csv = Papa.unparse(casePlans);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'caseplans.csv');
-    link.click();
-  };
-
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Case Plans', 14, 10);
-    const columnsWithoutLast = columns.slice(0, -1);
-    doc.autoTable({
-      head: [columnsWithoutLast.map(col => col.title)],
-      body: casePlans.map(record => columnsWithoutLast.map(col => record[col.dataIndex])),
-    });
-    doc.save('case-plans.pdf');
-  };
-
-  const exportToCSV = () => {
-    const csv = Papa.unparse(serviceRecords);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'vca-services.csv');
-    link.click();
-  };
-
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Vca Services', 14, 10);
-    doc.autoTable({
-      head: [servicesColumns.map(col => col.title)],
-      body: serviceRecords.map(record => servicesColumns.map(col => record[col.dataIndex])),
-    });
-    doc.save('vca-services.pdf');
-  };
-
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
@@ -189,16 +133,13 @@ export const VcaServicesPlan: React.FC = () => {
     );
   }
 
-
   const handleView = (unique_id: string) => {
     const filtered = serviceRecords.filter((record) => record.vcaid === unique_id);
-    const startIndex = Math.floor(Math.random() * 3); 
+    const startIndex = Math.floor(Math.random() * 3);
     const slicedFiltered = filtered.slice(0, startIndex + 1);
     setFilteredServices(slicedFiltered);
     setIsModalVisible(true);
-};
-
-
+  };
 
   const handleCancel = () => {
     setIsModalVisible(false);
@@ -219,22 +160,19 @@ export const VcaServicesPlan: React.FC = () => {
     },
     {
       title: 'Created At',
-      dataIndex: 'date_created', 
+      dataIndex: 'date_created',
       key: 'date_created',
       render: (text: string | null) => {
         if (text) {
           const date = isoToDate(text);
-          return date.toLocaleDateString(); 
+          return date.toLocaleDateString();
         } else {
           return 'Not Applicable';
         }
       },
     },
-    
-  
     {
       title: t('Actions'),
-      width: '20%',
       dataIndex: '',
       render: (text: string, record: BasicTableRow) => (
         <BaseSpace>
@@ -244,7 +182,7 @@ export const VcaServicesPlan: React.FC = () => {
         </BaseSpace>
       ),
     },
-   
+
   ];
 
   const servicesColumns = [
@@ -255,7 +193,7 @@ export const VcaServicesPlan: React.FC = () => {
       render: (text: string | null) => {
         if (text) {
           const date = isoToDate(text);
-          return date.toLocaleDateString(); 
+          return date.toLocaleDateString();
         } else {
           return 'Not Applicable';
         }
@@ -299,44 +237,15 @@ export const VcaServicesPlan: React.FC = () => {
     },
   ];
 
-  const searchTooltipContent = (
-    <div>
-      {t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}
-    </div>
-  );
-
-  
-
   return (
     <div style={{ margin: '20px' }}>
       <Space direction="vertical" style={{ width: '100%' }}>
-        {/* <Tooltip title={searchTooltipContent}>
-          <Space>
-            <S.SearchInput
-              style={{ width: 400 }}
-              placeholder={t('Search')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </Space>
-        </Tooltip> */}
-        <Row justify="end" style={{ marginBottom: 16 }}>
-          <Col>
-            <Space>
-              <Button type="primary" onClick={exportCSV}>
-                {t('Export CSV')}
-              </Button>
-              <Button type="primary" onClick={exportPDF}>
-                {t('Export PDF')}
-              </Button>
-            </Space>
-          </Col>
-        </Row>
         <BaseTable
+          scroll={{ x: 200 }}
           dataSource={tableData.data}
           columns={columns}
           pagination={tableData.pagination}
-          onChange={(pagination) => {}}
+          onChange={(pagination) => { }}
           loading={tableData.loading}
           tableLayout="fixed"
         />
@@ -344,7 +253,7 @@ export const VcaServicesPlan: React.FC = () => {
 
       <Modal
         title="Service Records"
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={handleCancel}
         width="80%"
         footer={[
@@ -353,29 +262,22 @@ export const VcaServicesPlan: React.FC = () => {
           </Button>,
         ]}
       >
-      <Wrapper>
-        <Title>Vca Services</Title>
-        <ExportWrapper>
-          <Button onClick={exportToCSV} type="primary" style={{ marginRight: 8 }}>
-            Export CSV
-          </Button>
-          <Button onClick={exportToPDF} type="primary">
-            Export PDF
-          </Button>
-        </ExportWrapper>
-        <Table
-          columns={servicesColumns}
-          dataSource={filteredServices}
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: serviceRecords.length,
-            onChange: handlePageChange,
-          }}
-          rowKey="service_date"
-        />
-      </Wrapper>
-       
+        <Wrapper>
+          <Title>Vca Services</Title>
+          <Table
+            scroll={{ x: 200 }}
+            columns={servicesColumns}
+            dataSource={filteredServices}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: serviceRecords.length,
+              onChange: handlePageChange,
+            }}
+            rowKey="service_date"
+          />
+        </Wrapper>
+
       </Modal>
     </div>
   );

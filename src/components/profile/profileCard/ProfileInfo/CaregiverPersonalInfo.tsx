@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo, useState, useRef  } from 'react';
+import React, { useCallback, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { Skeleton, Typography, Divider, Alert, Tag, Badge, Row, Col, Button } from 'antd';
+import { Skeleton, Typography, Divider, Tag, Badge, Row, Col, Button, Tooltip } from 'antd';
 import { BaseButtonsForm } from '@app/components/common/forms/BaseButtonsForm/BaseButtonsForm';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
@@ -11,7 +11,9 @@ import { notificationController } from '@app/controllers/notificationController'
 import styled from 'styled-components';
 import { convertToYesNo, isoToDate } from '@app/utils/utils';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas'; // I
+import html2canvas from 'html2canvas';
+import { FileExcelFilled } from '@ant-design/icons';
+import moment from 'moment';
 
 const SectionTitle = styled(Typography.Title)`
   font-size: 18px;
@@ -61,6 +63,7 @@ interface Household {
   ward: string;
   vca_gender: string;
   acceptance: string;
+  date_enrooled: string;
   active_on_treatment: string | null;
   adolescent_birthdate: string;
   agyw: string;
@@ -181,25 +184,12 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
     );
   }
 
-  const getRiskLevelTag = (riskLevel?: string) => {
-    switch (riskLevel) {
-      case '1':
-        return <Tag color="green">Low</Tag>;
-      case '2':
-        return <Tag color="orange">Medium</Tag>;
-      case '3':
-        return <Tag color="red">High</Tag>;
-      default:
-        return <Tag color="default">Unknown</Tag>;
-    }
-  };
-
   const renderCol = (label: string, value: any, span: number = 6) => {
     // Check if the value is "no", false, or an empty string
     if (value === 'no' || value === 'No' || value === false || value === 'false' || value === null || value === '') {
       return null; // Don't render this column
     }
-  
+
     return (
       <BaseCol xs={24} md={span}>
         <InfoLabel>{label}</InfoLabel>
@@ -208,85 +198,85 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
     );
   };
 
-   // Ref to capture the section for PDF
-   const contentRef = useRef<HTMLDivElement>(null);
+  // Ref to capture the section for PDF
+  const contentRef = useRef<HTMLDivElement>(null);
 
-   const exportToPDF = useCallback(() => {
-     const input = contentRef.current;
-     if (input) {
-       html2canvas(input).then((canvas) => {
-         const imgData = canvas.toDataURL('image/png');
-         const pdf = new jsPDF();
-         const imgWidth = 190;
-         const pageHeight = pdf.internal.pageSize.height;
-         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-         let position = 10;
- 
-         pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
- 
-         // Save the PDF
-         pdf.save('Caregiver_Personal_Info.pdf');
-       });
-     }
-   }, []);
- 
-   if (isLoading || !household) {
-     return (
-       <div
-         style={{
-           display: 'flex',
-           flexDirection: 'column',
-           justifyContent: 'center',
-           alignItems: 'center',
-         }}
-       >
-         <Skeleton active />
-       </div>
-     );
-   }
-  
+  const exportToPDF = useCallback(() => {
+    const input = contentRef.current;
+    if (input) {
+      html2canvas(input).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF();
+        const imgWidth = 190;
+        const pageHeight = pdf.internal.pageSize.height;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let position = 10;
+
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+
+        // Save the PDF
+        pdf.save('Caregiver_Personal_Info.pdf');
+      });
+    }
+  }, []);
+
+  if (isLoading || !household) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Skeleton active />
+      </div>
+    );
+  }
+
 
   return (
     <Wrapper>
       {profileData && (
         <>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Title>{household.caregiver_name}</Title>
-         
-          <Button type="primary" onClick={exportToPDF}>
-            {t('Export Rendered Data to PDF')}
-          </Button>
-        
-        </div>
-        <Divider />
-         
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Title>{household.caregiver_name}</Title>
+
+            {/* <Tooltip title="Export Caregiver Profile and services">
+              <Button type="ghost" onClick={exportToPDF} icon={<FileExcelFilled />}>
+                {t('Export Profile')}
+              </Button>
+            </Tooltip> */}
+
+          </div>
+          <Divider />
+
 
           <Row>
             <Col span={24}>
-              <Typography.Text strong>Household ID:</Typography.Text> {household.household_id}
+              <Typography.Text strong>Household ID </Typography.Text> {household.household_id}
             </Col>
             <Col span={24}>
-              <Typography.Text strong>Unique ID:</Typography.Text> {household.uid}
-            </Col>
-            <Col span={24}>
-              <Typography.Text strong>Case Status:</Typography.Text> 
-              <Badge 
-                count={household.case_status === '1' || household.case_status === "yes" ? "Active" : "Inactive"} 
-                style={{ backgroundColor: household.case_status === '1' || household.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
+              <Typography.Text strong>Case status </Typography.Text>
+              <Badge
+                count={household.case_status === '1' || household.case_status === "yes" ? "Active" : "Inactive"}
+                style={{ fontWeight: 'bold', backgroundColor: household.case_status === '1' || household.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
               />
             </Col>
             <Col span={24}>
-              <Typography.Text strong>Partner:</Typography.Text> {household.partner}
+              <Typography.Text strong>Partner </Typography.Text> {household.partner}
             </Col>
             <Col span={24}>
-              <Typography.Text strong>Date Created:</Typography.Text> {isoToDate(household.datecreated).toLocaleDateString()}
+              <Typography.Text strong>Date enrolled </Typography.Text>
+              {household.date_enrolled}
             </Col>
           </Row>
-          
+
           <br />
           <br />
-          
-        
+
+
         </>
       )}
       <BaseCard>
@@ -327,7 +317,7 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
             {renderCol('Caregiver Name', household.caregiver_name)}
             {renderCol('Caregiver Phone', household.caregiver_phone)}
             {renderCol('Caregiver Sex', household.caregiver_sex)}
-            
+
 
             <Divider />
             <BaseCol span={24}>
@@ -387,7 +377,7 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
             <BaseCol span={24}>
               <SectionTitle level={5}>{t('Date History')}</SectionTitle>
             </BaseCol>
-{/* 
+            {/* 
             {renderCol('Date Edited', convertToYesNo(household.date_edited))}
             {renderCol('Date Edited Check', convertToYesNo(household.date_edited_check))} */}
             {renderCol('Date Enrolled', household.date_enrolled)}
