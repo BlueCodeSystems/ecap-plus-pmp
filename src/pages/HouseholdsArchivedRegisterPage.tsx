@@ -35,8 +35,7 @@ const HouseholdsArchivedRegisterPage: React.FC = () => {
         console.error('Error fetching user data:', error);
       } finally {
         setLoadingUserData(false);
-        // Simulate a 5-second delay for table loading
-        setTimeout(() => setLoadingTable(false), 1000); // 5 seconds delay
+        setLoadingTable(false);
       }
     };
 
@@ -46,9 +45,10 @@ const HouseholdsArchivedRegisterPage: React.FC = () => {
   const content = (
     <>
       <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District Archived Households Register</Typography.Title>
-      <Tag color="cyan">
+      <Tag color="volcano">
         Note: Only deregistered caregivers are shown.
       </Tag>
+      <br />   
       <br />
     </>
 

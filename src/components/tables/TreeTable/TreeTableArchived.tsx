@@ -169,7 +169,7 @@ export const TreeTableArchived: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-assessed-register/${user?.location}`);
+        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-archived-register/${user?.location}`);
         setVcas(response.data.data);
         setInitialVcas(response.data.data);
       } catch (error) {

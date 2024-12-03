@@ -98,7 +98,7 @@ export const EditableTableArchived: React.FC = () => {
       if (!user) return;
       try {
         setTableData((prev) => ({ ...prev, loading: true }));
-        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households/${user?.location}`);
+        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households-archived/${user?.location}`);
         setHouseholds(response.data.data);
       } catch (error) {
         console.error('Error fetching households data:', error);

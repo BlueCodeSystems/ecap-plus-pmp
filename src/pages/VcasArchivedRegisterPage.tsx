@@ -35,8 +35,7 @@ const VcasArchivedRegisterPage: React.FC = () => {
         console.error('Error fetching user data:', error);
       } finally {
         setLoadingUserData(false);
-        // Simulate a 5-second delay for table loading
-        setTimeout(() => setLoadingTable(false), 1000); // 2 seconds delay
+        setLoadingTable(false);
       }
     };
 
@@ -46,7 +45,7 @@ const VcasArchivedRegisterPage: React.FC = () => {
   const content = (
     <>
       <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Archived Register</Typography.Title>
-      <Tag color="cyan">
+      <Tag color="volcano">
         Note: Only deregistered VCAs are shown.
       </Tag>
       <br />   

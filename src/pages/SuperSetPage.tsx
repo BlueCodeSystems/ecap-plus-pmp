@@ -43,13 +43,13 @@ const SuperSetPage: React.FC = () => {
         {loading ? <Skeleton active paragraph={{ rows: 1 }} /> : `${user?.location}`} District
       </Typography.Title>
       <TitleHeader>
-      <Alert
-      message="Notice"
-      description="Some features, such as filtering and interaction with charts, depend on your permissions. Please note that charts are not filtered based on user or province location. Contact the admin or support for access."
-      type="info"
-      showIcon
-    />
-</TitleHeader>
+        <Alert
+          message="Notice"
+          description="Some features, such as filtering and interaction with charts, depend on your permissions. Please note that charts are not filtered based on user or province location. Contact the admin or support for access."
+          type="info"
+          showIcon
+        />
+      </TitleHeader>
 
       <iframe
         src="https://superset.ccms.bluecodeltd.com/superset/dashboard/p/bPr1NLOxjkQ/"
