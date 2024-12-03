@@ -22,8 +22,10 @@ import NftDashboardPage from '@app/pages/DashboardPages/NftDashboardPage';
 import MedicalDashboardPage from '@app/pages/DashboardPages/MedicalDashboardPage';
 
 const HouseholdsPage = React.lazy(() => import('@app/pages/HouseholdsRegisterPage'));
-
+const FlagRecordPage = React.lazy(() => import('@app/pages/FlagRecordPage'));
 const VcasPage = React.lazy(() => import('@app/pages/VcasRegisterPage'));
+const HouseholdsArchivedRegisterPage = React.lazy(() => import('@app/pages/HouseholdsArchivedRegisterPage'));
+const VcasArchivedRegisterPage = React.lazy(() => import('@app/pages/VcasArchivedRegisterPage'));
 const UserManagementPage = React.lazy(() => import('@app/pages/UserManagementPage'));
 const MembersPage = React.lazy(() => import('@app/pages/MembersRegisterPage'));
 
@@ -79,9 +81,14 @@ export const MEDICAL_DASHBOARD_PATH = '/supervisory-tools-dashboard';
 
 const MedicalDashboard = withLoading(MedicalDashboardPage);
 const NftDashboard = withLoading(NftDashboardPage);
-const HouseholdsRegister = withLoading(HouseholdsPage);
 
+const HouseholdsRegister = withLoading(HouseholdsPage);
 const VcasRegister = withLoading(VcasPage);
+const FlagRecord = withLoading(FlagRecordPage);
+
+const HouseholdsArchivedRegister = withLoading(HouseholdsArchivedRegisterPage);
+const VcasArchivedRegister = withLoading(VcasArchivedRegisterPage);
+
 const MembersRegister = withLoading(MembersPage);
 const UsersPortal = withLoading(UserManagementPage);
 
@@ -155,14 +162,16 @@ export const AppRouter: React.FC = () => {
           <Route path={MEDICAL_DASHBOARD_PATH} element={<MedicalDashboard />} />
 
           <Route path="/users-management-portal" element={<UsersPortal />} />
+          <Route path="/flagged-records" element={<FlagRecord />} />
           <Route path="visualization-dashboards" element={<SuperSetPageDashboards />} />
 
           <Route path="apps">
             <Route path="households-register" element={<HouseholdsRegister />} />
+            <Route path="households-archived-register" element={<HouseholdsArchivedRegister />} />
             <Route path="vcas-register" element={<VcasRegister />} />
-            <Route path="households-members-register" element={<MembersRegister />} />
-
+            <Route path="vcas-archived-register" element={<VcasArchivedRegister />} />
           </Route>
+
           <Route path="forms">
             <Route path="case-management-district-self-assessment" element={<AdvancedForm />} />
             <Route path="stores-district-self-assessment" element={<StoresAdvancedForm />} />
