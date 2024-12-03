@@ -29,61 +29,59 @@ export const NotificationsOverlay: React.FC<NotificationsOverlayProps> = ({
         const type = notificationsSeverities.find((dbSeverity) => dbSeverity.id === notification.id)?.name;
 
         return (
-          ""
-          // <BaseNotification
-          //   key={index}
-          //   type={type || 'warning'}
-          //   title={capitalize(type || 'warning')}
-          //   description={t(notification.description)}
-          //   {...(type === 'mention' && {
-          //     mentionIconSrc: (notification as Mention).userIcon,
-          //     title: (notification as Mention).userName,
-          //     description: (
-          //       <Trans i18nKey={(notification as Mention).description}>
-          //         <S.LinkBtn type="link" href={(notification as Mention).href}>
-          //           {
-          //             { place: t((notification as Mention).place) } as unknown as ReactNode // todo: remove casting
-          //           }
-          //         </S.LinkBtn>
-          //       </Trans>
-          //     ),
-          //   })}
-          // />
+          <BaseNotification
+            key={index}
+            type={type || 'warning'}
+            title={capitalize(type || 'warning')}
+            description={t(notification.description)}
+            {...(type === 'mention' && {
+              mentionIconSrc: (notification as Mention).userIcon,
+              title: (notification as Mention).userName,
+              description: (
+                <Trans i18nKey={(notification as Mention).description}>
+                  <S.LinkBtn type="link" href={(notification as Mention).href}>
+                    {
+                      { place: t((notification as Mention).place) } as unknown as ReactNode // todo: remove casting
+                    }
+                  </S.LinkBtn>
+                </Trans>
+              ),
+            })}
+          />
         );
       }),
     [notifications, t],
   );
 
   return (
-    ""
-    // <S.NoticesOverlayMenu {...props}>
-    //   <BaseRow gutter={[20, 20]}>
-    //     <BaseCol span={24}>
-    //       {notifications.length > 0 ? (
-    //         <BaseSpace direction="vertical" size={10} split={<S.SplitDivider />}>
-    //           {noticesList}
-    //         </BaseSpace>
-    //       ) : (
-    //         <S.Text>{t('header.notifications.noNotifications')}</S.Text>
-    //       )}
-    //     </BaseCol>
-    //     <BaseCol span={24}>
-    //       <BaseRow gutter={[10, 10]}>
-    //         {notifications.length > 0 && (
-    //           <BaseCol span={24}>
-    //             <S.Btn type="ghost" onClick={() => setNotifications([])}>
-    //               {t('header.notifications.readAll')}
-    //             </S.Btn>
-    //           </BaseCol>
-    //         )}
-    //         <BaseCol span={24}>
-    //           <S.Btn type="link">
-    //             <Link to="/">{t('header.notifications.viewAll')}</Link>
-    //           </S.Btn>
-    //         </BaseCol>
-    //       </BaseRow>
-    //     </BaseCol>
-    //   </BaseRow>
-    // </S.NoticesOverlayMenu>
+    <S.NoticesOverlayMenu {...props}>
+      <BaseRow gutter={[20, 20]}>
+        <BaseCol span={24}>
+          {notifications.length > 0 ? (
+            <BaseSpace direction="vertical" size={10} split={<S.SplitDivider />}>
+              {noticesList}
+            </BaseSpace>
+          ) : (
+            <S.Text>{t('header.notifications.noNotifications')}</S.Text>
+          )}
+        </BaseCol>
+        <BaseCol span={24}>
+          <BaseRow gutter={[10, 10]}>
+            {notifications.length > 0 && (
+              <BaseCol span={24}>
+                <S.Btn type="ghost" onClick={() => setNotifications([])}>
+                  {t('header.notifications.readAll')}
+                </S.Btn>
+              </BaseCol>
+            )}
+            <BaseCol span={24}>
+              <S.Btn type="link">
+                <Link to="/">{t('header.notifications.viewAll')}</Link>
+              </S.Btn>
+            </BaseCol>
+          </BaseRow>
+        </BaseCol>
+      </BaseRow>
+    </S.NoticesOverlayMenu>
   );
 };

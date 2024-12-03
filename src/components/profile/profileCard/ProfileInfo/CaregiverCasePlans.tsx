@@ -160,6 +160,7 @@ export const CaregiverCasePlans: React.FC = () => {
 
   return (
     <div style={{ margin: '20px' }}>
+        <Title>Caregiver Caseplans</Title>
       <Table
         scroll={{ x: 200 }}
         dataSource={filteredCasePlans}
