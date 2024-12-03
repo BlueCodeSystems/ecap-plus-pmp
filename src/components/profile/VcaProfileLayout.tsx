@@ -14,6 +14,7 @@ import { Skeleton, Tabs } from 'antd';
 import { VcaPersonalInfo } from './profileCard/ProfileInfo/VcaPersonalInfo';
 import { VcaServicesPlan } from './profileCard/ProfileInfo/VcaServicesPlan';
 import { VcaReferals } from './profileCard/ProfileInfo/VcaReferals';
+import VcaFlaggedRecordForm from './profileCard/ProfileInfo/VcaFlaggedRecordForm';
 
 const VcaProfileLayout: React.FC = () => {
   const user = useAppSelector((state) => state.user.user);
@@ -49,6 +50,11 @@ const VcaProfileLayout: React.FC = () => {
       key: 'referrals',
       label: t('Referrals'),
       children: <VcaReferals profileData={user} />, 
+    },
+    {
+      key: 'flag-record-form',
+      label: t('Flag Record Form'),
+      children: <VcaFlaggedRecordForm profileData={user} />, 
     },
   ];
 

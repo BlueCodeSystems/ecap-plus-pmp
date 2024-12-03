@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Table, Typography, Skeleton, Alert, Button, Space, Input, Tag } from 'antd';
+import { Table, Typography, Skeleton, Alert, Button, Space, Input, Tag, Popconfirm, message, Select } from 'antd';
 import type { InputRef } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import Highlighter from 'react-highlight-words';
 import type { ColumnType } from 'antd/es/table';
+
+const { Option } = Select;
 
 interface User {
   id: string;
@@ -18,7 +20,9 @@ interface Record {
   id: string;
   household_id: string;
   caseworker_name: string;
+  caregiver_name: string;
   facility: string;
+  vca_id: string;
   comment: string;
   verifier: string;
   status: string;
@@ -89,7 +93,7 @@ const FlagRecordPage: React.FC = () => {
       ) : (
         text
       ),
-  });  
+  });
 
   const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
     confirm();
@@ -100,6 +104,29 @@ const FlagRecordPage: React.FC = () => {
   const handleReset = (clearFilters: () => void) => {
     clearFilters();
     setSearchText('');
+  };
+
+  const updateStatus = async (id: string, newStatus: string) => {
+    try {
+      await axios.patch(
+        `${process.env.REACT_APP_BASE_URL}/items/flagged_forms_ecapplus_pmp/${id}`,
+        { status: newStatus },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        }
+      );
+      setRecords((prevRecords) =>
+        prevRecords.map((record) =>
+          record.id === id ? { ...record, status: newStatus } : record
+        )
+      );
+      message.success(`Status updated to ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      message.error('Failed to update status.');
+    }
   };
 
   useEffect(() => {
@@ -142,16 +169,22 @@ const FlagRecordPage: React.FC = () => {
 
   const columns: ColumnType<Record>[] = [
     {
-      title: 'Household ID',
+      title: 'ID',
       dataIndex: 'household_id',
       key: 'household_id',
       ...getColumnSearchProps('household_id'),
-    },
+    }, 
     {
       title: 'Caseworker Name',
       dataIndex: 'caseworker_name',
       key: 'caseworker_name',
       ...getColumnSearchProps('caseworker_name'),
+    },
+    {
+      title: 'Caregiver Name',
+      dataIndex: 'caregiver_name',
+      key: 'caregiver_name',
+      ...getColumnSearchProps('caregiver_name'),
     },
     {
       title: 'Facility',
@@ -166,27 +199,62 @@ const FlagRecordPage: React.FC = () => {
       ...getColumnSearchProps('comment'),
     },
     {
-      title: 'Verifier',
+      title: 'Verifier/Supervisor',
       dataIndex: 'verifier',
       key: 'verifier',
       ...getColumnSearchProps('verifier'),
     },
     {
-      title: 'Status',
+      title: 'Flag Status',
       dataIndex: 'status',
-      key: 'status',
-      filters: [
-        { text: 'Pending', value: 'Pending' },
-        { text: 'Approved', value: 'Approved' },
-        { text: 'Rejected', value: 'Rejected' },
-      ],
-      onFilter: (value, record) => record.status.indexOf(value as string) === 0,
+      key: 'status_display',
       render: (status: string) => {
-        let color = 'geekblue';
-        if (status === 'Approved') color = 'green';
-        if (status === 'Rejected') color = 'volcano';
-        if (status === 'Pending') color = 'orange';
-        return <Tag color={color}>{status.toUpperCase()}</Tag>;
+        const getStatusColor = (status: string) => {
+          switch (status) {
+            case 'Draft':
+              return 'orange';
+            case 'Published':
+              return 'green';
+            case 'Archived':
+              return 'red';
+            default:
+              return 'blue';
+          }
+        };
+
+        return <Tag color={getStatusColor(status)}>{status}</Tag>;
+      },
+    },
+    {
+      title: 'Status Filter',
+      dataIndex: 'status',
+      key: 'status_filter',
+      filters: [
+        { text: 'Draft', value: 'Draft' },
+        { text: 'Published', value: 'Published' },
+        { text: 'Archived', value: 'Archived' },
+      ],
+      onFilter: (value, record) => record.status === value,
+      render: (status: string, record) => {
+        const handleChange = (newStatus: string) => {
+          if (newStatus === 'Published' && !record.comment) {
+            message.warning('Cannot publish without resolving the comment.');
+            return;
+          }
+          updateStatus(record.id, newStatus);
+        };
+
+        return (
+          <Select
+            value={status}
+            onChange={handleChange}
+            style={{ width: 130 }}
+          >
+            <Option value="Draft">Draft</Option>
+            {record.comment && <Option value="Published">Published</Option>}
+            <Option value="Archived">Archived</Option>
+          </Select>
+        );
       },
     },
   ];
@@ -215,9 +283,9 @@ const FlagRecordPage: React.FC = () => {
         <Skeleton active paragraph={{ rows: 3 }} />
       ) : (
         <Table
+          scroll={{ x: 500 }}
           dataSource={records}
           columns={columns}
-        
           rowKey="id"
           pagination={{ pageSize: 10 }}
         />
