@@ -4,7 +4,7 @@ import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Input, InputRef, Button, Tooltip, Row, Col, Select, Space, Modal, Typography, Alert, Tag } from 'antd';
-import { SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { SearchOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import { BasicTableRow, Pagination } from '@app/api/table.api';

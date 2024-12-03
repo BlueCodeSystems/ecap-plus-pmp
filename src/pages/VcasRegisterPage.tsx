@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Skeleton, Typography } from 'antd';
+import { Skeleton, Tag, Typography } from 'antd';
 import { TreeTable } from '@app/components/tables/TreeTable/TreeTable';
 import axios from 'axios';
 
@@ -44,7 +44,14 @@ const VcasRegisterPage: React.FC = () => {
   }, []);
 
   const content = (
-    <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Register</Typography.Title>
+    <>
+      <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Register</Typography.Title>
+      <Tag color="cyan">
+        Note: Only active VCAs are shown.
+      </Tag>
+      <br />   
+      <br />
+    </>
   );
 
   return (

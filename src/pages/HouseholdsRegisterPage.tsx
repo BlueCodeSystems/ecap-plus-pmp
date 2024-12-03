@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EditableTable } from '@app/components/tables/editableTable/EditableTable';
-import { Skeleton, Typography } from 'antd';
+import { Skeleton, Tag, Typography } from 'antd';
 import axios from 'axios';
 
 interface User {
@@ -44,7 +44,14 @@ const HouseholdsRegisterPage: React.FC = () => {
   }, []);
 
   const content = (
-    <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District Households Register</Typography.Title>
+    <>
+      <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District Households Register</Typography.Title>
+      <Tag color="cyan">
+        Note: Only active caregivers are shown.
+      </Tag>
+      <br />   
+      <br />
+    </>
   );
 
   return (

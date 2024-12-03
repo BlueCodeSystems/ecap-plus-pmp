@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Skeleton, Typography } from 'antd';
+import { Skeleton, Tag, Typography } from 'antd';
 import axios from 'axios';
 import TreeTableArchived from '@app/components/tables/TreeTable/TreeTableArchived';
 
@@ -44,7 +44,15 @@ const VcasArchivedRegisterPage: React.FC = () => {
   }, []);
 
   const content = (
-    <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Archived Register</Typography.Title>
+    <>
+      <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Archived Register</Typography.Title>
+      <Tag color="cyan">
+        Note: Only deregistered VCAs are shown.
+      </Tag>
+      <br />   
+      <br />
+    </>
+
   );
 
   return (

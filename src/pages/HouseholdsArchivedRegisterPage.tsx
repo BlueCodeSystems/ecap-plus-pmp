@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Skeleton, Typography } from 'antd';
+import { Skeleton, Tag, Typography } from 'antd';
 import axios from 'axios';
 import { EditableTableArchived } from '@app/components/tables/editableTable/EditableTableArchived';
 
@@ -44,7 +44,14 @@ const HouseholdsArchivedRegisterPage: React.FC = () => {
   }, []);
 
   const content = (
-    <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District Archived Households Register</Typography.Title>
+    <>
+      <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District Archived Households Register</Typography.Title>
+      <Tag color="cyan">
+        Note: Only deregistered caregivers are shown.
+      </Tag>
+      <br />
+    </>
+
   );
 
   return (
