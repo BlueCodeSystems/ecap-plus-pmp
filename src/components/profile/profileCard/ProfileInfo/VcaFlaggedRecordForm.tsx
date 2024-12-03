@@ -55,16 +55,14 @@ const FieldValue = styled.div`
   color: #333333;
 `;
 
-export const FlaggedRecordForm: React.FC = () => {
+export const VcaFlaggedRecordForm: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-
-  const householdId = location?.state?.household?.household_id || 'Not Available';
-  const vcaId = location?.state?.household?.vca_id || 'Not Available';
-  const caseworkerPhone = location?.state?.household?.caseworker_phone || 'Not Available';
-  const caregiverName = location?.state?.household?.caregiver_name || 'Not Available';
-  const caseworkerName = location?.state?.household?.caseworker_name || 'Not Available';
-  const facility = location?.state?.household?.facility || 'Not Available';
+  const vcaId = location?.state?.vca?.uid || 'Not Available';
+  const caseworkerPhone = location?.state?.vca?.caseworker_phone || 'Not Available';
+  const caseworkerName = location?.state?.vca?.caseworker_name || 'Not Available';
+  const caregiverName = location?.state?.vca?.caregiver_name || 'Not Available';
+  const facility = location?.state?.vca?.facility || 'Not Available';
 
   const [isSubmitting, setSubmitting] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
@@ -108,7 +106,7 @@ export const FlaggedRecordForm: React.FC = () => {
       console.log('Verifier:', verifier);
 
       const payload = {
-        household_id: householdId,
+        household_id: vcaId,
         vca_id: vcaId,
         caseworker_phone: caseworkerPhone,
         caseworker_name: caseworkerName,
@@ -139,7 +137,7 @@ export const FlaggedRecordForm: React.FC = () => {
 
       // Wait for the notification to disappear (e.g., 3 seconds)
       setTimeout(() => {
-        navigate('/flagged-records', { state: { householdId } });
+        navigate('/flagged-records', { state: { vcaId } });
       }, 3000);
     } catch (err: any) {
       console.error('Failed to submit the comment:', err);
@@ -152,12 +150,12 @@ export const FlaggedRecordForm: React.FC = () => {
   return (
     <Wrapper>
       <Title level={4} style={{ textAlign: 'center', marginBottom: '30px' }}>
-        Add a Comment for the caseworker for this household
+        Add a Comment for the caseworker for this VCA
       </Title>
 
       <FieldContainer>
-        <FieldLabel>Household ID</FieldLabel>
-        <FieldValue>{householdId}</FieldValue>
+        <FieldLabel>VCA ID</FieldLabel>
+        <FieldValue>{vcaId}</FieldValue>
       </FieldContainer>
 
       <FieldContainer>
@@ -204,4 +202,4 @@ export const FlaggedRecordForm: React.FC = () => {
   );
 };
 
-export default FlaggedRecordForm;
+export default VcaFlaggedRecordForm;
