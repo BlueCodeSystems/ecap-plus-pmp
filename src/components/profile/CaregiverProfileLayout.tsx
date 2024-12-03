@@ -10,12 +10,12 @@ import { useResponsive } from '@app/hooks/useResponsive';
 import { useAppSelector } from '@app/hooks/reduxHooks';
 import { BaseRow } from '../common/BaseRow/BaseRow';
 import { BaseCol } from '../common/BaseCol/BaseCol';
-import { Skeleton, Tabs } from 'antd';
+import { Tabs } from 'antd';
 import { CaregiverPersonalInfo } from './profileCard/ProfileInfo/CaregiverPersonalInfo';
-import { CaregiverServicesInfo } from './profileCard/ProfileInfo/CaregiverServicesInfo';
 import { CaregiverReferralsInfo } from './profileCard/ProfileInfo/CaregiverReferralsInfo';
 import { CaregiverCasePlans } from './profileCard/ProfileInfo/CaregiverCasePlans';
 import { HouseholdMembersInfo } from './profileCard/ProfileInfo/HouseholdMembersInfo';
+import { FlaggedRecordForm } from './profileCard/ProfileInfo/FlaggedRecordForm';
 
 const CaregiverProfileLayout: React.FC = () => {
   const user = useAppSelector((state) => state.user.user);
@@ -56,6 +56,11 @@ const CaregiverProfileLayout: React.FC = () => {
       key: 'referrals',
       label: t('Referrals'),
       children: <CaregiverReferralsInfo profileData={user} />, 
+    },
+    {
+      key: 'flag-record-form',
+      label: t('Flag Record Form'),
+      children: <FlaggedRecordForm profileData={user} />, 
     },
   ];
 

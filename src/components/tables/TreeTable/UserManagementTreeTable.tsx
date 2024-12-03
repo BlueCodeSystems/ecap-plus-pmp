@@ -45,7 +45,7 @@ const districtOptions: Record<Province, string[]> = {
 
 const roleOptions = [
   { value: 'Administrator', label: 'Administrator' },
-  { value: 'System User', label: 'System User' },
+  { value: 'Data Quality Assurance User', label: 'Data Quality Assurance User' },
 ];
 
 export const UserManagementTreeTable: React.FC = () => {

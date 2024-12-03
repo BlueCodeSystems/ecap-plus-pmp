@@ -37,14 +37,15 @@ const SiderMenu: React.FC<SiderContentProps> = ({ setCollapsed }) => {
 
         return {
           key: nav.key,
+          icon: nav.icon, // Ensure the icon is passed correctly
           title: t(nav.title),
           label: isSubMenu ? t(nav.title) : <Link to={nav.url || ''}>{t(nav.title)}</Link>,
-          icon: nav.icon,
           children:
             isSubMenu &&
             nav.children &&
             nav.children.map((childNav) => ({
               key: childNav.key,
+              icon: childNav.icon, // Include icons for child items
               label: <Link to={childNav.url || ''}>{t(childNav.title)}</Link>,
               title: t(childNav.title),
             })),

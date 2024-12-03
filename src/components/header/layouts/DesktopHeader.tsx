@@ -36,16 +36,6 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({ isTwoColumnsLayout
       <BaseCol lg={10} xxl={8}>
         <HeaderSearch />
       </BaseCol>
-      {/* <BaseCol>
-        <Button
-          type="primary"
-          onClick={handleLogout}
-          style={{ borderRadius: '50px', display: 'flex', alignItems: 'center' }}
-        >
-          <LogoutOutlined />
-          Logout
-        </Button>
-      </BaseCol> */}
     </>
   );
 
@@ -57,21 +47,21 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({ isTwoColumnsLayout
         <BaseRow align="middle" justify="end" gutter={[5, 5]}>
           <BaseCol>
             <BaseRow gutter={[{ xxl: 5 }, { xxl: 5 }]}>
-            <BaseCol>
-          <Button
-            type="primary"
-            onClick={handleLogout}
-            style={{ borderRadius: '50px', display: 'flex', alignItems: 'center' }}
-          >
-            <LogoutOutlined />
-            Logout
-          </Button>
-        </BaseCol>
               <BaseCol>
-                <HeaderFullscreen />
+                <Button
+                  type="primary"
+                  onClick={handleLogout}
+                  style={{ borderRadius: '50px', display: 'flex', alignItems: 'center' }}
+                >
+                  <LogoutOutlined />
+                  Logout
+                </Button>
               </BaseCol>
               <BaseCol>
                 <NotificationsDropdown />
+              </BaseCol>
+              <BaseCol>
+                <HeaderFullscreen />
               </BaseCol>
               <BaseCol>
                 <SettingsDropdown />

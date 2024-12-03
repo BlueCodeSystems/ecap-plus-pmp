@@ -12,22 +12,21 @@ export const NotificationsDropdown: React.FC = () => {
   const [isOpened, setOpened] = useState(false);
 
   return (
-    ""
-    // <BasePopover
-    //   trigger="click"
-    //   content={<NotificationsOverlay notifications={notifications} setNotifications={setNotifications} />}
-    //   onOpenChange={setOpened}
-    // >
-    //   <HeaderActionWrapper>
-    //     <BaseButton
-    //       type={isOpened ? 'ghost' : 'text'}
-    //       icon={
-    //         <BaseBadge dot>
-    //           <BellOutlined />
-    //         </BaseBadge>
-    //       }
-    //     />
-    //   </HeaderActionWrapper>
-    // </BasePopover>
+    <BasePopover
+      trigger="click"
+      content={<NotificationsOverlay notifications={notifications} setNotifications={setNotifications} />}
+      onOpenChange={setOpened}
+    >
+      <HeaderActionWrapper>
+        <BaseButton
+          type={isOpened ? 'ghost' : 'text'}
+          icon={
+            <BaseBadge dot>
+              <BellOutlined />
+            </BaseBadge>
+          }
+        />
+      </HeaderActionWrapper>
+    </BasePopover>
   );
 };
