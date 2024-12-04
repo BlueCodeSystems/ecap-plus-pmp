@@ -52,7 +52,8 @@ const SuperSetPage: React.FC = () => {
       </TitleHeader>
 
       <iframe
-        src="https://superset.ccms.bluecodeltd.com/superset/dashboard/p/bPr1NLOxjkQ/"
+        // src="https://superset.ccms.bluecodeltd.com/superset/dashboard/p/bPr1NLOxjkQ/"
+        src=' https://superset.ccms.bluecodeltd.com/superset/dashboard/p/DLmxme7x2KB'
         style={{ width: '100%', height: '80vh', border: 'none' }}
         title="Superset Dashboard"
       />
