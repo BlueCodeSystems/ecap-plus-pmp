@@ -1,9 +1,12 @@
+/* eslint-disable prettier/prettier */
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Typography, Alert } from 'antd';
+import { Form, Input, Button, Typography, Alert, message } from 'antd';
 import styled from 'styled-components';
 import axios from 'axios';
 import { notificationController } from '@app/controllers/notificationController';
+import { Name } from '@app/components/auth/LockForm/LockForm.styles';
+import layout from 'antd/lib/layout';
 
 const { Title } = Typography;
 const { TextArea } = Input;
