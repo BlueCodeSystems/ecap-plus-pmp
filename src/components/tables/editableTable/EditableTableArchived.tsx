@@ -348,11 +348,11 @@ export const EditableTableArchived: React.FC = () => {
             />
           </Tooltip>
         </Col>
-        <Col>
-          <h5 style={{ margin: '0 16px 0 0' }}>{t('Filter by Sub Population')}</h5>
-          <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Col span={24}>
+          <h5 style={{ fontSize: '20px', margin: '16px 16px 8px 0' }}>{t('Filter by Sub Population')}</h5>
+          <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
             {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-              <div key={key} style={{ marginRight: '8px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <div key={key} style={{ marginRight: '16px', marginBottom: '1px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <span style={{ fontSize: '12px' }}>{label}</span>
                 <Select
                   style={{ width: '100px' }}
@@ -367,22 +367,21 @@ export const EditableTableArchived: React.FC = () => {
             ))}
           </Row>
         </Col>
-        <Col>
-          <ExportWrapper>
-            <Space>
-              {/* Button to clear all filters and search */}
-              <Button type="default" onClick={clearAllFiltersAndSearch}>
-                {t('Clear All Filters and Search')}
-              </Button>
-              {/* Button to export to CSV */}
-              <Button type="primary" onClick={exportToCSV}>
-                {t('Export to CSV')}
-              </Button>
-            </Space>
+        <Col style={{ marginTop: '16px' }}>
+  <ExportWrapper>
+    <Space>
+      {/* Button to clear all filters and search */}
+      <Button type="default" onClick={clearAllFiltersAndSearch}>
+        {t('Clear All Filters and Search')}
+      </Button>
+      {/* Button to export to CSV */}
+      <Button type="primary" onClick={exportToCSV}>
+        {t('Export to CSV')}
+      </Button>
+    </Space>
+  </ExportWrapper>
+</Col>
 
-          </ExportWrapper>
-          
-        </Col>
       </Row>
       <BaseTable
         columns={columns}
