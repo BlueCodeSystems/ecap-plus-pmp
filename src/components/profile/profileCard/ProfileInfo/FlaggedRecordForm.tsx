@@ -70,19 +70,18 @@ export const FlaggedRecordForm: React.FC = () => {
   const facility = location?.state?.household?.facility || 'Not Available';
 
   const [isSubmitting, setSubmitting] = useState<boolean>(false);
+  const [isExporting, setExporting] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        console.log('Fetching user data...');
         const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('access_token')}`,
           },
         });
-        console.log('User data fetched successfully:', response.data.data);
         setUser(response.data.data);
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -92,24 +91,54 @@ export const FlaggedRecordForm: React.FC = () => {
     fetchUserData();
   }, []);
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Access token is missing!');
+
+      const response = await axios.get(
+        `${process.env.REACT_APP_BASE_URL}/items/${collectionName}/export`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          responseType: 'blob',
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'flagged_forms_export.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      notificationController.success({
+        message: 'Export Successful',
+        description: 'The flagged forms have been successfully exported.',
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      notificationController.error({
+        message: 'Export Failed',
+        description: 'An error occurred while exporting flagged forms.',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleSubmit = async (values: { comment: string }) => {
     setSubmitting(true);
     setError(null);
 
     try {
-      console.log('Submitting comment...');
-      console.log('Form values:', values);
-
       const token = localStorage.getItem('access_token');
-      console.log('Access token:', token);
-
-      if (!token) {
-        throw new Error('Access token is missing!');
-      }
+      if (!token) throw new Error('Access token is missing!');
 
       const verifier = user ? `${user.first_name} ${user.last_name}` : 'Unknown Verifier';
-      console.log('Verifier:', verifier);
-
       const payload = {
         household_id: householdId,
         vca_id: vcaId,
@@ -120,33 +149,23 @@ export const FlaggedRecordForm: React.FC = () => {
         comment: values.comment,
         verifier,
       };
-      console.log('Payload:', payload);
 
-      const response = await axios.post(
-        `${apiUrl}/${collectionName}`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await axios.post(`${apiUrl}/${collectionName}`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      console.log('Comment submitted successfully:', response.data);
-
-      // Show success notification
       notificationController.success({
         message: 'Comment Submitted',
         description: 'Your comment has been successfully posted.',
       });
 
-      // Wait for the notification to disappear (e.g., 3 seconds)
       setTimeout(() => {
         navigate('/flagged-records', { state: { householdId } });
       }, 3000);
     } catch (err: any) {
-      console.error('Failed to submit the comment:', err);
-      setError(err.response?.data?.message || 'Failed to submit the comment to the server. Please try again later.');
+      setError(err.response?.data?.message || 'Failed to submit the comment to the server.');
     } finally {
       setSubmitting(false);
     }
@@ -200,6 +219,17 @@ export const FlaggedRecordForm: React.FC = () => {
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={isSubmitting} block>
             Submit Comment
+          </Button>
+        </Form.Item>
+
+        <Form.Item>
+          <Button
+            type="primary"
+            loading={isExporting}
+            onClick={handleExport}
+            block
+          >
+            Export Flagged Forms
           </Button>
         </Form.Item>
       </Form>
