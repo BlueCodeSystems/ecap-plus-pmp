@@ -548,30 +548,11 @@ export const TreeTable: React.FC = () => {
             />
           </Tooltip>
         </Col>
-        <Col>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: '8px 16px 0 0' }}>{t('Filter by Sub Population')}</h3>
-            <Tooltip title="View filter key descriptions">
-              <Alert
-                message={t('View Key')}
-                type="info"
-                onClick={showModal}
-                style={{ padding: '4px', width: '150px', cursor: 'pointer', margin: '10px 0' }}
-                showIcon
-              />
-              {/* <Button 
-                  type="text" 
-                  icon={<InfoCircleOutlined />} 
-                  onClick={showModal}
-                  style={{ padding: '4px' }}
-                >
-                  {t('View Key')}
-              </Button> */}
-            </Tooltip>
-          </div>
-          <Row align="middle" style={{ display: 'flex' }}>
+        <Col span={24}>
+          <h5 style={{ fontSize: '20px', margin: '16px 16px 8px 0' }}>{t('Filter by Sub Population')}</h5>
+          <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
             {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-              <div key={key} style={{ marginRight: '8px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <div key={key} style={{ marginRight: '16px', marginBottom: '1px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <span style={{ fontSize: '12px' }}>{label}</span>
                 <Select
                   style={{ width: '100px' }}
@@ -591,7 +572,7 @@ export const TreeTable: React.FC = () => {
             <ExportWrapper>
               <Space>
                 {/* Button to clear all filters and search */}
-                <Button type="primary" onClick={handleClearFilters}>
+                <Button type="default" onClick={handleClearFilters}>
                   {t('Clear All Filters and Search')}
                 </Button>
                 {/* Button to export to CSV */}

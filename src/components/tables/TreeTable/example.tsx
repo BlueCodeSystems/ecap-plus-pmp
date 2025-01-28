@@ -432,34 +432,22 @@ export const TreeTable: React.FC = () => {
             />
           </Tooltip>
         </Col>
-        <Col>
-          <Row align="middle" style={{ marginBottom: '8px' }}>
-            <h5 style={{ margin: '0 8px 0 0' }}>{t('Filter by Sub Population')}</h5>
-            <Tooltip title="View filter key descriptions">
-              <Button 
-                type="text" 
-                icon={<InfoCircleOutlined />} 
-                onClick={showModal}
-                style={{ padding: '4px' }}
-              />
-            </Tooltip>
-          </Row>
-          <Row gutter={[8, 8]} style={{ display: 'flex', flexWrap: 'wrap' }}>
+        <Col span={24}>
+          <h5 style={{ fontSize: '20px', margin: '16px 16px 8px 0' }}>{t('Filter by Sub Population')}</h5>
+          <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
             {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-              <Col key={key} xs={24} sm={12} md={8} lg={6}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <Text style={{ fontSize: '12px', marginBottom: '4px' }}>{label}</Text>
-                  <Select
-                    style={{ width: '100%' }}
-                    value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
-                    onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
-                  >
-                    <Select.Option value="all">{t('All')}</Select.Option>
-                    <Select.Option value="yes">{t('Yes')}</Select.Option>
-                    <Select.Option value="no">{t('No')}</Select.Option>
-                  </Select>
-                </div>
-              </Col>
+              <div key={key} style={{ marginRight: '16px', marginBottom: '1px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '12px' }}>{label}</span>
+                <Select
+                  style={{ width: '100px' }}
+                  value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
+                  onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
+                >
+                  <Select.Option value="all">{t('All')}</Select.Option>
+                  <Select.Option value="yes">{t('Yes')}</Select.Option>
+                  <Select.Option value="no">{t('No')}</Select.Option>
+                </Select>
+              </div>
             ))}
           </Row>
         </Col>
