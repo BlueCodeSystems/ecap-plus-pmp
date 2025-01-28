@@ -357,35 +357,37 @@ export const EditableTable: React.FC = () => {
             />
           </Tooltip>
         </Col>
-        <Col>
-          <h5 style={{ margin: '0 16px 0 0' }}>{t('Filter by Sub Population')}</h5>
-          <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-              <div key={key} style={{ marginRight: '8px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '12px' }}>{label}</span>
-                <Select
-                  style={{ width: '100px' }}
-                  value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
-                  onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
-                >
-                  <Select.Option value="all">{t('All')}</Select.Option>
-                  <Select.Option value="yes">{t('Yes')}</Select.Option>
-                  <Select.Option value="no">{t('No')}</Select.Option>
-                </Select>
-              </div>
-            ))}
-          </Row>
-        </Col>
+        <Col span={24}>
+  <h5 style={{ fontSize: '20px', margin: '16px 16px 8px 0' }}>{t('Filter by Sub Population')}</h5>
+  <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+    {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
+      <div key={key} style={{ marginRight: '16px', marginBottom: '1px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: '12px' }}>{label}</span>
+        <Select
+          style={{ width: '100px' }}
+          value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
+          onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
+        >
+          <Select.Option value="all">{t('All')}</Select.Option>
+          <Select.Option value="yes">{t('Yes')}</Select.Option>
+          <Select.Option value="no">{t('No')}</Select.Option>
+        </Select>
+      </div>
+    ))}
+  </Row>
+</Col>
+
         <Col>
           <ExportWrapper>
-            <Space>
-              <Button type="default" onClick={clearAllFiltersAndSearch}>
-                {t('Clear All Filters and Search')}
-              </Button>
-              <Button type="primary" onClick={exportToCSV}>
-                {t('Export to CSV')}
-              </Button>
-            </Space>
+          <Space style={{ marginTop: '20px' }}>
+          <Button type="default" onClick={clearAllFiltersAndSearch}>
+            {t('Clear All Filters and Search')}
+          </Button>
+          <Button type="primary" onClick={exportToCSV}>
+            {t('Export to CSV')}
+          </Button>
+        </Space>
+        
           </ExportWrapper>
         </Col>
       </Row>
