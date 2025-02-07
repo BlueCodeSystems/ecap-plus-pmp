@@ -7,11 +7,13 @@ import { useAppSelector } from '@app/hooks/reduxHooks';
 import { themeObject } from '@app/styles/themes/themeVariables';
 import { FONT_SIZE, FONT_WEIGHT } from '@app/styles/themes/constants';
 import axios from 'axios';
-import { Select, Button, Spin, Skeleton } from 'antd';
+import { Select, Button, Spin, Skeleton, Tag } from 'antd';
 import { DeleteOutlined, RiseOutlined } from '@ant-design/icons';
 import { useResponsive } from '@app/hooks/useResponsive';
 import { useNavigate } from 'react-router-dom';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
+import { Parser } from 'json2csv';
+import Item from 'antd/lib/list/Item';
 
 const { Option } = Select;
 
@@ -35,8 +37,11 @@ export const GradientStackedAreaChart: React.FC = () => {
   const [caregiverReferralsData, setCaregiverReferralsData] = useState<any[]>([]);
   const [vcaReferralsData, setVcaReferralsData] = useState<any[]>([]);  // Added state for VCA Referrals
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [districtLoading, setDistrictLoading] = useState(true);
-
+  const [selectedData, setSelectedData] = useState<any[]| null>(null);
+  const [selectedOption, setSelectedOption] = useState<string| null>(null);
+ 
   // Fetch User Data
   useEffect(() => {
     const fetchUserData = async () => {
@@ -126,15 +131,90 @@ export const GradientStackedAreaChart: React.FC = () => {
 
     fetchVcaReferralsData();
   }, [user]);
+ 
+  const years: number[] = []; //array of years
+  
+  // get data for the year array
+  const caregiverServicesYearData = () => {
+    caregiverServicesData.forEach((item) =>{
+      const [ ,year] = item.service_month.split('-');
+      const yearNumber = parseInt(year, 10);
+      if (year !== null && !years.includes(yearNumber)) {
+        years.push(yearNumber);
+      }
+      years.sort((a, b) => b - a);
+    });
+    return years;
+  }
 
+ const vacServicesYearData = () => {
+    vcaServicesData.forEach((item) =>{
+      const [ ,year] = item.service_month.split('-');
+      const yearNumber = parseInt(year, 10);
+     if (year !== null && !years.includes(yearNumber)) {
+        years.push(yearNumber);
+      }
+      years.sort((a, b) => b - a);
+    });
+    return years;
+  }
+
+  const caregiverRefferalsYearData = () => {
+    caregiverReferralsData.forEach((item) =>{
+      if (item.service_month && typeof item.service_month === 'string'){
+        const [month,year] = item.service_month.split('-');
+        const yearNumber = parseInt(year, 10);
+        if (year !== null && !years.includes(yearNumber)) {
+          years.push(yearNumber);
+        }
+        years.sort((a, b) => b - a);
+      }
+    });
+    return years;
+  }
+
+ const vcaRefferalsYearData = () => {
+      vcaReferralsData.forEach((item) =>{
+      if (item.service_month && typeof item.service_month === 'string'){
+        const [month ,year] = item.service_month.split('-');
+      const yearNumber = parseInt(year, 10);
+      if (year !== null && !years.includes(yearNumber)) {
+        years.push(yearNumber);
+      }
+      years.sort((a, b) => b - a);
+      }
+    });
+    return years;
+  }
+
+  const dataCollected = [
+    caregiverServicesYearData,
+    vacServicesYearData,
+    caregiverRefferalsYearData,
+    vcaRefferalsYearData
+  ];
+  //removes duplicates in the years array
+  dataCollected.forEach((fn) => {
+    fn().forEach((year) => {
+      if (!years.includes(year)) {
+        years.push(year);
+      }
+    });
+  });
+  
   // Process Data for Chart
   const processCaregiverData = () => {
     const months = Array(12).fill(0);
     caregiverServicesData.forEach((item) => {
-      const [month] = item.service_month.split('-');
+      const [month,year] = item.service_month.split('-');
       const monthIndex = parseInt(month, 10) - 1;
       if (selectedMonth === null || parseInt(month, 10) === selectedMonth) {
-        months[monthIndex] += Math.round(item.service_count);
+        if(selectedYear === null || selectedYear === parseInt(year, 10) && item.service_month !== null){
+          months[monthIndex] += Math.round(item.service_count);
+        }
+        else{
+          months[monthIndex] += 0;
+        }
       }
     });
     return months;
@@ -143,10 +223,15 @@ export const GradientStackedAreaChart: React.FC = () => {
   const processVcaData = () => {
     const months = Array(12).fill(0);
     vcaServicesData.forEach((item) => {
-      const [month] = item.service_month.split('-');
+      const [month,year] = item.service_month.split('-');
       const monthIndex = parseInt(month, 10) - 1;
       if (selectedMonth === null || parseInt(month, 10) === selectedMonth) {
-        months[monthIndex] += Math.round(item.service_count);
+        if(selectedYear === null || selectedYear === parseInt(year, 10) && item.service_month !== null){
+          months[monthIndex] += Math.round(item.service_count);
+        }
+        else{
+          months[monthIndex] += 0;
+        }
       }
     });
     return months;
@@ -155,10 +240,15 @@ export const GradientStackedAreaChart: React.FC = () => {
   const processCaregiverReferralsData = () => {
     const months = Array(12).fill(0);
     caregiverReferralsData.forEach((item) => {
-      const [month] = item.referral_month.split('-');
+      const [month,year] = item.referral_month.split('-');
       const monthIndex = parseInt(month, 10) - 1;
       if (selectedMonth === null || parseInt(month, 10) === selectedMonth) {
-        months[monthIndex] += Math.round(item.referral_count);
+        if(selectedYear === null || selectedYear === parseInt(year, 10) && item.referral_month !== null){
+          months[monthIndex] += Math.round(item.referral_count);
+        }
+        else{
+          months[monthIndex] += 0;
+        }
       }
     });
     return months;
@@ -167,25 +257,51 @@ export const GradientStackedAreaChart: React.FC = () => {
   const processVcaReferralsDataProcessed = () => {  // Process VCA Referrals
     const months = Array(12).fill(0);
     vcaReferralsData.forEach((item) => {
-      const [month] = item.referral_month.split('-');
+      const [month, year] = item.referral_month.split('-');
       const monthIndex = parseInt(month, 10) - 1;
       if (selectedMonth === null || parseInt(month, 10) === selectedMonth) {
-        months[monthIndex] += Math.round(item.referral_count);
+        if(selectedYear === null || selectedYear === parseInt(year, 10) && item.referral_month !== null){
+          months[monthIndex] += Math.round(item.referral_count);
+        }
+        else{
+          months[monthIndex] += 0;
+        }
       }
     });
     return months;
   };
+  const allData = [
+    { name: "VCA Services", data: vcaServicesData },
+    { name: "VCA Referrals", data: vcaReferralsData },
+    { name: "Caregiver Services", data: caregiverServicesData },
+    { name: "Caregiver Referrals", data: caregiverReferralsData }
+];
+
+//handle datachange
+const handleDataChange = (event: any) => {
+    const collectData = allData.find((item) => item.name === event);
+    if (collectData) {
+      setSelectedData(collectData.data);
+      setSelectedOption(event);
+    }
+};
 
   // Handle month change
   const handleMonthChange = (value: number) => {
     setSelectedMonth(value);
   };
+  //handle year change
+  const handleYearChange = (value: number) => {
+    setSelectedYear(value);
+  };
 
   // Clear filter
   const clearFilter = () => {
     setSelectedMonth(null);
+    setSelectedYear(null);
+    setSelectedOption(null);
   };
-
+  
   // Prepare data for chart
   const caregiverData = processCaregiverData();
   const vcaData = processVcaData();
@@ -206,6 +322,8 @@ export const GradientStackedAreaChart: React.FC = () => {
     t('November'),
     t('December'),
   ];
+ 
+  const monthWithYear = months.map(month => `${month}${selectedYear === null? " " : selectedYear}`); 
 
   const option = {
     tooltip: {
@@ -241,7 +359,7 @@ export const GradientStackedAreaChart: React.FC = () => {
       {
         type: 'category',
         boundaryGap: false,
-        data: months,
+        data: monthWithYear,
         axisLabel: {
           fontSize: FONT_SIZE.xxs,
           fontWeight: FONT_WEIGHT.light,
@@ -331,7 +449,6 @@ export const GradientStackedAreaChart: React.FC = () => {
       },
     ],
   };
-
   useEffect(() => {
     if (
       caregiverServicesData.length &&
@@ -346,6 +463,63 @@ export const GradientStackedAreaChart: React.FC = () => {
   const handleViewDashboards = () => {
     navigate('/visualization-dashboards');
   };
+
+  const exportToCSV = () => {
+    try {
+        const filteredData = selectedData ? selectedData.filter(item => {
+          const services = item.service_month;
+          const referrals = item.referral_month;
+          // services are selected returns the selected month and year
+            if(services !== null || services !== undefined){
+              const [month, year] = services && services?.split('-');
+              return month == selectedMonth && year == selectedYear; 
+            }
+            // referrals are selected returns the elected month and year
+            else if(referrals && typeof referrals === 'string' && referrals.includes('-') && referrals !== null){
+              const [newmonth, newyear] = referrals?.split('-');
+              return parseInt(newmonth, 10) == selectedMonth && parseInt(newyear, 10) == selectedYear;
+            }
+            //specific services and referrals are not selected return month or year data
+            else if (services !== null || referrals !== null && referrals !== undefined){
+                const [month, year] = services?.split('-');
+                const [newmonth, newyear] = referrals?.split('-');
+                if(selectedMonth !== null && selectedYear === null){
+                  return month == selectedMonth &&  newmonth == selectedMonth;// concatinate the methods that return months
+              }
+                else if(selectedYear !== null && selectedMonth === null){
+                return year == selectedYear && newyear == selectedYear;// concatinate the methods that return years
+                }
+            }
+            // In case none of the conditions are met, explicitly return alert
+            return false; 
+        }) : [];
+        const allDataFilters = () =>{
+          if (filteredData?.length === 0) {
+            if (selectedMonth === null && selectedYear === null && selectedOption=== null){
+                const allInfo = caregiverServicesData.concat(vcaServicesData).concat(caregiverReferralsData).concat(vcaReferralsData);
+              return allInfo;
+            }
+          }
+          return [];
+        };
+      
+        
+      // Convert to CSV
+      const parser = new Parser();
+      const csvData = parser.parse(filteredData.length > 0 ? filteredData : allDataFilters());
+      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${selectedOption? selectedOption : 'All Data'} ${selectedMonth != null ? months[selectedMonth - 1] : ''} ${selectedYear? selectedYear: ""}.csv`;
+      link.click();
+      }
+      catch (error) { 
+      console.error('Error exporting data:', error);
+    }
+      
+    };
+      
+  
 
   return (
     <BaseCard title={t('Caregiver, VCA Services and Referrals provided in a month')}>
@@ -369,9 +543,41 @@ export const GradientStackedAreaChart: React.FC = () => {
                     </Option>
                   ))}
                 </Select>
+                
+                <Select
+                  value={selectedYear || undefined}
+                  onChange={handleYearChange}
+                  placeholder="Select Year"
+                  style={{ minWidth: '200px' }}
+                >
+                  {years.map((year, index) => (
+                    <Option key={index} value={year}>
+                      {year}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  value={selectedOption}
+                  onChange={handleDataChange}
+                  placeholder="Select Data"
+                  style={{ minWidth: '200px' }}
+                >
+                  {allData.map((item, index) => (
+                    <Option key={index} value={item.name}>
+                      {item.name}
+                    </Option>
+                  ))}
+                </Select>
+                  
+                  {/* Button to export to CSV */}
+                  <Button 
+                    type="primary" 
+                    onClick={exportToCSV}>
+                    {selectedMonth ? `Export ${months[selectedMonth - 1]} to CSV` : "Export to CSV"}
+                     </Button>
 
                 <Button
-                  type="ghost"
+                  type="primary"
                   onClick={clearFilter}
                   style={{
                     display: 'flex',
@@ -379,7 +585,7 @@ export const GradientStackedAreaChart: React.FC = () => {
                   }}
                 >
                   <DeleteOutlined style={{ marginRight: 5 }} />
-                  {t('Clear Month Filter')}
+                  {t('Clear Filter')}
                 </Button>
               </div>
 
@@ -407,7 +613,7 @@ export const GradientStackedAreaChart: React.FC = () => {
             </div>
           </BaseRow>
         )}
-        {!districtLoading && <BaseChart option={option} />}
+        {!districtLoading && <BaseChart option={option}/>}
       </Spin>
     </BaseCard>
   );

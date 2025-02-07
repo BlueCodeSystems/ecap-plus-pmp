@@ -553,9 +553,9 @@ export const TreeTableArchived: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'flex-end' }} >
             <ExportWrapper>
               <Space>
-                {/* Button to clear all filters and search */}
-                <Button type="default" onClick={handleClearFilters}>
-                  {t('Clear All Filters and Search')}
+                {/* Button to clear filters */}
+                <Button type="primary" onClick={handleClearFilters}>
+                  {t('Clear Filters')}
                 </Button>
                 {/* Button to export to CSV */}
                 <Button type="primary" onClick={exportToCSV}>

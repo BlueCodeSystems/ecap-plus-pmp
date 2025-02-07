@@ -370,9 +370,9 @@ export const EditableTableArchived: React.FC = () => {
         <Col style={{ marginTop: '16px' }}>
   <ExportWrapper>
     <Space>
-      {/* Button to clear all filters and search */}
-      <Button type="default" onClick={clearAllFiltersAndSearch}>
-        {t('Clear All Filters and Search')}
+      {/* Button to clear filters */}
+      <Button type="primary" onClick={clearAllFiltersAndSearch}>
+        {t('Clear Filters')}
       </Button>
       {/* Button to export to CSV */}
       <Button type="primary" onClick={exportToCSV}>
