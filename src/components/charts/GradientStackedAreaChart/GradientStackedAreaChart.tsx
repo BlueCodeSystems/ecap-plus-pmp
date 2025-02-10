@@ -469,28 +469,53 @@ const handleDataChange = (event: any) => {
         const filteredData = selectedData ? selectedData.filter(item => {
           const services = item.service_month;
           const referrals = item.referral_month;
-          // services are selected returns the selected month and year
-            if(services !== null || services !== undefined){
-              const [month, year] = services && services?.split('-');
-              return month == selectedMonth && year == selectedYear; 
-            }
-            // referrals are selected returns the elected month and year
-            else if(referrals && typeof referrals === 'string' && referrals.includes('-') && referrals !== null){
-              const [newmonth, newyear] = referrals?.split('-');
-              return parseInt(newmonth, 10) == selectedMonth && parseInt(newyear, 10) == selectedYear;
-            }
-            //specific services and referrals are not selected return month or year data
-            else if (services !== null || referrals !== null && referrals !== undefined){
-                const [month, year] = services?.split('-');
-                const [newmonth, newyear] = referrals?.split('-');
-                if(selectedMonth !== null && selectedYear === null){
-                  return month == selectedMonth &&  newmonth == selectedMonth;// concatinate the methods that return months
+
+          // Referrals are selected; return the elected month and year
+          if (referrals && selectedMonth !== null && selectedYear !== null) {
+            const [month, year] = referrals.split('-');
+            if (month && year) {
+              if (parseInt(month, 10) === selectedMonth && parseInt(year, 10) === selectedYear) {
+                return true;
               }
-                else if(selectedYear !== null && selectedMonth === null){
-                return year == selectedYear && newyear == selectedYear;// concatinate the methods that return years
-                }
+            } else {
+              console.error('Invalid referrals data');
             }
-            // In case none of the conditions are met, explicitly return alert
+          }
+
+          // Services are selected; return the selected month and year
+          if (services && selectedMonth !== null && selectedYear !== null) {
+            const [month, year] = services.split('-');
+            if (month && year) {
+              return month == selectedMonth && year == selectedYear;
+            } else {
+              console.error('Invalid services data');
+            }
+          }
+          // when selected option is null 
+          if (selectedOption === null) {
+                    if (!services || !referrals) {
+                      return false; // If either services or referrals are empty, exit early and return false
+                  }
+                    // Split services into month and year
+                    const [month, year] = services ?.split('-') || [];
+                    const [newmonth, newyear] = referrals ?.split('-') || [];
+                    let result = false;
+                    // If only selectedMonth is set, filter by month
+                      if (selectedMonth !== null && selectedYear === null) {
+                        // Return only data that matches the selected month from services or referrals
+                        return month == selectedMonth || newmonth == selectedMonth;
+                    }
+
+                  
+                    // If only selectedYear is set, filter by year
+                    else if (selectedYear !== null && selectedMonth === null) {
+                      // Return only data that matches the selected year from services or referrals
+                      return year == selectedYear || newyear == selectedYear;
+                  }
+                  
+                    // If both selectedMonth and selectedYear are null, do nothing or return false
+                    return false;
+        }
             return false; 
         }) : [];
         const allDataFilters = () =>{
