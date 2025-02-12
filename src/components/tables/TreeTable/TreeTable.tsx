@@ -573,7 +573,7 @@ export const TreeTable: React.FC = () => {
               <Space>
                 {/* Button to clear all filters and search */}
                 <Button type="default" onClick={handleClearFilters}>
-                  {t('Clear All Filters and Search')}
+                  {t('Clear All Filters')}
                 </Button>
                 {/* Button to export to CSV */}
                 <Button type="primary" onClick={exportToCSV}>
