@@ -491,28 +491,29 @@ const handleDataChange = (event: any) => {
               console.error('Invalid services data');
             }
           }
-          // when selectedoption is null 
-          if (selectedOption === null) {
-                    // If only selectedMonth is set, filter by month
-              if ((selectedYear === null || selectedMonth === null) && selectedOption === null) {
-                    const [month, year] = services ?.split('-');
-                    const [newmonth,newyear] = referrals ?.split('-');
-                    
-                    if(month && newmonth && selectedYear === null){
-                    // Return only data that matches the selected month from services or referrals 
-                      return selectedMonth === parseInt(month, 10) && selectedMonth === parseInt(newmonth, 10);
-                    }
-                    else if(year && newyear && selectedMonth === null) {
-                      return selectedYear === parseInt(year, 10) && selectedYear === parseInt(newyear, 10);
-                    }
-                    else {
-                      console.error(`Invalid ${selectedMonth != null ? months[selectedMonth - 1]: ''} or ${selectedYear} data`);
-                    }
-                }
-            
-                    // If both selectedMonth and selectedYear are null, do nothing or return false
-                    return console.error('invalid or empty data');
+      
+          if(selectedOption === null && selectedYear === null && selectedMonth !== null){ 
+            const [month, year] = services ? services.split('-'): [];
+            const [newmonth,newyear] = referrals ? referrals.split('-'):[];
+            if(month || newmonth){
+              if(selectedMonth === parseInt(month, 10) || selectedMonth === parseInt(newmonth, 10)){
+                return (services + referrals);
+              }
+            } 
+          }
+
+          if(selectedYear !== null && selectedOption === null && selectedMonth === null) {
+            const [month, year] = services ? services.split('-'): [];
+            const [newmonth,newyear] = referrals ? referrals.split('-'):[];
+            if(year || newyear){
+              if(selectedYear === parseInt(year, 10) || selectedYear === parseInt(newyear, 10)){
+                return (services + referrals);
+              }
             }
+          }
+                    // else {
+                    //   console.error(`Invalid ${selectedMonth != null ? months[selectedMonth - 1]: ''} or ${selectedYear} data`);
+                    // }
           
             return false; 
   }) : [];
