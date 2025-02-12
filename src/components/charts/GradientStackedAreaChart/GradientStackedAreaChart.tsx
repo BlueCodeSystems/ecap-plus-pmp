@@ -491,33 +491,31 @@ const handleDataChange = (event: any) => {
               console.error('Invalid services data');
             }
           }
-          // when selected option is null 
+          // when selectedoption is null 
           if (selectedOption === null) {
-                    if (!services || !referrals) {
-                      return false; // If either services or referrals are empty, exit early and return false
-                  }
-                    // Split services into month and year
-                    const [month, year] = services ?.split('-') || [];
-                    const [newmonth, newyear] = referrals ?.split('-') || [];
-                    let result = false;
                     // If only selectedMonth is set, filter by month
-                      if (selectedMonth !== null && selectedYear === null) {
-                        // Return only data that matches the selected month from services or referrals
-                        return month == selectedMonth || newmonth == selectedMonth;
+              if ((selectedYear === null || selectedMonth === null) && selectedOption === null) {
+                    const [month, year] = services ?.split('-');
+                    const [newmonth,newyear] = referrals ?.split('-');
+                    
+                    if(month && newmonth && selectedYear === null){
+                    // Return only data that matches the selected month from services or referrals 
+                      return selectedMonth === parseInt(month, 10) && selectedMonth === parseInt(newmonth, 10);
                     }
-
-                  
-                    // If only selectedYear is set, filter by year
-                    else if (selectedYear !== null && selectedMonth === null) {
-                      // Return only data that matches the selected year from services or referrals
-                      return year == selectedYear || newyear == selectedYear;
-                  }
-                  
+                    else if(year && newyear && selectedMonth === null) {
+                      return selectedYear === parseInt(year, 10) && selectedYear === parseInt(newyear, 10);
+                    }
+                    else {
+                      console.error(`Invalid ${selectedMonth != null ? months[selectedMonth - 1]: ''} or ${selectedYear} data`);
+                    }
+                }
+            
                     // If both selectedMonth and selectedYear are null, do nothing or return false
-                    return false;
-        }
+                    return console.error('invalid or empty data');
+            }
+          
             return false; 
-        }) : [];
+  }) : [];
         const allDataFilters = () =>{
           if (filteredData?.length === 0) {
             if (selectedMonth === null && selectedYear === null && selectedOption=== null){
@@ -532,12 +530,18 @@ const handleDataChange = (event: any) => {
       // Convert to CSV
       const parser = new Parser();
       const csvData = parser.parse(filteredData.length > 0 ? filteredData : allDataFilters());
-      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${selectedOption? selectedOption : 'All Data'} ${selectedMonth != null ? months[selectedMonth - 1] : ''} ${selectedYear? selectedYear: ""}.csv`;
-      link.click();
-      }
+        if(csvData.length === 0){
+          console.error('No data available to export.');
+        }
+        else{
+          const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `${selectedOption? selectedOption : 'All Data'} ${selectedMonth != null ? months[selectedMonth - 1] : ''} ${selectedYear? selectedYear: ""}.csv`;
+          link.click();
+          }
+        }
+      
       catch (error) { 
       console.error('Error exporting data:', error);
     }
