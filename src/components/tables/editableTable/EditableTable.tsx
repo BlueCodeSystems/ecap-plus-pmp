@@ -143,6 +143,7 @@ export const EditableTable: React.FC = () => {
     fetchHouseholds();
   }, [user]);
 
+  
   const clearAllFiltersAndSearch = () => {
     setSearchText('');
     setSearchQuery('');
