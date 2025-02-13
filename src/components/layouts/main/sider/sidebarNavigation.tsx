@@ -27,10 +27,10 @@ export const sidebarNavigation: SidebarNavigationItem[] = [
     icon: <DashboardOutlined />, // Dashboard icon for the main NFT Dashboard
     children: [
       {
-        title: 'common.mis-dashboard',
+        title: 'Home',
         key: 'mis-dashboard',
         url: '/',
-        icon: <LineChartOutlined />, // LineChart icon for MIS Dashboard
+        icon: < HomeOutlined />, // Home icon for MIS Dashboard
       },
       {
         title: 'common.households-register',
