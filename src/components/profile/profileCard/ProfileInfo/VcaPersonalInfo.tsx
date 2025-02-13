@@ -1,6 +1,6 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { Skeleton, Typography, Divider, Alert, Tag, Badge, Row, Col, Button } from 'antd';
 import { BaseButtonsForm } from '@app/components/common/forms/BaseButtonsForm/BaseButtonsForm';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
@@ -10,10 +10,9 @@ import { notificationController } from '@app/controllers/notificationController'
 import styled from 'styled-components';
 import { convertToYesNo, isoToDate } from '@app/utils/utils';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas'; // I
+import html2canvas from 'html2canvas';
 import { FileExcelFilled } from '@ant-design/icons';
 import moment from 'moment';
-
 
 const SectionTitle = styled(Typography.Title)`
   font-size: 18px;
@@ -33,7 +32,7 @@ const InfoValue = styled(Typography.Text)`
 
 const Wrapper = styled.div`
   width: 100%;
-   text-transform: capitalize;
+  text-transform: capitalize;
 `;
 
 const Title = styled(Typography.Title)`
@@ -156,14 +155,15 @@ interface Vcas {
   vl_suppressed: string;
 }
 
-
 interface PersonalInfoProps {
   profileData?: Vcas;
 }
 
 export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) => {
   const location = useLocation();
-  const vca: Vcas | undefined = location.state?.vca;
+  const { unique_id } = useParams<{ unique_id: string }>();
+  const vca = location.state?.vca;
+  console.log(vca);
 
   const [isFieldsChanged, setFieldsChanged] = useState(false);
   const [isLoading, setLoading] = useState(false);
@@ -171,6 +171,15 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
   // Use the Vca data directly for form initial values
   const [form] = BaseButtonsForm.useForm();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (vca) {
+      form.setFieldsValue({
+        firstName: vca.firstname,
+        lastName: vca.lastname,
+      });
+    }
+  }, [vca, form]);
 
   const onFinish = useCallback(
     (values: any) => {
@@ -183,21 +192,6 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     },
     [t]
   );
-
-  if (isLoading || !vca) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <Skeleton active />
-      </div>
-    );
-  }
 
   // Ref to capture the section for PDF
   const contentRef = useRef<HTMLDivElement>(null);
@@ -250,51 +244,43 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     );
   };
 
-
-
   return (
-    <Wrapper>
-      {profileData && (
-        <>
+  <Wrapper>
+    {profileData && (
+      <>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
+        </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
+        <Divider />
 
-            {/* <Button type="ghost" onClick={exportToPDF} icon={<FileExcelFilled />}>
-              {t('Export Profile')}
-            </Button> */}
-
-          </div>
-
-          <Divider />
-
-          <Row>
-            <Col span={24}>
-              <Typography.Text strong>Household ID </Typography.Text> {vca.household_id}
-            </Col>
-            <Col span={24}>
-              <Typography.Text strong>Unique ID </Typography.Text> {vca.uid}
-            </Col>
-            <Col span={24}>
-              <Typography.Text strong>Case status </Typography.Text>
-              <Badge
-                count={vca.case_status === '1' || vca.case_status === "yes" ? "Active" : "Inactive"}
-                style={{ fontWeight: 'bold', backgroundColor: vca.case_status === '1' || vca.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
-              />
-            </Col>
-            <Col span={24}>
-              <Typography.Text strong>Partner</Typography.Text> {vca.partner}
-            </Col>
-            <Col span={24}>
+        <Row>
+          <Col span={24}>
+            <Typography.Text strong>Household ID </Typography.Text> {vca.household_id}
+          </Col>
+          <Col span={24}>
+            <Typography.Text strong>Unique ID </Typography.Text> {unique_id}
+          </Col>
+          <Col span={24}>
+            <Typography.Text strong>Case status </Typography.Text>
+            <Badge
+              count={vca.case_status === '1' || vca.case_status === "yes" ? "Active" : "Inactive"}
+              style={{ fontWeight: 'bold', backgroundColor: vca.case_status === '1' || vca.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
+            />
+          </Col>
+          <Col span={24}>
+            <Typography.Text strong>Partner</Typography.Text> {vca.partner}
+          </Col>
+          <Col span={24}>
             <Typography.Text strong>Date enrolled </Typography.Text>
             {vca.date_enrolled}
-            </Col>
-          </Row>
-          <br />
-          <br />
-          <br />
-        </>
-      )}
+          </Col>
+        </Row>
+        <br />
+        <br />
+        <br />
+      </>
+    )}
       <BaseCard>
         <BaseButtonsForm
           form={form}
@@ -327,7 +313,8 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
             {renderCol('Is Biological', vca.is_biological, 8)}
             {renderCol('Is Biological Child', vca.is_biological_child, 8)}
             {renderCol('Is HIV Positive', vca.is_hiv_positive, 8)}
-            {renderCol('Is Index', vca.is_index, 8)}            {renderCol('Received Results Last HIV Test', vca.received_results_last_hiv_test, 8)}
+            {renderCol('Is Index', vca.is_index, 8)}
+            {renderCol('Received Results Last HIV Test', vca.received_results_last_hiv_test, 8)}
             {renderCol('Receiving ART', vca.receiving_art, 8)}
             {renderCol('Screening Location', vca.screening_location, 8)}
             {renderCol('Date Last VL', vca.date_last_vl, 8)}
