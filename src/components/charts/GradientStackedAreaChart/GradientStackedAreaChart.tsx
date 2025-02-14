@@ -452,7 +452,7 @@ const handleDataChange = (event: any) => {
             { offset: 1, color: themeObject[theme].chartColor4Tint },
           ]),
         },
-        //emphasis: { focus: 'series' },
+        emphasis: { focus: 'series' },
         data: caregiverReferralsDataProcessed,
       },
     ],
