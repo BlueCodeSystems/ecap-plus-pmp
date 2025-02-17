@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Table, Typography, Skeleton, Alert, Button, Space, Input, Tag, message, Select } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined} from '@ant-design/icons';
 import axios from 'axios';
 import Highlighter from 'react-highlight-words';
 import type { ColumnType } from 'antd/es/table';
+import { useNavigate } from 'react-router-dom'; // Use useNavigate for navigation
 
 const { Option } = Select;
 
@@ -36,7 +37,8 @@ const FlagRecordPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
-  const searchInput = useRef<Input>(null);
+  const searchInput = useRef<typeof Input>(null);
+  const navigate = useNavigate(); 
 
   const getColumnSearchProps = (dataIndex: keyof Record): ColumnType<Record> => ({
     // ...existing search logic
@@ -156,46 +158,60 @@ const FlagRecordPage: React.FC = () => {
     },
   ];
 
+  // Function to handle row click
+  const handleRowClick = (record: Record) => {
+    return {
+      onClick: () => {
+        navigate(`/profile/household-profile/${encodeURIComponent(record.household_id)}`, {
+          state: { household: record }, // Pass the full household object
+        });
+      },
+      style: { cursor: 'pointer' }, 
+    };
+  };
+  
+
   return (
     <>
-    <Typography.Title level={4}>
-    {loadingUserData ? (
-      <Skeleton.Input active size="small" />
-    ) : (
-      `${user?.location} District Flagged Records`
-    )}
-  </Typography.Title>
-  
-  {error && (
-    <Alert
-      message="Error"
-      description={error}
-      type="error"
-      showIcon
-      style={{ marginBottom: '20px' }}
-    />
-  )}
-  
-  <Button
-    type="primary"
-    onClick={handleExport}
-    style={{ marginBottom: '20px' }} // Add spacing between button and table
-  >
-    Export to CSV
-  </Button>
-  
-  {loadingTable ? (
-    <Skeleton active paragraph={{ rows: 3 }} />
-  ) : (
-    <Table
-      scroll={{ x: 500 }}
-      dataSource={records}
-      columns={columns}
-      rowKey="id"
-      pagination={{ pageSize: 10 }}
-    />
-  )}
-</>
+      <Typography.Title level={4}>
+        {loadingUserData ? (
+          <Skeleton.Input active size="small" />
+        ) : (
+          `${user?.location} District Flagged Records`
+        )}
+      </Typography.Title>
+
+      {error && (
+        <Alert
+          message="Error"
+          description={error}
+          type="error"
+          showIcon
+          style={{ marginBottom: '20px' }}
+        />
+      )}
+
+      <Button
+        type="primary"
+        onClick={handleExport}
+        style={{ marginBottom: '20px' }} 
+      >
+        Export to CSV
+      </Button>
+
+      {loadingTable ? (
+        <Skeleton active paragraph={{ rows: 3 }} />
+      ) : (
+        <Table
+          scroll={{ x: 500 }}
+          dataSource={records}
+          columns={columns}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+          onRow={handleRowClick} 
+        />
+      )}
+    </>
   );
 };
 
