@@ -55,10 +55,20 @@ interface Household {
   relation: string;
   other_relationship: string | null;
   is_index: string | number;
-  unique_id: string;
+  uid: string;
   household_id: string;
   ward: string;
   year: number;
+}
+
+interface Member {
+  uid: string;
+  firstname: string;
+  lastname: string;
+  birthdate: string;
+  vca_gender: string;
+  disability: string;
+  relation: string;
 }
 
 export const HouseholdMembersInfo: React.FC = () => {
@@ -67,7 +77,7 @@ export const HouseholdMembersInfo: React.FC = () => {
   const household: Household | undefined = location.state?.household;
 
   const [isLoading, setLoading] = useState(false);
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -81,16 +91,22 @@ export const HouseholdMembersInfo: React.FC = () => {
           setLoading(false);
         })
         .catch((err) => {
-          setError(err.message);
+          setError(err.message || 'An error occurred while fetching members.');
           setLoading(false);
         });
     }
   }, [household]);
 
-  const handleViewProfile = (unique_id: string) => {
-    const encodedId = encodeURIComponent(unique_id);
-    const route = `/profile/child-profile/${encodedId}`;
-    navigate(route, { state: { unique_id, household } });
+  const handleViewProfile = (uid: string) => {
+    const member = members && members?.find((m) => String(m?.uid) === String(uid));
+  
+    if (member) {
+      localStorage && localStorage?.setItem('selectedVCA', JSON?.stringify(member)); 
+      navigate(`/profile/vca-profile/${uid}`, { state: { vca: member } });
+    } else {
+      console.error('Member not found with the given uid:', uid);
+      setError('Member not found.');
+    }
   };
 
   if (isLoading) {
@@ -119,7 +135,7 @@ export const HouseholdMembersInfo: React.FC = () => {
         }}
       >
         <Alert
-          message="We encountered an error fetching households. Refresh the page to see if the issue persists."
+          message={`We encountered an error: ${error}. Refresh the page to see if the issue persists.`}
           type="error"
           showIcon
         />
@@ -129,7 +145,7 @@ export const HouseholdMembersInfo: React.FC = () => {
 
   return (
     <Wrapper>
-      {household && (
+      {household ? (
         <>
           <Title>Family Members</Title>
           <Subtitle>This section lists all family members in the household.</Subtitle>
@@ -137,40 +153,46 @@ export const HouseholdMembersInfo: React.FC = () => {
           <br />
           <BaseCard>
             {members.map((member) => (
-              <ListItemWrapper key={member.unique_id} gutter={[16, 16]}>
+              <ListItemWrapper key={member.uid} gutter={[16, 16]}>
                 <Col span={8}>
                   <InfoValue>
-                    {member.unique_id} - {member.firstname} {member.lastname}
+                    {member?.uid} - {member?.firstname} {member?.lastname}
                   </InfoValue>
                 </Col>
                 <Col span={12}>
                   <Row>
                     <Col span={24}>
-                      <InfoValue>Birthdate: {member.birthdate}</InfoValue>
+                      <InfoValue>Birthdate: {member?.birthdate}</InfoValue>
                     </Col>
                     <Col span={24}>
-                      <InfoValue>Gender: {member.vca_gender}</InfoValue>
+                      <InfoValue>Gender: {member?.vca_gender}</InfoValue>
                     </Col>
                     <Col span={24}>
-                      <InfoValue>Disability: {member.disability}</InfoValue>
+                      <InfoValue>Disability: {member?.disability}</InfoValue>
                     </Col>
                     <Col span={24}>
-                      <InfoValue>Relationship: {member.relation}</InfoValue>
+                      <InfoValue>Relationship: {member?.relation}</InfoValue>
                     </Col>
                   </Row>
                 </Col>
-                {/* <Col span={4}>
+                <Col span={4}>
                   <Button 
                     type="primary" 
-                    onClick={() => handleViewProfile(member.unique_id)}
+                    onClick={() => handleViewProfile(member.uid)}
                   >
-                    View
+                    View Profile
                   </Button>
-                </Col> */}
+                </Col>
               </ListItemWrapper>
             ))}
           </BaseCard>
         </>
+      ) : (
+        <Alert
+          message="No household data available."
+          type="warning"
+          showIcon
+        />
       )}
     </Wrapper>
   );
