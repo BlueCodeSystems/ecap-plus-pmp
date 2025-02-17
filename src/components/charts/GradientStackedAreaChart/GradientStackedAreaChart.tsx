@@ -497,8 +497,7 @@ const handleDataChange = (event: any) => {
               console.error('Invalid services data');
             }
           }
-
-          if(!selectedOption === true){  
+ 
           if(selectedOption === null && selectedYear === null && selectedMonth !== null){ 
             const [month, year] = services ? services.split('-'): [];
             const [newmonth,newyear] = referrals ? referrals.split('-'):[];
@@ -521,7 +520,6 @@ const handleDataChange = (event: any) => {
           else {
             console.error(`Invalid ${selectedMonth != null ? months[selectedMonth - 1]: ''} or ${selectedYear} data`);
           }
-        }
           
             return false; 
   }) : [];
