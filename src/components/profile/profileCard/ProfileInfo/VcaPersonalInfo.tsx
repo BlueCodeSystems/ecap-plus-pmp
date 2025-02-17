@@ -1,6 +1,6 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { Skeleton, Typography, Divider, Alert, Tag, Badge, Row, Col, Button } from 'antd';
 import { BaseButtonsForm } from '@app/components/common/forms/BaseButtonsForm/BaseButtonsForm';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
@@ -10,42 +10,34 @@ import { notificationController } from '@app/controllers/notificationController'
 import styled from 'styled-components';
 import { convertToYesNo, isoToDate } from '@app/utils/utils';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas'; // I
+import html2canvas from 'html2canvas';
 import { FileExcelFilled } from '@ant-design/icons';
 import moment from 'moment';
-
-
 const SectionTitle = styled(Typography.Title)`
   font-size: 18px;
   color: #004080;
   margin-bottom: 10px;
 `;
-
 const InfoLabel = styled(Typography.Text)`
   font-weight: bold;
   color: #006baf;
 `;
-
 const InfoValue = styled(Typography.Text)`
   display: block;
   margin-bottom: 8px;
 `;
-
 const Wrapper = styled.div`
   width: 100%;
-   text-transform: capitalize;
+  text-transform: capitalize;
 `;
-
 const Title = styled(Typography.Title)`
   font-size: 22px;
   color: #004080;
 `;
-
 const Subtitle = styled(Typography.Text)`
   font-size: 16px;
   color: #004080;
 `;
-
 interface Vcas {
   firstname: string;
   lastname: string;
@@ -105,7 +97,6 @@ interface Vcas {
   datecreated: string;
   dateedited: string;
   de_registration_date: string | null;
-  de_registration_reason: string | null;
   deathdateapprox: string;
   deleted: string | null;
   facility: string;
@@ -156,24 +147,27 @@ interface Vcas {
   vl_next_result: string | null;
   vl_suppressed: string;
 }
-
-
 interface PersonalInfoProps {
   profileData?: Vcas;
 }
-
 export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) => {
   const location = useLocation();
-  const vca: Vcas | undefined = location.state?.vca;
-
-
+  const { unique_id } = useParams<{ unique_id: string }>();
+  const vca = location.state?.vca;
+  console.log(vca);
   const [isFieldsChanged, setFieldsChanged] = useState(false);
   const [isLoading, setLoading] = useState(false);
-
   // Use the Vca data directly for form initial values
   const [form] = BaseButtonsForm.useForm();
   const { t } = useTranslation();
-
+  useEffect(() => {
+    if (vca) {
+      form.setFieldsValue({
+        firstName: vca.firstname,
+        lastName: vca.lastname,
+      });
+    }
+  }, [vca, form]);
   const onFinish = useCallback(
     (values: any) => {
       setLoading(true);
@@ -185,268 +179,209 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     },
     [t]
   );
-
+  // Ref to capture the section for PDF
+  const contentRef = useRef<HTMLDivElement>(null);
+  const exportToPDF = useCallback(() => {
+    const input = contentRef.current;
+    if (input) {
+      html2canvas(input).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF();
+        const imgWidth = 190;
+        const pageHeight = pdf.internal.pageSize.height;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let position = 10;
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        // Save the PDF
+        pdf.save('Vca_Personal_Info.pdf');
+      });
+    }
+  }, []);
   if (isLoading || !vca) {
     return (
       <div
-        style= {{
-      display: 'flex',
-        flexDirection: 'column',
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
           justifyContent: 'center',
-            alignItems: 'center',
-        }
-  }
-      >
-    <Skeleton active />
-    </div>
-    );
-  }
-
-// Ref to capture the section for PDF
-const contentRef = useRef<HTMLDivElement>(null);
-
-const exportToPDF = useCallback(() => {
-  const input = contentRef.current;
-  if (input) {
-    html2canvas(input).then((canvas) => {
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF();
-      const imgWidth = 190;
-      const pageHeight = pdf.internal.pageSize.height;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let position = 10;
-
-      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-
-      // Save the PDF
-      pdf.save('Vca_Personal_Info.pdf');
-    });
-  }
-}, []);
-
-if (isLoading || !vca) {
-  return (
-    <div
-        style= {{
-    display: 'flex',
-      flexDirection: 'column',
-        justifyContent: 'center',
           alignItems: 'center',
-        }
-}
+        }}
       >
-  <Skeleton active />
-  </div>
+        <Skeleton active />
+      </div>
     );
   }
-
-const renderCol = (label: string, value: any, span: number = 6) => {
-  // Check if the value is "no", false, or an empty string
-  if (value === 'no' || value === 'No' || value === false || value === 'false' || value === null || value === '') {
-    return null; // Don't render this column
-  }
-
-  return (
-    <BaseCol xs= { 24} md = { span } >
-      <InfoLabel>{ label } </InfoLabel>
-      < InfoValue > { value !== null && value !== undefined ? value : 'Not Applicable'
-}</InfoValue>
-  </BaseCol>
+  const renderCol = (label: string, value: any, span: number = 6) => {
+    // Check if the value is "no", false, or an empty string
+    if (value === 'no' || value === 'No' || value === false || value === 'false' || value === null || value === '') {
+      return null; // Don't render this column
+    }
+    return (
+      <BaseCol xs={24} md={span}>
+        <InfoLabel>{label}</InfoLabel>
+        <InfoValue>{value !== null && value !== undefined ? value : 'Not Applicable'}</InfoValue>
+      </BaseCol>
     );
   };
-
-
-
-return (
+  return (
   <Wrapper>
-  { profileData && (
-    <>
-
-    <div style= {{ display: 'flex', justifyContent: 'space-between' }}>
-      <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
-
-{/* <Button type="ghost" onClick={exportToPDF} icon={<FileExcelFilled />}>
-              {t('Export Profile')}
-            </Button> */}
-
-</div>
-
-  < Divider />
-
-  <Row>
-  <Col span={ 24 }>
-    <Typography.Text strong > Household ID </Typography.Text> {vca.household_id}
-      </Col>
-      < Col span = { 24} >
-        <Typography.Text strong > Unique ID </Typography.Text> {vca.uid}
+    {profileData && (
+      <>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
+        </div>
+        <Divider />
+        <Row>
+          <Col span={24}>
+            <Typography.Text strong>Household ID </Typography.Text> {vca.household_id}
           </Col>
-          < Col span = { 24} >
-            <Typography.Text strong > Case status </Typography.Text>
-              < Badge
-count = { vca.case_status === '1' || vca.case_status === "yes" ? "Active" : "Closed" }
-style = {{ fontWeight: 'bold', backgroundColor: vca.case_status === '1' || vca.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
-              />
-  </Col>
-  < Col span = { 24} >
-    <Typography.Text strong > Partner </Typography.Text> {vca.partner}
-    </Col>
-    < Col span = { 24} >
-      <Typography.Text strong > Date enrolled </Typography.Text>
-{ vca.date_enrolled }
-</Col>
-  </Row>
-  < br />
-  <br />
-  < br />
-  </>
-      )}
-<BaseCard>
-  <BaseButtonsForm
-          form={ form }
-name = "info"
-loading = { isLoading }
-initialValues = {{
-  firstName: vca.firstname,
-    lastName: vca.lastname,
+          <Col span={24}>
+            <Typography.Text strong>Unique ID </Typography.Text> {unique_id}
+          </Col>
+          <Col span={24}>
+            <Typography.Text strong>Case status </Typography.Text>
+            <Badge
+              count={vca.case_status === '1' || vca.case_status === "yes" ? "Active" : "Inactive"}
+              style={{ fontWeight: 'bold', backgroundColor: vca.case_status === '1' || vca.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
+            />
+          </Col>
+          <Col span={24}>
+            <Typography.Text strong>Partner</Typography.Text> {vca.partner}
+          </Col>
+          <Col span={24}>
+            <Typography.Text strong>Date enrolled </Typography.Text>
+            {vca.date_enrolled}
+          </Col>
+        </Row>
+        <br />
+        <br />
+        <br />
+      </>
+    )}
+      <BaseCard>
+        <BaseButtonsForm
+          form={form}
+          name="info"
+          loading={isLoading}
+          initialValues={{
+            firstName: vca.firstname,
+            lastName: vca.lastname,
           }}
-isFieldsChanged = { isFieldsChanged }
-setFieldsChanged = { setFieldsChanged }
-onFieldsChange = {() => setFieldsChanged(true)}
-onFinish = { onFinish }
-  >
-  <BaseRow gutter={ { xs: 10, md: 15, xl: 30 } }>
-      <Divider />
-      < BaseCol span = { 24} >
-        <SectionTitle level={ 5 }> { t('Household Deregistration Information') } </SectionTitle>
-          </BaseCol>
-  { renderCol('De-registration Reason', vca.de_registration_reason) }
-  { renderCol('De-registration Date', vca.de_registration_date) }
-  <Divider />
-    < Divider />
-    <BaseCol span = { 24 } >
-      <SectionTitle level={ 5 }> { t('Caregiver Personal Information') } </SectionTitle>
-        </BaseCol>
-
-{ renderCol('Birthdate', vca.birthdate, 8) }
-{ renderCol('Gender', vca.vca_gender, 8) }
-{ renderCol('Province', vca.province, 8) }
-{ renderCol('District', vca.district, 8) }
-{ renderCol('Ward', vca.ward, 8) }
-{ renderCol('Home Address', vca.homeaddress, 8) }
-{ renderCol('Physical Address', vca.physical_address, 8) }
-{ renderCol('Art Number', vca.art_number, 8) }
-{ renderCol('HIV Test Date', vca.hiv_test_date, 8) }
-{ renderCol('Been Tested Last Year', vca.been_tested_last_year, 8) }
-{ renderCol('Is Biological', vca.is_biological, 8) }
-{ renderCol('Is Biological Child', vca.is_biological_child, 8) }
-{ renderCol('Is HIV Positive', vca.is_hiv_positive, 8) }
-{ renderCol('Is Index', vca.is_index, 8) } { renderCol('Received Results Last HIV Test', vca.received_results_last_hiv_test, 8) }
-{ renderCol('Receiving ART', vca.receiving_art, 8) }
-{ renderCol('Screening Location', vca.screening_location, 8) }
-{ renderCol('Date Last VL', vca.date_last_vl, 8) }
-{ renderCol('Date Next VL', vca.date_next_vl, 8) }
-
-<Divider />
-
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('Enrollment Details') } </SectionTitle>
-      </BaseCol>
-{ renderCol('Date Offered Enrollment', vca.date_offered_enrollment, 8) }
-{ renderCol('Date Referred', vca.date_referred, 8) }
-{ renderCol('Facility', vca.facility, 8) }
-{ renderCol('School', vca.school, 8) }
-{ renderCol('School Name', vca.school_name, 8) }
-
-<Divider />
-
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('Current Caregiver Information') } </SectionTitle>
-      </BaseCol>
-
-{ renderCol('Name', vca.caregiver_name, 8) }
-{ renderCol('Gender', vca.caregiver_sex, 8) }
-{ renderCol('ART Number', vca.caregiver_art_number, 8) }
-{ renderCol('Birth Date', vca.caregiver_birth_date, 8) }
-{ renderCol('HIV Status', vca.caregiver_hiv_status, 8) }
-{ renderCol('Relationship to child', vca.relation, 8) }
-{ renderCol('NRC', vca.caregiver_nrc, 8) }
-{ renderCol('Phone', vca.caregiver_phone, 8) }
-{ renderCol('Is Mother Adhering to Treatment WLHIV', vca.is_mother_adhering_to_treatment_wlhiv, 8) }
-{ renderCol('Is Mother Currently on Treatment WLHIV', vca.is_mother_currently_on_treatment_wlhiv, 8) }
-{ renderCol('Is Mother Virally Suppressed WLHIV', vca.is_mother_virally_suppressed_wlhiv, 8) }
-{ renderCol('Is Pregnant/Breastfeeding', vca.is_pregnant_breastfeeding, 8) }
-{ renderCol('Is the Child Caregiver an FSW', vca.is_the_child_caregiver_an_fsw, 8) }
-{ renderCol('Reason', vca.reason, 8) }
-
-<Divider />
-
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('Sub Populations') } </SectionTitle>
-      </BaseCol>
-
-{ renderCol('ABYM', vca.abym, 8) }
-{ renderCol('Acceptance', vca.acceptance, 8) }
-{ renderCol('AGYW', convertToYesNo(vca.agyw), 8) }
-{ renderCol('Birthdate Approx', vca.birthdateapprox, 8) }
-{ renderCol('CALHIV', convertToYesNo(vca.calhiv), 8) }
-{ renderCol('CFSW', convertToYesNo(vca.cfsw), 8) }
-{ renderCol('Child Adolescent in Aged-Headed Household', vca.child_adolescent_in_aged_headed_household, 8) }
-{ renderCol('Child Adolescent in Child-Headed Household', vca.child_adolescent_in_child_headed_household, 8) }
-{ renderCol('Child Adolescent in Chronically Ill Headed Household', vca.child_adolescent_in_chronically_ill_headed_household, 8) }
-{ renderCol('Child Adolescent in Female-Headed Household', vca.child_adolescent_in_female_headed_household, 8) }
-{ renderCol('Child Adolescent Living with Disability', vca.child_adolescent_living_with_disability, 8) }
-{ renderCol('Child Been Tested for HIV', vca.child_been_tested_for_hiv, 8) }
-{ renderCol('Child Ever Experienced Sexual Violence', vca.child_ever_experienced_sexual_violence, 8) }
-{ renderCol('Consent Check Box', vca.consent_check_box, 8) }
-{ renderCol('CSV', convertToYesNo(vca.csv), 8) }
-{ renderCol('HEI', convertToYesNo(vca.hei), 8) }
-{ renderCol('Landmark', vca.landmark, 8) }
-{ renderCol('Level MMD', vca.level_mmd, 8) }
-{ renderCol('Member Type', vca.member_type, 8) }
-{ renderCol('Mother ART Number WLHIV', vca.mother_art_number_wlhiv, 8) }
-{ renderCol('PBFW', vca.pbfw, 8) }
-{ renderCol('Received Birth Certificate', vca.received_birth_certificate, 8) }
-{ renderCol('Survivors of Other Forms of Violence', vca.survivors_of_other_form_of_violence, 8) }
-{ renderCol('Takes Drugs to Prevent Other Diseases', vca.takes_drugs_to_prevent_other_diseases, 8) }
-{ renderCol('Takes TB Preventive Therapy', vca.takes_tb_preventive_therapy, 8) }
-{ renderCol('TB Screening', vca.tb_screening, 8) }
-{ renderCol('Time ART', vca.time_art, 8) }
-{ renderCol('Time Result', vca.time_result, 8) }
-{ renderCol('Time VL', vca.time_vl, 8) }
-{ renderCol('Under 5 Malnourished', vca.under_5_malnourished, 8) }
-{ renderCol('Updated Status', vca.updated_status, 8) }
-{ renderCol('Virally Suppressed', vca.virally_suppressed, 8) }
-{ renderCol('VL Last Result', vca.vl_last_result, 8) }
-{ renderCol('VL Next Result', vca.vl_next_result, 8) }
-{ renderCol('VL Suppressed', vca.vl_suppressed, 8) }
-
-<Divider />
-
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('History') } </SectionTitle>
-      </BaseCol>
-
-{ renderCol('Date Edited', vca.date_edited, 8) }
-{ renderCol('Date Edited Check', convertToYesNo(vca.date_edited_check), 8) }
-{ renderCol('Date Screened', vca.date_screened, 8) }
-{ renderCol('Date Started ART', vca.date_started_art, 8) }
-{ renderCol('Date Subpop2', vca.date_subpop2, 8) }
-{ renderCol('Date Edited', isoToDate(vca.dateedited).toLocaleDateString(), 8) }
-{ renderCol('De-Registration Date', vca.de_registration_date, 8) }
-{ renderCol('Death Date Approx', vca.deathdateapprox, 8) }
-
-<Divider />
-
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('Caseworker Information') } </SectionTitle>
-      </BaseCol>
-
-{ renderCol('Name', vca.caseworker_name, 8) }
-{ renderCol('Phone', vca.caseworker_phone, 8) }
-
-</BaseRow>
-  </BaseButtonsForm>
-  </BaseCard>
-  </Wrapper>
+          isFieldsChanged={isFieldsChanged}
+          setFieldsChanged={setFieldsChanged}
+          onFieldsChange={() => setFieldsChanged(true)}
+          onFinish={onFinish}
+        >
+          <BaseRow gutter={{ xs: 10, md: 15, xl: 30 }}>
+            <BaseCol span={24}>
+              <SectionTitle level={5}>{t('VCA Personal Information')}</SectionTitle>
+            </BaseCol>
+            {renderCol('Birthdate', vca.birthdate, 8)}
+            {renderCol('Gender', vca.vca_gender, 8)}
+            {renderCol('Province', vca.province, 8)}
+            {renderCol('District', vca.district, 8)}
+            {renderCol('Ward', vca.ward, 8)}
+            {renderCol('Home Address', vca.homeaddress, 8)}
+            {renderCol('Physical Address', vca.physical_address, 8)}
+            {renderCol('Art Number', vca.art_number, 8)}
+            {renderCol('HIV Test Date', vca.hiv_test_date, 8)}
+            {renderCol('Been Tested Last Year', vca.been_tested_last_year, 8)}
+            {renderCol('Is Biological', vca.is_biological, 8)}
+            {renderCol('Is Biological Child', vca.is_biological_child, 8)}
+            {renderCol('Is HIV Positive', vca.is_hiv_positive, 8)}
+            {renderCol('Is Index', vca.is_index, 8)}
+            {renderCol('Received Results Last HIV Test', vca.received_results_last_hiv_test, 8)}
+            {renderCol('Receiving ART', vca.receiving_art, 8)}
+            {renderCol('Screening Location', vca.screening_location, 8)}
+            {renderCol('Date Last VL', vca.date_last_vl, 8)}
+            {renderCol('Date Next VL', vca.date_next_vl, 8)}
+            <Divider />
+            <BaseCol span={24}>
+              <SectionTitle level={5}>{t('Enrollment Details')}</SectionTitle>
+            </BaseCol>
+            {renderCol('Date Offered Enrollment', vca.date_offered_enrollment, 8)}
+            {renderCol('Date Referred', vca.date_referred, 8)}
+            {renderCol('Facility', vca.facility, 8)}
+            {renderCol('School', vca.school, 8)}
+            {renderCol('School Name', vca.school_name, 8)}
+            <Divider />
+            <BaseCol span={24}>
+              <SectionTitle level={5}>{t('Current Caregiver Information')}</SectionTitle>
+            </BaseCol>
+            {renderCol('Name', vca.caregiver_name, 8)}
+            {renderCol('Gender', vca.caregiver_sex, 8)}
+            {renderCol('ART Number', vca.caregiver_art_number, 8)}
+            {renderCol('Birth Date', vca.caregiver_birth_date, 8)}
+            {renderCol('HIV Status', vca.caregiver_hiv_status, 8)}
+            {renderCol('Relationship to child', vca.relation, 8)}
+            {renderCol('NRC', vca.caregiver_nrc, 8)}
+            {renderCol('Phone', vca.caregiver_phone, 8)}
+            {renderCol('Is Mother Adhering to Treatment WLHIV', vca.is_mother_adhering_to_treatment_wlhiv, 8)}
+            {renderCol('Is Mother Currently on Treatment WLHIV', vca.is_mother_currently_on_treatment_wlhiv, 8)}
+            {renderCol('Is Mother Virally Suppressed WLHIV', vca.is_mother_virally_suppressed_wlhiv, 8)}
+            {renderCol('Is Pregnant/Breastfeeding', vca.is_pregnant_breastfeeding, 8)}
+            {renderCol('Is the Child Caregiver an FSW', vca.is_the_child_caregiver_an_fsw, 8)}
+            {renderCol('Reason', vca.reason, 8)}
+            <Divider />
+            <BaseCol span={24}>
+              <SectionTitle level={5}>{t('Sub Populations')}</SectionTitle>
+            </BaseCol>
+            {renderCol('ABYM', vca.abym, 8)}
+            {renderCol('Acceptance', vca.acceptance, 8)}
+            {renderCol('AGYW', convertToYesNo(vca.agyw), 8)}
+            {renderCol('Birthdate Approx', vca.birthdateapprox, 8)}
+            {renderCol('CALHIV', convertToYesNo(vca.calhiv), 8)}
+            {renderCol('CFSW', convertToYesNo(vca.cfsw), 8)}
+            {renderCol('Child Adolescent in Aged-Headed Household', vca.child_adolescent_in_aged_headed_household, 8)}
+            {renderCol('Child Adolescent in Child-Headed Household', vca.child_adolescent_in_child_headed_household, 8)}
+            {renderCol('Child Adolescent in Chronically Ill Headed Household', vca.child_adolescent_in_chronically_ill_headed_household, 8)}
+            {renderCol('Child Adolescent in Female-Headed Household', vca.child_adolescent_in_female_headed_household, 8)}
+            {renderCol('Child Adolescent Living with Disability', vca.child_adolescent_living_with_disability, 8)}
+            {renderCol('Child Been Tested for HIV', vca.child_been_tested_for_hiv, 8)}
+            {renderCol('Child Ever Experienced Sexual Violence', vca.child_ever_experienced_sexual_violence, 8)}
+            {renderCol('Consent Check Box', vca.consent_check_box, 8)}
+            {renderCol('CSV', convertToYesNo(vca.csv), 8)}
+            {renderCol('HEI', convertToYesNo(vca.hei), 8)}
+            {renderCol('Landmark', vca.landmark, 8)}
+            {renderCol('Level MMD', vca.level_mmd, 8)}
+            {renderCol('Member Type', vca.member_type, 8)}
+            {renderCol('Mother ART Number WLHIV', vca.mother_art_number_wlhiv, 8)}
+            {renderCol('PBFW', vca.pbfw, 8)}
+            {renderCol('Received Birth Certificate', vca.received_birth_certificate, 8)}
+            {renderCol('Survivors of Other Forms of Violence', vca.survivors_of_other_form_of_violence, 8)}
+            {renderCol('Takes Drugs to Prevent Other Diseases', vca.takes_drugs_to_prevent_other_diseases, 8)}
+            {renderCol('Takes TB Preventive Therapy', vca.takes_tb_preventive_therapy, 8)}
+            {renderCol('TB Screening', vca.tb_screening, 8)}
+            {renderCol('Time ART', vca.time_art, 8)}
+            {renderCol('Time Result', vca.time_result, 8)}
+            {renderCol('Time VL', vca.time_vl, 8)}
+            {renderCol('Under 5 Malnourished', vca.under_5_malnourished, 8)}
+            {renderCol('Updated Status', vca.updated_status, 8)}
+            {renderCol('Virally Suppressed', vca.virally_suppressed, 8)}
+            {renderCol('VL Last Result', vca.vl_last_result, 8)}
+            {renderCol('VL Next Result', vca.vl_next_result, 8)}
+            {renderCol('VL Suppressed', vca.vl_suppressed, 8)}
+            <Divider />
+            <BaseCol span={24}>
+              <SectionTitle level={5}>{t('History')}</SectionTitle>
+            </BaseCol>
+            {renderCol('Date Edited', vca.date_edited, 8)}
+            {renderCol('Date Edited Check', convertToYesNo(vca.date_edited_check), 8)}
+            {renderCol('Date Screened', vca.date_screened, 8)}
+            {renderCol('Date Started ART', vca.date_started_art, 8)}
+            {renderCol('Date Subpop2', vca.date_subpop2, 8)}
+            {renderCol('Date Edited', isoToDate(vca.dateedited).toLocaleDateString(), 8)}
+            {renderCol('De-Registration Date', vca.de_registration_date, 8)}
+            {renderCol('Death Date Approx', vca.deathdateapprox, 8)}
+            <Divider />
+            <BaseCol span={24}>
+              <SectionTitle level={5}>{t('Caseworker Information')}</SectionTitle>
+            </BaseCol>
+            {renderCol('Name', vca.caseworker_name, 8)}
+            {renderCol('Phone', vca.caseworker_phone, 8)}
+          </BaseRow>
+        </BaseButtonsForm>
+      </BaseCard>
+    </Wrapper>
   );
 };
