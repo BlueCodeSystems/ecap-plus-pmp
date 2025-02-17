@@ -210,7 +210,9 @@ export const GradientStackedAreaChart: React.FC = () => {
       const monthIndex = parseInt(month, 10) - 1;
       if (selectedMonth === null || parseInt(month, 10) === selectedMonth) {
         if(selectedYear === null || selectedYear === parseInt(year, 10) && item.service_month !== null){
+          if(selectedOption === null || selectedOption == 'Caregiver Services'){
           months[monthIndex] += Math.round(item.service_count);
+          }
         }
         else{
           months[monthIndex] += 0;
@@ -227,7 +229,9 @@ export const GradientStackedAreaChart: React.FC = () => {
       const monthIndex = parseInt(month, 10) - 1;
       if (selectedMonth === null || parseInt(month, 10) === selectedMonth) {
         if(selectedYear === null || selectedYear === parseInt(year, 10) && item.service_month !== null){
+          if(selectedOption === null || selectedOption == 'VCA Services'){
           months[monthIndex] += Math.round(item.service_count);
+          }
         }
         else{
           months[monthIndex] += 0;
@@ -244,7 +248,9 @@ export const GradientStackedAreaChart: React.FC = () => {
       const monthIndex = parseInt(month, 10) - 1;
       if (selectedMonth === null || parseInt(month, 10) === selectedMonth) {
         if(selectedYear === null || selectedYear === parseInt(year, 10) && item.referral_month !== null){
-          months[monthIndex] += Math.round(item.referral_count);
+          if(selectedOption === null || selectedOption == 'Caregiver Referrals'){
+            months[monthIndex] += Math.round(item.referral_count); 
+          }
         }
         else{
           months[monthIndex] += 0;
@@ -261,7 +267,9 @@ export const GradientStackedAreaChart: React.FC = () => {
       const monthIndex = parseInt(month, 10) - 1;
       if (selectedMonth === null || parseInt(month, 10) === selectedMonth) {
         if(selectedYear === null || selectedYear === parseInt(year, 10) && item.referral_month !== null){
-          months[monthIndex] += Math.round(item.referral_count);
+          if(selectedOption === null || selectedOption == 'VCA Referrals'){
+            months[monthIndex] += Math.round(item.referral_count);
+          }
         }
         else{
           months[monthIndex] += 0;
@@ -336,7 +344,7 @@ const handleDataChange = (event: any) => {
       },
     },
     legend: {
-      data: [
+     data: [
         'VCA Services',
         'VCA Referrals',
         'Caregiver Services',
@@ -472,11 +480,9 @@ const handleDataChange = (event: any) => {
 
           // Referrals are selected; return the elected month and year
           if (referrals && selectedMonth !== null && selectedYear !== null) {
-            const [month, year] = referrals.split('-');
+            const [month, year] = referrals? referrals.split('-'):[];
             if (month && year) {
-              if (parseInt(month, 10) === selectedMonth && parseInt(year, 10) === selectedYear) {
-                return true;
-              }
+                return month == selectedMonth && year == selectedYear;
             } else {
               console.error('Invalid referrals data');
             }
@@ -491,13 +497,13 @@ const handleDataChange = (event: any) => {
               console.error('Invalid services data');
             }
           }
-      
+ 
           if(selectedOption === null && selectedYear === null && selectedMonth !== null){ 
             const [month, year] = services ? services.split('-'): [];
             const [newmonth,newyear] = referrals ? referrals.split('-'):[];
             if(month || newmonth){
               if(selectedMonth === parseInt(month, 10) || selectedMonth === parseInt(newmonth, 10)){
-                return (services + referrals);
+                return true;
               }
             } 
           }
@@ -507,13 +513,13 @@ const handleDataChange = (event: any) => {
             const [newmonth,newyear] = referrals ? referrals.split('-'):[];
             if(year || newyear){
               if(selectedYear === parseInt(year, 10) || selectedYear === parseInt(newyear, 10)){
-                return (services + referrals);
+                return true;
               }
             }
           }
-                    // else {
-                    //   console.error(`Invalid ${selectedMonth != null ? months[selectedMonth - 1]: ''} or ${selectedYear} data`);
-                    // }
+          else {
+            console.error(`Invalid ${selectedMonth != null ? months[selectedMonth - 1]: ''} or ${selectedYear} data`);
+          }
           
             return false; 
   }) : [];
@@ -560,7 +566,7 @@ const handleDataChange = (event: any) => {
           <BaseRow>
             <div style={{ marginBottom: 20 }}>
               {/* Row for Select Month and Clear Filter Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap'}}>
                 <Select
                   value={selectedMonth || undefined}
                   onChange={handleMonthChange}
