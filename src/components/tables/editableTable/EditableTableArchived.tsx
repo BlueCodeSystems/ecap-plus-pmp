@@ -354,6 +354,7 @@ useEffect(() => {
   const mappedData: BasicTableRow[] = filteredHouseholds.map((household, index) => ({
     key: index,
     name: household.caregiver_name,
+    age: 0, // Add a default age value or replace with actual age if available
     address: `
         Address: ${household.homeaddress || 'Not Applicable'}
         Facility: ${household.facility || 'Not Applicable'}
@@ -406,7 +407,7 @@ onChange = {(newValue) => handleSubPopulationFilterChange(key as keyof typeof su
     ))}
 <div style={ { display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' } }>
   <div style = { { display: 'flex', flexDirection: 'column', alignItems: 'flex-start' } }>
-    <span style={ { fontSize: '12px', paddingBottom: "0px" } }> { t('Filter by Graduation') } < Tag color = "cyan" > New < /Tag> </span >
+    <span style={ { fontSize: '12px', paddingBottom: "0px" } }> { t('Filter by Graduation') } <Tag color="cyan">New</Tag> </span>
       <span>
       <Select
   style={ { width: 300, marginLeft: 1 } }
