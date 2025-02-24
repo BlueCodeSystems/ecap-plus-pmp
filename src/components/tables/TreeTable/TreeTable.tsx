@@ -406,11 +406,11 @@ export const TreeTable: React.FC = () => {
     filterIcon: (filtered: boolean) => (
       <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
     ),
-    onFilter: (value: string, record: TableDataItem) => {
+    onFilter: (value: string | number | boolean, record: TableDataItem) => {
       if (dataIndex === 'address') {
         const addressFields = Object.values(record.address).filter(Boolean);
         const addressString = addressFields.join(' ').toLowerCase();
-        return addressString.includes(value.toLowerCase());
+        return addressString.includes(value.toString().toLowerCase());
       }
 
       // Special handling for age column - exact match
@@ -420,7 +420,7 @@ export const TreeTable: React.FC = () => {
 
       // Special handling for gender column - exact match (case-insensitive)
       if (dataIndex === 'gender') {
-        return record.gender.toLowerCase() === value.toLowerCase();
+        return record.gender.toLowerCase() === value.toString().toLowerCase();
       }
 
       // For other columns, if the value is an object, skip filtering
@@ -432,11 +432,11 @@ export const TreeTable: React.FC = () => {
       
       // For unique_id and name, use includes for partial matching
       if (dataIndex === 'unique_id' || dataIndex === 'name') {
-        return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
+        return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toString().toLowerCase()) : false;
       }
 
       // For all other fields, use exact matching
-      return fieldValue ? fieldValue.toString().toLowerCase() === value.toLowerCase() : false;
+      return fieldValue ? fieldValue.toString().toLowerCase() === value.toString().toLowerCase() : false;
     },
     render: (text: any, record: TableDataItem) => {
       if (dataIndex === 'address') {
@@ -610,6 +610,8 @@ export const TreeTable: React.FC = () => {
         dataSource={tableData.data}
         pagination={tableData.pagination}
         loading={loading}
+        scroll={{ x: 1000 }}
+        style={{ overflowX: 'auto' }}
       />
     </div>
   );
