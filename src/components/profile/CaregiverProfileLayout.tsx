@@ -10,7 +10,7 @@ import { useResponsive } from '@app/hooks/useResponsive';
 import { useAppSelector } from '@app/hooks/reduxHooks';
 import { BaseRow } from '../common/BaseRow/BaseRow';
 import { BaseCol } from '../common/BaseCol/BaseCol';
-import { Tabs } from 'antd';
+import { Tabs, Typography } from 'antd';
 import { CaregiverPersonalInfo } from './profileCard/ProfileInfo/CaregiverPersonalInfo';
 import { CaregiverReferralsInfo } from './profileCard/ProfileInfo/CaregiverReferralsInfo';
 import { CaregiverCasePlans } from './profileCard/ProfileInfo/CaregiverCasePlans';
@@ -45,34 +45,34 @@ const CaregiverProfileLayout: React.FC = () => {
     {
       key: 'household-members',
       label: t('Caregiver Family Members'),
-      children: <HouseholdMembersInfo profileData={user} />, 
+      children: <HouseholdMembersInfo />, 
     },
     {
       key: 'caregiver-services',
       label: t('Caregiver Caseplans'),
-      children: <CaregiverCasePlans profileData={user} />, 
+      children: <CaregiverCasePlans />, 
     },
     {
       key: 'referrals',
       label: t('Referrals'),
-      children: <CaregiverReferralsInfo profileData={user} />, 
+      children: <CaregiverReferralsInfo />, 
     },
     {
       key: 'flag-record-form',
       label: t('Flag Record Form'),
-      children: <FlaggedRecordForm profileData={user} />, 
+      children: <FlaggedRecordForm />, 
     },
   ];
 
   return (
     <>
-      <PageTitle>{t('Profile Overview')}</PageTitle>
-      {!isTitleShown && (
-        <BaseButton icon={<LeftOutlined />} type="text" onClick={() => navigate(-1)}>
-          {t('Go Previous')}
-        </BaseButton>
-      )}
-
+    {/*
+    <TitleContainer>
+        <Typography.Title level={3}>{t('Caregiver Profile')}</Typography.Title>
+      </TitleContainer> */}
+    <BaseButton icon={<LeftOutlined />} type="text" onClick={() => navigate(-1)}>
+  {t('Go Previous')}
+</BaseButton>
       <BaseRow gutter={[30, 30]}>
         <BaseCol span={24}>
           <ProfileCard>
@@ -83,6 +83,15 @@ const CaregiverProfileLayout: React.FC = () => {
     </>
   );
 };
+
+const TitleContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  margin-bottom: 10px;
+`;
 
 const ProfileCard = styled(BaseCard)`
   height: unset;

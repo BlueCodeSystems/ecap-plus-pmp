@@ -46,6 +46,7 @@ interface Vca {
   child_adolescent_in_female_headed_household: string;
   under_5_malnourished: string;
   pbfw: string;
+  reason: string;
 }
 
 interface TableDataItem extends BasicTableRow {
@@ -163,25 +164,86 @@ export const TreeTableArchived: React.FC = () => {
     fetchUserData();
   }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
+  const [filters, setFilters] = useState([
+    { key: "reason", value: "" }
+  ]);
 
+  const fetchVcas = async (filters: any, isInitialFetch: boolean = false) => {
+    if (!user) return;
+  
+    try {
+      setTableData((prev) => ({ ...prev, loading: true }));
+  
+      // Determine the filter value for reason
+      const filterValue = filters.find((filter: any) => filter.key === "reason")?.value || "";
+  
+      // Fetch data from the API
+      const response = await axios.get(
+        `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-archived-register/${user?.location}`,
+        {
+          params: {
+            reason: filterValue,
+          },
+        }
+      );
+  
+      // Set the fetched data to the appropriate state
+      if (isInitialFetch) {
+        setInitialVcas(response.data.data); // Set initial data
+      }
+      setVcas(response.data.data); // Set current data
+      setFilteredVcas(response.data.data); // Set filtered data
+  
+      console.log("Fetched households with filter:", response.data.data);
+    } catch (error) {
+      console.error("Error fetching households data:", error);
+    } finally {
+      setTableData((prev) => ({ ...prev, loading: false }));
+    }
+  };
+  useEffect(() => {
+    const fetchVcas = async (isInitialFetch: boolean = false) => {
+      if (!user) return;
+  
       try {
-        setLoading(true);
-        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-archived-register/${user?.location}`);
-        setVcas(response.data.data);
-        setInitialVcas(response.data.data);
+        setTableData((prev) => ({ ...prev, loading: true }));
+  
+        // Determine the filter value for reason
+        const filterValue = filters.find((filter) => filter.key === "reason")?.value || "";
+  
+        // Fetch data from the API
+        const response = await axios.get(
+          `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-archived-register/${user?.location}`,
+          {
+            params: {
+              reason: filterValue,
+            },
+          }
+        );
+  
+        // Set the fetched data to the appropriate state
+        if (isInitialFetch) {
+          setInitialVcas(response.data.data); // Set initial data
+        }
+        setVcas(response.data.data); // Set current data
+        setFilteredVcas(response.data.data); // Set filtered data
+  
+        console.log("Fetched households with filter:", response.data.data);
       } catch (error) {
-        console.error('Error fetching VCAs data:', error);
+        console.error("Error fetching households data:", error);
       } finally {
-        setLoading(false);
+        setTableData((prev) => ({ ...prev, loading: false }));
       }
     };
+  
+    // Fetch initial data (without filters) when the user changes
+    fetchVcas(true);
+  
+    // Fetch data with filters applied when the filters change
+    fetchVcas();
+  }, [user, filters]);
 
-    fetchData();
-  }, [user]);
-
+  
   useEffect(() => {
     const lowerCaseQuery = searchQuery.toLowerCase();
     const filtered = vcas.filter((vca) => {
@@ -214,7 +276,11 @@ export const TreeTableArchived: React.FC = () => {
             vcaValue === '0' || vcaValue === 'false';
       });
 
-      return matchesSearch && matchesSubPopulationFilters;
+      const matchesGraduationFilter =
+        filters.find(filter => filter.key === "reason")?.value === "" ||
+        vca.reason === filters.find(filter => filter.key === "reason")?.value;
+
+      return matchesSearch && matchesSubPopulationFilters && matchesGraduationFilter;
     });
 
     setFilteredVcas(filtered);
@@ -235,7 +301,7 @@ export const TreeTableArchived: React.FC = () => {
     }));
 
     setTableData({ data: mappedData, pagination: initialPagination, loading: false });
-  }, [searchQuery, vcas, subPopulationFilters]);
+  }, [searchQuery, vcas, subPopulationFilters, filters]);
 
   const calculateAge = (birthdate: string): number => {
     if (!birthdate) return 0;
@@ -330,9 +396,10 @@ export const TreeTableArchived: React.FC = () => {
       }), {} as Record<string, string>)
     );
 
-    setVcas(initialvcas);
+    // Reset graduation filter
+    setFilters([{ key: "reason", value: "" }]);
 
-    getColumnSearchProps('');
+    setVcas(initialvcas);
 
     // // Reset table data to show all VCAs
     // const mappedData: TableDataItem[] = vcas.map((vca, index) => ({
@@ -365,6 +432,17 @@ export const TreeTableArchived: React.FC = () => {
     }));
   };
 
+  const handleSubPopFilterChange = (filterType: string, value: string) => {
+    setFilters(prevFilters => {
+      return prevFilters.map(filter => {
+        if (filter.key === filterType) {
+          return { ...filter, value: value };
+        }
+        return filter;
+      });
+    });
+  };
+  
   const getColumnSearchProps = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
       <div style={{ padding: 8 }}>
@@ -446,6 +524,7 @@ export const TreeTableArchived: React.FC = () => {
     },
   });
 
+
   const handleView = (uid: string) => {
     const selectedVca = vcas.find((vca) => vca.uid === uid);
     navigate(`/profile/vca-profile/${encodeURIComponent(uid)}`, { state: { vca: selectedVca } });
@@ -488,18 +567,20 @@ export const TreeTableArchived: React.FC = () => {
       width: '20%',
       render: (text: string, record: Vca) => {
         const appliedFilters = Object.entries(subPopulationFilters)
-          .filter(([key, value]) => value !== 'all') // Only show filters that are applied
-          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]) // Get labels for applied filters
+          .filter(([key, value]) => value !== 'all')
+          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels])
           .join(', ');
 
-        // Combine search text and applied filters
+        const graduationFilter = filters.find(filter => filter.key === "reason")?.value || "";
+
         const searchValue = searchText ? `${searchText}` : '';
         const filtersText = appliedFilters ? `${appliedFilters}` : '';
+        const graduationText = graduationFilter ? `Graduation: ${graduationFilter}` : '';
 
-        combinedText = [searchValue, filtersText].filter(Boolean).join(' | ');
+        const combinedText = [searchValue, filtersText, graduationText].filter(Boolean).join(' | ');
 
         return (
-          <Tag color={appliedFilters || searchText ? 'cyan' : 'black'}>
+          <Tag color={appliedFilters || searchText || graduationFilter ? 'cyan' : 'black'}>
             {combinedText}
           </Tag>
         );
@@ -516,7 +597,6 @@ export const TreeTableArchived: React.FC = () => {
       ),
     },
   ];
-
   return (
     <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
@@ -531,26 +611,75 @@ export const TreeTableArchived: React.FC = () => {
           </Tooltip>
         </Col>
         <Col span={24}>
-                  <h5 style={{ fontSize: '20px', margin: '16px 16px 8px 0' }}>{t('Filter by Sub Population')}</h5>
-                  <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
-                    {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-                      <div key={key} style={{ marginRight: '16px', marginBottom: '1px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                        <span style={{ fontSize: '12px' }}>{label}</span>
-                        <Select
-                          style={{ width: '100px' }}
-                          value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
-                          onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
-                        >
-                          <Select.Option value="all">{t('All')}</Select.Option>
-                          <Select.Option value="yes">{t('Yes')}</Select.Option>
-                          <Select.Option value="no">{t('No')}</Select.Option>
-                        </Select>
+          <h5 style={{ fontSize: '20px', margin: '16px 16px 8px 0' }}>{t('Filter by Sub Population')}</h5>
+          <Row align="middle" style={{ display: 'flex', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+            {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
+              <div key={key} style={{ marginRight: '16px', marginBottom: '1px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '12px' }}>{label}</span>
+                <Select
+                  style={{ width: '100px' }}
+                  value={subPopulationFilters[key as keyof typeof subPopulationFilters]}
+                  onChange={(newValue) => handleSubPopulationFilterChange(key as keyof typeof subPopulationFilters, newValue)}
+                >
+                  <Select.Option value="all">{t('All')}</Select.Option>
+                  <Select.Option value="yes">{t('Yes')}</Select.Option>
+                  <Select.Option value="no">{t('No')}</Select.Option>
+                </Select>
+              </div>
+            ))}
+            {/* Filter by Graduation */}
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '12px', paddingBottom: "0px", textAlign: "center" }}>
+                  {t('Filter by Graduation')} < Tag color="cyan" > New </Tag>
+                </span>
+
+                <span>
+                  <Select
+                    style={{ width: 300, marginLeft: 1 }}
+                    value={
+                      Array.isArray(filters) && filters.find((filter) => filter.key === 'reason')?.value || undefined
+                    }
+                    onChange={(value) => handleSubPopFilterChange('reason', value)}
+                    placeholder="Select Option"
+                    dropdownRender={(menu) => (
+                      <div style={{ fontWeight: 'normal' }}>
+                        {menu}
                       </div>
-                    ))}
-                  </Row>
-                </Col>
+                    )}
+                  >
+                    <Select.Option value="Graduated (Household has met the graduation benchmarks in ALL domains)">
+                      Met ALL graduation benchmarks
+                    </Select.Option>
+                    <Select.Option value="Exited without graduation">
+                      Exited without graduation
+                    </Select.Option>
+                    <Select.Option value="Transferred to other OVC program">
+                      Transferred to other OVC program
+                    </Select.Option>
+                    <Select.Option value="Lost to follow-up">
+                      Lost to follow-up
+                    </Select.Option>
+                    <Select.Option value="Passed on">
+                      Passed on
+                    </Select.Option>
+                    <Select.Option value="Aging without transition plan">
+                      Aging without transition plan
+                    </Select.Option>
+                    <Select.Option value="Moved (Relocated)">
+                      Moved (Relocated)
+                    </Select.Option>
+                    <Select.Option value="Other">
+                      Other
+                    </Select.Option>
+                  </Select>
+                </span>
+              </div>
+            </div>
+          </Row>
+        </Col>
         <Col>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }} >
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <ExportWrapper>
               <Space>
                 {/* Button to clear all filters and search */}
@@ -562,7 +691,6 @@ export const TreeTableArchived: React.FC = () => {
                   {t('Export to CSV')}
                 </Button>
               </Space>
-
             </ExportWrapper>
           </div>
         </Col>
@@ -586,15 +714,17 @@ export const TreeTableArchived: React.FC = () => {
         </div>
       </Modal>
 
-
       <BaseTable
         columns={columns}
         dataSource={tableData.data}
         pagination={tableData.pagination}
         loading={loading}
+        scroll={{ x: 1000 }}
+        style={{ overflowX: 'auto' }}
       />
     </div>
   );
 };
+
 
 export default TreeTableArchived;
