@@ -46,7 +46,7 @@ const SuperSetPage: React.FC = () => {
        <b>Notice:</b> Some features, such as filtering and interaction with charts, <br />depend on your permissions and they are not filtered charts based<br /> on user or province location. Contact admin or support for access.
       </TitleHeader>
       <iframe
-        src="https://superset.ccms.bluecodeltd.com/superset/dashboard/p/bPr1NLOxjkQ/"
+        src="https://ccmisdashboards.bluecodeltd.com/superset/dashboard/p/QE49b2X9aj5/"
         style={{ width: '100%', height: '80vh', border: 'none' }}
         title="Superset Dashboard"
       />

@@ -221,7 +221,7 @@ export const FlaggedRecordForm: React.FC = () => {
             Submit Comment
           </Button>
         </Form.Item>
-
+        {/********
         <Form.Item>
           <Button
             type="primary"
@@ -231,7 +231,8 @@ export const FlaggedRecordForm: React.FC = () => {
           >
             Export Flagged Forms
           </Button>
-        </Form.Item>
+        </Form.Item> 
+        ******/}
       </Form>
     </Wrapper>
   );
