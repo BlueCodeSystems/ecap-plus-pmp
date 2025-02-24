@@ -59,10 +59,10 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({ isTwoColumnsLayout
               </BaseCol>
               {/* <BaseCol>
                 <NotificationsDropdown />
-              </BaseCol> */}
+              </BaseCol> 
               <BaseCol>
                 <HeaderFullscreen />
-              </BaseCol>
+              </BaseCol> */}
               <BaseCol>
                 <SettingsDropdown />
               </BaseCol>
