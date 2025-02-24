@@ -433,7 +433,7 @@ export const EditableTable: React.FC = () => {
                   </Select>
                 </div>
               ))}
-            {/* Filter by Graduation */}
+            {/*
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <span style={{ fontSize: '12px', paddingBottom: "0px", textAlign: "center" }}>
@@ -481,7 +481,7 @@ export const EditableTable: React.FC = () => {
                   </Select>
                 </span>
               </div>
-            </div>
+            </div> */}
 
           </Row>
         </Col>
@@ -502,11 +502,13 @@ export const EditableTable: React.FC = () => {
           </ExportWrapper>
         </Col>
       </Row>
-      < BaseTable
+      <BaseTable
         columns={columns}
         dataSource={tableData.data}
+        scroll={{ x: 1000 }}
         pagination={tableData.pagination}
         loading={tableData.loading}
+        style={{ overflowX: 'auto' }}
       />
     </div>
   );
