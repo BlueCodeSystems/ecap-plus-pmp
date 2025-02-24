@@ -4,7 +4,8 @@ import { SearchOutlined} from '@ant-design/icons';
 import axios from 'axios';
 import Highlighter from 'react-highlight-words';
 import type { ColumnType } from 'antd/es/table';
-import { useNavigate } from 'react-router-dom'; // Use useNavigate for navigation
+import { useNavigate } from 'react-router-dom'; 
+import { isoToDate } from '@app/utils/utils';
 
 const { Option } = Select;
 
@@ -154,8 +155,16 @@ const FlagRecordPage: React.FC = () => {
     },
     {
       title: 'Created At',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      dataIndex: 'date_created',
+      key: 'date_created',
+      render: (text: string | null) => {
+        if (text) {
+          const date = isoToDate(text);
+          return date.toLocaleDateString();
+        } else {
+          return 'Not Applicable';
+        }
+      },
     },
   ];
 
