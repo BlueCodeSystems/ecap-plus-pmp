@@ -491,8 +491,8 @@ export const EditableTable: React.FC = () => {
         < Col >
           <ExportWrapper>
             <Space style={{ marginTop: '20px' }}>
-              <Button type="default" onClick={clearAllFiltersAndSearch} >
-                {t('Clear All Filters')}
+              <Button type="primary" onClick={clearAllFiltersAndSearch} >
+                {t('Clear Filters')}
               </Button>
               < Button type="primary" onClick={exportToCSV} >
                 {t('Export to CSV')}
