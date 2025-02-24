@@ -66,10 +66,10 @@ const CaregiverProfileLayout: React.FC = () => {
 
   return (
     <>
-    {/* Page Title */}
+    {/*
     <TitleContainer>
         <Typography.Title level={3}>{t('Caregiver Profile')}</Typography.Title>
-      </TitleContainer>
+      </TitleContainer> */}
     <BaseButton icon={<LeftOutlined />} type="text" onClick={() => navigate(-1)}>
   {t('Go Previous')}
 </BaseButton>
