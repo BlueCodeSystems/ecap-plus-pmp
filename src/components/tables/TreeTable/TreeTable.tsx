@@ -138,6 +138,9 @@ export const TreeTable: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [searchedColumn, setSearchedColumn] = useState<string>('');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [householdSearchField, setHouseholdSearchField] = useState<string>('');
+  
 
   const [subPopulationFilters, setSubPopulationFilters] = useState(
     Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({
@@ -163,6 +166,10 @@ export const TreeTable: React.FC = () => {
     fetchUserData();
   }, []);
 
+  const [filters, setFilters] = useState([
+    { key: "reason", value: "" }
+  ]);
+  
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
@@ -289,6 +296,13 @@ export const TreeTable: React.FC = () => {
     combinedText = '';
   };
 
+  const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
+    setSubPopulationFilters(prevFilters => ({
+      ...prevFilters,
+      [filterName]: value
+    }));
+  };
+
   const exportToCSV = () => {
     try {
       const parser = new Parser();
@@ -321,7 +335,7 @@ export const TreeTable: React.FC = () => {
     setSearchText('');
     setSearchedColumn('');
     combinedText = '';
-
+  
     // Reset all sub-population filters to 'all'
     setSubPopulationFilters(
       Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({
@@ -329,40 +343,62 @@ export const TreeTable: React.FC = () => {
         [key]: 'all',
       }), {} as Record<string, string>)
     );
-
-    setVcas(initialvcas);
-
-    getColumnSearchProps('');
-
-    // // Reset table data to show all VCAs
-    // const mappedData: TableDataItem[] = vcas.map((vca, index) => ({
-    //   key: index,
-    //   unique_id: vca.uid,
-    //   name: `${vca.firstname} ${vca.lastname}`,
-    //   gender: vca.vca_gender,
-    //   age: calculateAge(vca.birthdate),
-    //   address: {
-    //     homeaddress: vca.homeaddress,
-    //     facility: vca.facility,
-    //     province: vca.province,
-    //     district: vca.district,
-    //     ward: vca.ward
-    //   }
-    // }));
-
-    // setTableData({
-    //   data: mappedData,
-    //   pagination: initialPagination,
-    //   loading: false
-    // });
-  };
-
-
-  const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
-    setSubPopulationFilters(prevFilters => ({
-      ...prevFilters,
-      [filterName]: value
+  
+    // Reset graduation filter
+    setFilters([{ key: "reason", value: "" }]);
+  
+    // Reset column-specific filters
+    setColumnFilters({});
+  
+    // Reset household search field
+    setHouseholdSearchField('');
+  
+    // Reset filteredVcas to initialvcas
+    setFilteredVcas(initialvcas);
+  
+    // Reset table data to show all VCAs
+    const mappedData: TableDataItem[] = initialvcas.map((vca, index) => ({
+      key: index,
+      unique_id: vca.uid,
+      name: `${vca.firstname} ${vca.lastname}`,
+      gender: vca.vca_gender,
+      age: calculateAge(vca.birthdate),
+      address: {
+        homeaddress: vca.homeaddress,
+        facility: vca.facility,
+        province: vca.province,
+        district: vca.district,
+        ward: vca.ward
+      }
     }));
+  
+    setTableData({ data: mappedData, pagination: initialPagination, loading: false });
+  
+    // Clear search input fields for each column
+    columns.forEach((column) => {
+      if ('filterDropdown' in column && column.filterDropdown) {
+        const filterDropdownProps = column.filterDropdown as unknown as FilterDropdownProps;
+        if (filterDropdownProps.clearFilters) {
+          filterDropdownProps.clearFilters(); // Clear the column-specific filter
+        }
+      }
+      if (searchInput.current) {
+        if (searchInput.current && searchInput.current.input) {
+          searchInput.current.input.value = ''; // Clear the search input field
+        }
+      }
+    });
+  };
+  
+  const handleSubPopFilterChange = (filterType: string, value: string) => {
+    setFilters(prevFilters => {
+      return prevFilters.map(filter => {
+        if (filter.key === filterType) {
+          return { ...filter, value: value };
+        }
+        return filter;
+      });
+    });
   };
 
   const getColumnSearchProps = (dataIndex: string) => ({
@@ -372,33 +408,72 @@ export const TreeTable: React.FC = () => {
           ref={searchInput}
           placeholder={`Search ${dataIndex}`}
           value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onChange={(e) => {
+            setSelectedKeys(e.target.value ? [e.target.value] : []);
+            // Track which field is being searched in the Household Details column
+            if (dataIndex === 'address') {
+              setHouseholdSearchField('Address');
+            } else if (dataIndex === 'facility') {
+              setHouseholdSearchField('Facility');
+            } else if (dataIndex === 'province') {
+              setHouseholdSearchField('Province');
+            } else if (dataIndex === 'district') {
+              setHouseholdSearchField('District');
+            } else if (dataIndex === 'ward') {
+              setHouseholdSearchField('Ward');
+            }
+          }}
           onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
           style={{ marginBottom: 8, display: 'block' }}
         />
         <Space>
           <Button
             type="primary"
-            onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+            onClick={() => {
+              handleSearch(selectedKeys as string[], confirm, dataIndex);
+              // Update columnFilters state when a filter is applied
+              setColumnFilters((prevFilters) => ({
+                ...prevFilters,
+                [dataIndex]: (selectedKeys[0] as string) || '',
+              }));
+            }}
             icon={<SearchOutlined />}
             size="small"
-            style={{ width: 90 }}
+            style={{ width: 95 }}
           >
             Search
           </Button>
           <Button
-            onClick={() => clearFilters && handleReset(clearFilters)}
+            type="primary"
             size="small"
-            style={{ width: 90 }}
+            onClick={() => {
+              if (clearFilters) {
+                clearFilters(); // Clear the column-specific filter
+                setSearchText(''); // Clear the search text
+                setSearchedColumn(''); // Clear the searched column
+                // Remove the column filter from columnFilters state
+                setColumnFilters((prevFilters) => {
+                  const newFilters = { ...prevFilters };
+                  delete newFilters[dataIndex];
+                  return newFilters;
+                });
+                // Reset the household search field ONLY if the Household Details filter is being reset
+                if (dataIndex === 'address') {
+                  setHouseholdSearchField('');
+                }
+                confirm({ closeDropdown: false }); // Keep the dropdown open
+              }
+            }}
+            style={{ width: 110 }}
           >
-            Reset
+            Reset Column
           </Button>
           <Button
             type="link"
             size="small"
             onClick={close}
           >
-            Close
+            X
           </Button>
         </Space>
       </div>
@@ -406,51 +481,44 @@ export const TreeTable: React.FC = () => {
     filterIcon: (filtered: boolean) => (
       <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
     ),
-    onFilter: (value: string | number | boolean, record: TableDataItem) => {
+    onFilter: (value: string | number | boolean, record: { [x: string]: any }) => {
+      const fieldValue = record[dataIndex];
+  
+      // Handle Household Details column differently
       if (dataIndex === 'address') {
         const addressFields = Object.values(record.address).filter(Boolean);
         const addressString = addressFields.join(' ').toLowerCase();
         return addressString.includes(value.toString().toLowerCase());
       }
-
-      // Special handling for age column - exact match
-      if (dataIndex === 'age') {
-        return record.age === Number(value);
+  
+      // Exact match for unique_id, gender, and age
+      if (dataIndex === 'unique_id' || dataIndex === 'gender' || dataIndex === 'age') {
+        return fieldValue ? fieldValue.toString().toLowerCase() === value.toString().toLowerCase() : false;
       }
-
-      // Special handling for gender column - exact match (case-insensitive)
-      if (dataIndex === 'gender') {
-        return record.gender.toLowerCase() === value.toString().toLowerCase();
-      }
-
-      // For other columns, if the value is an object, skip filtering
-      if (typeof record[dataIndex as keyof TableDataItem] === 'object') {
-        return false;
-      }
-
-      const fieldValue = record[dataIndex as keyof TableDataItem];
-      
-      // For unique_id and name, use includes for partial matching
-      if (dataIndex === 'unique_id' || dataIndex === 'name') {
-        return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toString().toLowerCase()) : false;
-      }
-
-      // For all other fields, use exact matching
-      return fieldValue ? fieldValue.toString().toLowerCase() === value.toString().toLowerCase() : false;
+  
+      // Partial match for other fields (e.g., name)
+      return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toString().toLowerCase()) : false;
     },
     render: (text: any, record: TableDataItem) => {
       if (dataIndex === 'address') {
+        // Render only non-empty address fields
+        const addressFields = [
+          `Address: ${record.address.homeaddress || ''}`,
+          `Facility: ${record.address.facility || ''}`,
+          `Province: ${record.address.province || ''}`,
+          `District: ${record.address.district || ''}`,
+          `Ward: ${record.address.ward || ''}`,
+        ].filter((field) => !field.endsWith(': ')); // Remove empty fields
+  
         return (
           <div>
-            <div>Address: {record.address.homeaddress || 'Unknown'}</div>
-            <div>Facility: {record.address.facility || 'Unknown'}</div>
-            <div>Province: {record.address.province || 'Unknown'}</div>
-            <div>District: {record.address.district || 'Unknown'}</div>
-            <div>Ward: {record.address.ward || 'Unknown'}</div>
+            {addressFields.map((field, index) => (
+              <div key={index}>{field}</div>
+            ))}
           </div>
         );
       }
-
+  
       return searchedColumn === dataIndex ? (
         <Highlighter
           highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
@@ -505,21 +573,43 @@ export const TreeTable: React.FC = () => {
       dataIndex: 'appliedFilters',
       width: '20%',
       render: (text: string, record: Vca) => {
-        const appliedFilters = Object.entries(subPopulationFilters)
-          .filter(([key, value]) => value !== 'all') // Only show filters that are applied
-          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]) // Get labels for applied filters
-          .join(', ');
-
-        // Combine search text and applied filters
-        const searchValue = searchText ? `${searchText}` : '';
-        const filtersText = appliedFilters ? `${appliedFilters}` : '';
-
-        combinedText = [searchValue, filtersText].filter(Boolean).join(' | ');
-
+        // Collect all applied sub-population filters
+        const appliedSubPopulationFilters = Object.entries(subPopulationFilters)
+          .filter(([key, value]) => value !== 'all')
+          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]);
+    
+        // Collect the graduation filter (if applied)
+        const graduationFilter = filters.find(filter => filter.key === "reason")?.value || "";
+    
+        // Collect column-specific filters
+        const appliedColumnFilters = Object.entries(columnFilters)
+          .filter(([key, value]) => value !== '')
+          .map(([key, value]) => {
+            if (key === 'address') {
+              // Format Household Details filters based on the specific field being searched
+              return `${householdSearchField}: ${value}`;
+            } else {
+              // Format other columns as "Column Name: Search Text"
+              return `${key}: ${value}`;
+            }
+          });
+    
+        // Combine all applied filters into a single array
+        const allAppliedFilters = [
+          ...appliedSubPopulationFilters,
+          ...(graduationFilter ? [`Graduation: ${graduationFilter}`] : []),
+          ...appliedColumnFilters,
+        ];
+    
+        // Render the applied filters as tags
         return (
-          <Tag color={appliedFilters || searchText ? 'cyan' : 'black'}>
-            {combinedText}
-          </Tag>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {allAppliedFilters.map((filter, index) => (
+              <Tag key={index} color="cyan">
+                {filter}
+              </Tag>
+            ))}
+          </div>
         );
       },
     },
@@ -606,6 +696,7 @@ export const TreeTable: React.FC = () => {
 
 
       <BaseTable
+      key={filteredVcas.length}
         columns={columns}
         dataSource={tableData.data}
         pagination={tableData.pagination}
