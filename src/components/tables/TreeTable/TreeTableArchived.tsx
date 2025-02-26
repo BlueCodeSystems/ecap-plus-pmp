@@ -4,7 +4,7 @@ import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Input, InputRef, Button, Tooltip, Row, Col, Select, Space, Modal, Typography, Alert, Tag } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, CloseOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import { BasicTableRow, Pagination } from '@app/api/table.api';
@@ -139,6 +139,8 @@ export const TreeTableArchived: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [searchedColumn, setSearchedColumn] = useState<string>('');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [householdSearchField, setHouseholdSearchField] = useState<string>('');
 
   const [subPopulationFilters, setSubPopulationFilters] = useState(
     Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({
@@ -170,13 +172,13 @@ export const TreeTableArchived: React.FC = () => {
 
   const fetchVcas = async (filters: any, isInitialFetch: boolean = false) => {
     if (!user) return;
-  
+
     try {
-      setTableData((prev) => ({ ...prev, loading: true }));
-  
+      setLoading(true);
+
       // Determine the filter value for reason
       const filterValue = filters.find((filter: any) => filter.key === "reason")?.value || "";
-  
+
       // Fetch data from the API
       const response = await axios.get(
         `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-archived-register/${user?.location}`,
@@ -186,31 +188,28 @@ export const TreeTableArchived: React.FC = () => {
           },
         }
       );
-  
+
       // Set the fetched data to the appropriate state
       if (isInitialFetch) {
-        setInitialVcas(response.data.data); // Set initial data
+        setInitialVcas(response.data.data); 
       }
-      setVcas(response.data.data); // Set current data
-      setFilteredVcas(response.data.data); // Set filtered data
-  
-      console.log("Fetched households with filter:", response.data.data);
+      setVcas(response.data.data); 
+      setFilteredVcas(response.data.data); 
     } catch (error) {
       console.error("Error fetching households data:", error);
     } finally {
-      setTableData((prev) => ({ ...prev, loading: false }));
+      setLoading(false);
     }
   };
   useEffect(() => {
     const fetchVcas = async (isInitialFetch: boolean = false) => {
       if (!user) return;
-  
+
       try {
-        setTableData((prev) => ({ ...prev, loading: true }));
-  
+        setLoading(true);
         // Determine the filter value for reason
         const filterValue = filters.find((filter) => filter.key === "reason")?.value || "";
-  
+
         // Fetch data from the API
         const response = await axios.get(
           `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-archived-register/${user?.location}`,
@@ -220,48 +219,68 @@ export const TreeTableArchived: React.FC = () => {
             },
           }
         );
-  
+
         // Set the fetched data to the appropriate state
         if (isInitialFetch) {
           setInitialVcas(response.data.data); // Set initial data
         }
         setVcas(response.data.data); // Set current data
-        setFilteredVcas(response.data.data); // Set filtered data
-  
+        setFilteredVcas(response.data.data); // Set* filtered data
+
         console.log("Fetched households with filter:", response.data.data);
       } catch (error) {
         console.error("Error fetching households data:", error);
       } finally {
-        setTableData((prev) => ({ ...prev, loading: false }));
+        setLoading(false);
       }
     };
-  
+
     // Fetch initial data (without filters) when the user changes
     fetchVcas(true);
-  
+
     // Fetch data with filters applied when the filters change
     fetchVcas();
   }, [user, filters]);
 
-  
+
   useEffect(() => {
     const lowerCaseQuery = searchQuery.toLowerCase();
     const filtered = vcas.filter((vca) => {
-      const addressString = [
+      // Combine all searchable fields into a single string
+      const searchableFields = [
+        vca.uid, // Unique ID
+        vca.firstname,
+        vca.lastname,
+        vca.vca_gender,
         vca.homeaddress,
         vca.facility,
         vca.province,
         vca.district,
-        vca.ward
-      ].filter(Boolean).join(' ').toLowerCase();
+        vca.ward,
+        vca.calhiv,
+        vca.hei,
+        vca.cwlhiv,
+        vca.agyw,
+        vca.csv,
+        vca.cfsw,
+        vca.abym,
+        vca.vl_suppressed,
+        vca.child_adolescent_in_aged_headed_household,
+        vca.child_adolescent_in_chronically_ill_headed_household,
+        vca.child_adolescent_in_child_headed_household,
+        vca.child_adolescent_living_with_disability,
+        vca.child_adolescent_in_female_headed_household,
+        vca.under_5_malnourished,
+        vca.pbfw,
+        vca.reason,
+      ].filter(Boolean)
+        .join(' ')
+        .toLowerCase();
 
-      const matchesSearch =
-        (vca.uid?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        (vca.firstname?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        (vca.lastname?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        addressString.includes(lowerCaseQuery) ||
-        (vca.vca_gender?.toLowerCase() || '').includes(lowerCaseQuery);
+      // Check if the search query matches any part of the combined searchable fields
+      const matchesSearch = searchableFields.includes(lowerCaseQuery);
 
+      // Check if the record matches the sub-population filters
       const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(([filterKey, value]) => {
         if (value === 'all') return true;
 
@@ -276,15 +295,19 @@ export const TreeTableArchived: React.FC = () => {
             vcaValue === '0' || vcaValue === 'false';
       });
 
+      // Check if the record matches the graduation filter
       const matchesGraduationFilter =
         filters.find(filter => filter.key === "reason")?.value === "" ||
         vca.reason === filters.find(filter => filter.key === "reason")?.value;
 
+      // Return true if the record matches all conditions
       return matchesSearch && matchesSubPopulationFilters && matchesGraduationFilter;
     });
 
+    // Update the filteredVcas state with the filtered results
     setFilteredVcas(filtered);
 
+    // Map the filtered data to the table format
     const mappedData: TableDataItem[] = filtered.map((vca, index) => ({
       key: index,
       unique_id: vca.uid,
@@ -300,7 +323,12 @@ export const TreeTableArchived: React.FC = () => {
       }
     }));
 
-    setTableData({ data: mappedData, pagination: initialPagination, loading: false });
+    // Update the table data state and reset pagination to the first page
+    setTableData({
+      data: mappedData,
+      pagination: { ...tableData.pagination, current: 1 },
+      loading: false
+    });
   }, [searchQuery, vcas, subPopulationFilters, filters]);
 
   const calculateAge = (birthdate: string): number => {
@@ -351,8 +379,6 @@ export const TreeTableArchived: React.FC = () => {
   const handleReset = (clearFilters: () => void) => {
     clearFilters();
     setSearchText('');
-    setSearchedColumn('');
-    combinedText = '';
   };
 
   const exportToCSV = () => {
@@ -377,6 +403,10 @@ export const TreeTableArchived: React.FC = () => {
     setIsModalVisible(false);
   };
 
+  const handleTableChange = (pagination: Pagination) => {
+    setTableData((prev) => ({ ...prev, pagination }));
+  };
+
   const handleModalCancel = () => {
     setIsModalVisible(false);
   };
@@ -399,31 +429,48 @@ export const TreeTableArchived: React.FC = () => {
     // Reset graduation filter
     setFilters([{ key: "reason", value: "" }]);
 
-    setVcas(initialvcas);
+    // Reset column-specific filters
+    setColumnFilters({});
 
-    // // Reset table data to show all VCAs
-    // const mappedData: TableDataItem[] = vcas.map((vca, index) => ({
-    //   key: index,
-    //   unique_id: vca.uid,
-    //   name: `${vca.firstname} ${vca.lastname}`,
-    //   gender: vca.vca_gender,
-    //   age: calculateAge(vca.birthdate),
-    //   address: {
-    //     homeaddress: vca.homeaddress,
-    //     facility: vca.facility,
-    //     province: vca.province,
-    //     district: vca.district,
-    //     ward: vca.ward
-    //   }
-    // }));
+    // Reset household search field
+    setHouseholdSearchField('');
 
-    // setTableData({
-    //   data: mappedData,
-    //   pagination: initialPagination,
-    //   loading: false
-    // });
+    // Reset filteredVcas to initialvcas
+    setFilteredVcas(initialvcas);
+
+    // Reset table data to show all VCAs
+    const mappedData: TableDataItem[] = initialvcas.map((vca, index) => ({
+      key: index,
+      unique_id: vca.uid,
+      name: `${vca.firstname} ${vca.lastname}`,
+      gender: vca.vca_gender,
+      age: calculateAge(vca.birthdate),
+      address: {
+        homeaddress: vca.homeaddress,
+        facility: vca.facility,
+        province: vca.province,
+        district: vca.district,
+        ward: vca.ward
+      }
+    }));
+
+    setTableData({ data: mappedData, pagination: initialPagination, loading: false });
+
+    // Clear search input fields for each column
+    columns.forEach((column) => {
+      if ('filterDropdown' in column) {
+        const filterDropdownProps = column.filterDropdown as unknown as FilterDropdownProps;
+        if (filterDropdownProps.clearFilters) {
+          filterDropdownProps.clearFilters(); // Clear the column-specific filter
+        }
+      }
+      if (searchInput.current) {
+        if (searchInput.current && searchInput.current.input) {
+          searchInput.current.input.value = ''; // Clear the search input field
+        }
+      }
+    });
   };
-
 
   const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
     setSubPopulationFilters(prevFilters => ({
@@ -442,41 +489,90 @@ export const TreeTableArchived: React.FC = () => {
       });
     });
   };
-  
+
   const getColumnSearchProps = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
       <div style={{ padding: 8 }}>
         <Input
           ref={searchInput}
           placeholder={`Search ${dataIndex}`}
-          value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          value={selectedKeys[0]} // Use selectedKeys[0] instead of selectedKeys[1]
+          onChange={(e) => {
+            const searchValue = e.target.value;
+            setSelectedKeys(searchValue ? [searchValue] : []);
+  
+            // If the dataIndex is 'address', determine which subfield is being searched
+            if (dataIndex === 'address') {
+              // Loop through the subfields of the address object to find a match
+              const subfields = ['homeaddress', 'facility', 'province', 'district', 'ward'];
+              let matchedSubfield = ''; // No default value
+  
+              // Check which subfield the search value belongs to
+              if (searchValue && vcas.length > 0) {
+                const firstVca = vcas[0]; // Use the first VCA as a reference
+                for (const subfield of subfields) {
+                  if (firstVca[subfield as keyof Vca]?.toString().toLowerCase().includes(searchValue.toLowerCase())) {
+                    matchedSubfield = subfield.charAt(0).toUpperCase() + subfield.slice(1); // Capitalize the subfield name
+                    break;
+                  }
+                }
+              }
+  
+              // Update the householdSearchField state
+              setHouseholdSearchField(matchedSubfield);
+            }
+          }}
           onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
           style={{ marginBottom: 8, display: 'block' }}
         />
         <Space>
           <Button
             type="primary"
-            onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+            onClick={() => {
+              handleSearch(selectedKeys as string[], confirm, dataIndex);
+              // Update columnFilters state when a filter is applied
+              setColumnFilters((prevFilters) => ({
+                ...prevFilters,
+                [dataIndex]: (selectedKeys[0] as string) || '',
+              }));
+            }}
             icon={<SearchOutlined />}
             size="small"
-            style={{ width: 90 }}
+            style={{ width: 95 }}
           >
             Search
           </Button>
           <Button
-            onClick={() => clearFilters && handleReset(clearFilters)}
+            type="primary"
             size="small"
-            style={{ width: 90 }}
+            onClick={() => {
+              if (clearFilters) {
+                clearFilters(); 
+                setSearchText(''); 
+                setSearchedColumn(''); 
+                // Remove the column filter from columnFilters state
+                setColumnFilters((prevFilters) => {
+                  const newFilters = { ...prevFilters };
+                  delete newFilters[dataIndex];
+                  return newFilters;
+                });
+                // Reset the household search field ONLY if the Household Details filter is being reset
+                if (dataIndex === 'address') {
+                  setHouseholdSearchField('');
+                }
+                confirm({ closeDropdown: false }); 
+              }
+            }}
+            style={{ width: 125 }}
           >
-            Reset
+            Reset column
           </Button>
           <Button
             type="link"
             size="small"
             onClick={close}
           >
-            Close
+            X
           </Button>
         </Space>
       </div>
@@ -484,33 +580,63 @@ export const TreeTableArchived: React.FC = () => {
     filterIcon: (filtered: boolean) => (
       <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
     ),
-    onFilter: (value: string, record: TableDataItem) => {
+    onFilter: (value: string | number | boolean, record: { [x: string]: any }) => {
+      const fieldValue = record[dataIndex];
+      const filterValue = value.toString().toLowerCase();
+  
+      // Handle Household Details column differently
       if (dataIndex === 'address') {
         const addressFields = Object.values(record.address).filter(Boolean);
         const addressString = addressFields.join(' ').toLowerCase();
-        return addressString.includes(value.toLowerCase());
+  
+        // Check if the search value matches the ward field specifically
+        if (record.address.ward?.toLowerCase().includes(filterValue)) {
+          return true; // Match found in the ward field
+        }
+  
+        // Check if the search value matches any other address field
+        return addressString.includes(filterValue);
       }
-
-      if (typeof record[dataIndex as keyof TableDataItem] === 'object') {
-        return false;
+  
+      // Exact match for unique_id, gender, and age
+      if (dataIndex === 'unique_id' || dataIndex === 'gender' || dataIndex === 'age') {
+        return fieldValue ? fieldValue.toString().toLowerCase() === filterValue : false;
       }
-
-      const fieldValue = record[dataIndex as keyof TableDataItem];
-      return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
+  
+      // Partial match for other fields (e.g., name)
+      return fieldValue ? fieldValue.toString().toLowerCase().includes(filterValue) : false;
     },
     render: (text: any, record: TableDataItem) => {
       if (dataIndex === 'address') {
+        // Render only non-empty address fields
+        const addressFields = [
+          `Address: ${record.address.homeaddress || ''}`,
+          `Facility: ${record.address.facility || ''}`,
+          `Province: ${record.address.province || ''}`,
+          `District: ${record.address.district || ''}`,
+          `Ward: ${record.address.ward || ''}`,
+        ].filter((field) => !field.endsWith(': ')); // Remove empty fields
+  
         return (
           <div>
-            <div>Address: {record.address.homeaddress || 'Unknown'}</div>
-            <div>Facility: {record.address.facility || 'Unknown'}</div>
-            <div>Province: {record.address.province || 'Unknown'}</div>
-            <div>District: {record.address.district || 'Unknown'}</div>
-            <div>Ward: {record.address.ward || 'Unknown'}</div>
+            {addressFields.map((field, index) => (
+              <div key={index}>
+                {searchedColumn === dataIndex && searchText && field.toLowerCase().includes(searchText.toLowerCase()) ? (
+                  <Highlighter
+                    highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
+                    searchWords={[searchText]}
+                    autoEscape
+                    textToHighlight={field}
+                  />
+                ) : (
+                  field
+                )}
+              </div>
+            ))}
           </div>
         );
       }
-
+  
       return searchedColumn === dataIndex ? (
         <Highlighter
           highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
@@ -523,8 +649,7 @@ export const TreeTableArchived: React.FC = () => {
       );
     },
   });
-
-
+  
   const handleView = (uid: string) => {
     const selectedVca = vcas.find((vca) => vca.uid === uid);
     navigate(`/profile/vca-profile/${encodeURIComponent(uid)}`, { state: { vca: selectedVca } });
@@ -566,26 +691,47 @@ export const TreeTableArchived: React.FC = () => {
       dataIndex: 'appliedFilters',
       width: '20%',
       render: (text: string, record: Vca) => {
-        const appliedFilters = Object.entries(subPopulationFilters)
+        // Collect all applied sub-population filters
+        const appliedSubPopulationFilters = Object.entries(subPopulationFilters)
           .filter(([key, value]) => value !== 'all')
-          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels])
-          .join(', ');
+          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]);
 
+        // Collect the graduation filter (if applied)
         const graduationFilter = filters.find(filter => filter.key === "reason")?.value || "";
 
-        const searchValue = searchText ? `${searchText}` : '';
-        const filtersText = appliedFilters ? `${appliedFilters}` : '';
-        const graduationText = graduationFilter ? `Graduation: ${graduationFilter}` : '';
+        // Collect column-specific filters
+        const appliedColumnFilters = Object.entries(columnFilters)
+          .filter(([key, value]) => value !== '')
+          .map(([key, value]) => {
+            if (key === 'address') {
+              // Format Household Details filters based on the specific field being searched
+              return `${householdSearchField}: ${value}`;
+            } else {
+              // Format other columns as "Column Name: Search Text"
+              return `${key}: ${value}`;
+            }
+          });
 
-        const combinedText = [searchValue, filtersText, graduationText].filter(Boolean).join(' | ');
+        // Combine all applied filters into a single array
+        const allAppliedFilters = [
+          ...appliedSubPopulationFilters,
+          ...(graduationFilter ? [`${graduationFilter}`] : []),
+          ...appliedColumnFilters,
+        ];
 
+        // Render the applied filters as tags
         return (
-          <Tag color={appliedFilters || searchText || graduationFilter ? 'cyan' : 'black'}>
-            {combinedText}
-          </Tag>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {allAppliedFilters.map((filter, index) => (
+              <Tag key={index} color="cyan">
+                {filter}
+              </Tag>
+            ))}
+          </div>
         );
       },
     },
+
     {
       title: t('Actions'),
       width: '10%',
@@ -597,11 +743,12 @@ export const TreeTableArchived: React.FC = () => {
       ),
     },
   ];
+
   return (
     <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: '16px' }}>
         <Col>
-          <Tooltip title={t('You can search by Household ID, Caregiver Name, Caseworker Name, and other fields.')}>
+          <Tooltip title={t('You can search by Unique ID, Full Name, Gender, and other fields.')}>
             <S.SearchInput
               placeholder={t('Global Search')}
               value={searchQuery}
@@ -715,16 +862,16 @@ export const TreeTableArchived: React.FC = () => {
       </Modal>
 
       <BaseTable
+        // key={filteredVcas.length} // Force re-render when data changes
         columns={columns}
         dataSource={tableData.data}
-        pagination={tableData.pagination}
         loading={loading}
         scroll={{ x: 1000 }}
         style={{ overflowX: 'auto' }}
+        onChange={handleTableChange} 
       />
     </div>
   );
 };
-
 
 export default TreeTableArchived;
