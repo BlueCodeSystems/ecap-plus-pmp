@@ -63,6 +63,8 @@ export const EditableTableArchived: React.FC = () => {
   const [searchText, setSearchText] = useState < string > ('');
   const [searchedColumn, setSearchedColumn] = useState < string > ('');
   const [subPopulationFilters, setSubPopulationFilters] = useState(initialSubPopulationFilters);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [columnFilterClear, setColumnFilterClear] = useState<string>('');
 
   const [filters, setFilters] = useState([
     { key: "de_registration_reason", value: "" }
@@ -162,7 +164,9 @@ export const EditableTableArchived: React.FC = () => {
     clearFilters();
     setSearchText('');
   };
-
+const handleTableChange = (pagination: Pagination) => {
+    setTableData((prev) => ({ ...prev, pagination }));
+  };
   const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
     setSubPopulationFilters(prevFilters => ({
       ...prevFilters,
@@ -184,71 +188,89 @@ export const EditableTableArchived: React.FC = () => {
   const getColumnSearchProps = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
       <div style={{ padding: 8 }}>
-        <Input
-          ref={searchInput}
-          placeholder={`Search ${dataIndex}`}
-          value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-          onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
-          style={{ marginBottom: 8, display: 'block' }}
-          />
-        <Space>
-          <Button
-            type="primary"
-            onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
-            icon={<SearchOutlined />}
-            size="small"
-            style={{ width: 90 }}
-          >
-            Search
-          </Button>
-          <Button
-            onClick={() => clearFilters && handleReset(clearFilters)}
-            size="small"
-            style={{ width: 90 }}
-          >
-            Clear
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            onClick={() => {
-              confirm({ closeDropdown: false });
-              setSearchText((selectedKeys as string[])[0]);
-              setSearchedColumn(dataIndex);
-            }}
-          >
-            Reset table
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            onClick={close}
-          >
-            Close
-          </Button>
-        </Space>
-      </div>
+              <Input
+                ref={searchInput}
+                placeholder={`Search ${dataIndex}`}
+                value={selectedKeys[0]}
+                onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                onPressEnter={() => {
+                  handleSearch(selectedKeys as string[], confirm, dataIndex);
+                  // Update columnFilters state when a filter is applied
+                  setColumnFilters((prevFilters) => ({
+                    ...prevFilters,
+                    [dataIndex]: (selectedKeys[0] as string) || '',
+                  }));
+                }}
+                style={{ marginBottom: 8, display: 'block' }}
+              />
+              <Space>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    handleSearch(selectedKeys as string[], confirm, dataIndex);
+                    // Update columnFilters state when a filter is applied
+                    setColumnFilters((prevFilters) => ({
+                      ...prevFilters,
+                      [dataIndex]: (selectedKeys[0] as string) || '',
+                    }));
+                  }}
+                  icon={<SearchOutlined />}
+                  size="small"
+                  style={{ width: 95 }}
+                >
+                  Search
+                </Button>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => {
+                    if (clearFilters) {
+                      handleReset(clearFilters); // Clear the column-specific filter
+                      setSearchText(''); // Clear the search text
+                      setSearchedColumn(''); // Clear the searched column
+                      // Remove the column filter from columnFilters state
+                      setColumnFilters((prevFilters) => {
+                        const newFilters = { ...prevFilters };
+                        delete newFilters[dataIndex];
+                        return newFilters;
+                      });
+                      confirm({ closeDropdown: false }); // Keep the dropdown open
+                    }
+                  }}
+                  style={{ width: 130 }}
+                >
+                  Reset column
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={close}
+                >
+                 X
+                </Button>
+              </Space>
+            </div>
     ),
     filterIcon: (filtered: any) => (
       <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
     ),
-    onFilter: (value: string, record: { [x: string]: any; }) => {
+    onFilter: (value: string | number | boolean, record: { [x: string]: any; }) => {
       const fieldValue = record[dataIndex];
-      return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
+      return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toString().toLowerCase()) : false;
     },
     onFilterDropdownVisibleChange: (visible: any) => {
       if (visible) {
         setTimeout(() => searchInput.current?.select(), 100);
       }
     },
-    render: (text: { toString: () => any; }) =>
+    render: (text: string) =>
       searchedColumn === dataIndex ? (
+        
         <Highlighter
           highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
           searchWords={[searchText]}
           autoEscape
-          textToHighlight={text ? text.toString() : ''}
+          textToHighlight={text || ''}
         />
       ) : (
         text
@@ -288,21 +310,40 @@ export const EditableTableArchived: React.FC = () => {
       render: (text: string, record: Household) => {
         const appliedFilters = Object.entries(subPopulationFilters)
           .filter(([key, value]) => value !== 'all')
-          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels])
-          .join(', ');
+          .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]);
+        
+         // Collect the graduation filter (if applied)
+         const graduationFilter = filters.find(filter => filter.key === "de_registration_reason")?.value || "";
 
-        const graduationFilter = filters.find(filter => filter.key === "de_registration_reason")?.value || "";
+        // Collect column-specific filters
+        const appliedColumnFilters = Object.entries(columnFilters)
+          .filter(([key, value]) => value !== '')
+          .map(([key, value]) => {
+            if (key === 'address') {
+              // Format Household Details filters based on the specific field being searched
+              return `${value}`;
+            } else {
+              // Format other columns as "Column Name: Search Text"
+              return `${value}`;
+            }
+          });
 
-        const searchValue = searchText ? `${searchText}` : '';
-        const filtersText = appliedFilters ? `${appliedFilters}` : '';
-        const graduationText = graduationFilter ? `Graduation: ${graduationFilter}` : '';
+        // Combine all applied filters into a single array
+        const allAppliedFilters = [
+          ...appliedFilters,
+          ...(graduationFilter ? [`Graduation: ${graduationFilter}`] : []),
+          ...appliedColumnFilters,
+        ];
 
-        const combinedText = [searchValue, filtersText, graduationText].filter(Boolean).join(' | ');
-
+        // Render the applied filters as tags
         return (
-          <Tag color={appliedFilters || searchText || graduationFilter ? 'cyan' : 'black'}>
-            {combinedText}
-          </Tag>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {allAppliedFilters.map((filter, index) => (
+              <Tag key={index} color="cyan">
+                {filter}
+              </Tag>
+            ))}
+          </div>
         );
       },
     },
@@ -334,16 +375,16 @@ export const EditableTableArchived: React.FC = () => {
         (household.ward?.toLowerCase() || '').includes(lowerCaseQuery) ||
         (household.caseworker_name?.toLowerCase() || '').includes(lowerCaseQuery);
   
-      // Column-specific search (searchText)
-      const matchesColumnSearch =
-        searchedColumn === "" || // If no column is selected, ignore column search
-        (searchedColumn in household && household[searchedColumn as keyof Household]?.toLowerCase() || '').includes(lowerCaseSearchText);
+      // // Column-specific search (searchText)
+      // const matchesColumnSearch =
+      //   searchedColumn === "" || // If no column is selected, ignore column search
+      //   (searchedColumn in household && household[searchedColumn as keyof Household]?.toLowerCase() || '').includes(lowerCaseSearchText);
   
       // Graduation filter
       const matchesDeRegReason =
         deRegReasonFilter === "" || household.de_registration_reason === deRegReasonFilter;
   
-      return matchesGlobalSearch && matchesColumnSearch && matchesDeRegReason;
+      return matchesGlobalSearch && matchesDeRegReason; //&& matchesColumnSearch
     });
   
     setFilteredHouseholds(filtered);
@@ -353,6 +394,7 @@ export const EditableTableArchived: React.FC = () => {
     const mappedData: BasicTableRow[] = filteredHouseholds.map((household, index) => ({
       key: index,
       name: household.caregiver_name,
+      age: 0, // Add a default age value or replace with actual data if available
       address: `
         Address: ${household.homeaddress || 'Not Applicable'}
         Facility: ${household.facility || 'Not Applicable'}
@@ -458,6 +500,7 @@ export const EditableTableArchived: React.FC = () => {
         loading={tableData.loading}
         scroll={{ x: 1000 }}
         style={{ overflowX: 'auto' }}
+        onChange={handleTableChange} // Add this line to handle table pagination
       />
     </div>
   );
