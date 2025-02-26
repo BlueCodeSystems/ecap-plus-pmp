@@ -73,6 +73,7 @@ export const EditableTable: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [searchedColumn, setSearchedColumn] = useState<string>('');
   const [subPopulationFilters, setSubPopulationFilters] = useState(initialSubPopulationFilters);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -89,42 +90,6 @@ export const EditableTable: React.FC = () => {
     };
     fetchUserData();
   }, []);
-
-  const [filters, setFilters] = useState([
-    { key: "de_registration_reason", value: "" }
-  ]);
-
-  useEffect(() => {
-    const fetchHouseholds = async () => {
-      if (!user) return;
-
-      try {
-        setTableData((prev) => ({ ...prev, loading: true }));
-
-        const filterValue = filters.find(filter => filter.key === "de_registration_reason")?.value || "";
-
-        const response = await axios.get(
-          `https://ecapplus.server.dqa.bluecodeltd.com/household/all-households-archived/${user?.location}`,
-          {
-            params: {
-              de_registration_reason: filterValue,
-            },
-          }
-        );
-
-        setHouseholds(response.data.data);
-        setFilteredHouseholds(response.data.data); // Ensure filtered list updates correctly
-        console.log("Fetched households with filter:", response.data.data);
-      } catch (error) {
-        console.error("Error fetching households data:", error);
-      } finally {
-        setTableData((prev) => ({ ...prev, loading: false }));
-      }
-    };
-
-    fetchHouseholds();
-  }, [user, filters]);
-
 
   useEffect(() => {
     const fetchHouseholds = async () => {
@@ -164,16 +129,16 @@ export const EditableTable: React.FC = () => {
     }
   };
 
-  const handleSubPopFilterChange = (filterType: string, value: string) => {
-    setFilters(prevFilters => {
-      return prevFilters.map(filter => {
-        if (filter.key === filterType) {
-          return { ...filter, value: value };
-        }
-        return filter;
-      });
-    });
-  };
+  // const handleSubPopFilterChange = (filterType: string, value: string) => {
+  //   setFilters(prevFilters => {
+  //     return prevFilters.map(filter => {
+  //       if (filter.key === filterType) {
+  //         return { ...filter, value: value };
+  //       }
+  //       return filter;
+  //     });
+  //   });
+  // };
 
   const handleSearch = (selectedKeys: string[], confirm: () => void, dataIndex: string) => {
     confirm();
@@ -184,6 +149,9 @@ export const EditableTable: React.FC = () => {
   const handleReset = (clearFilters: () => void) => {
     clearFilters();
     setSearchText('');
+  };
+  const handleTableChange = (pagination: Pagination) => {
+    setTableData((prev) => ({ ...prev, pagination }));
   };
 
   const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
@@ -206,11 +174,11 @@ export const EditableTable: React.FC = () => {
           : true;
 
         // Column-specific search
-        const matchesColumnSearch = searchText
-          ? searchedColumn
-            ? household[searchedColumn]?.toString().toLowerCase().includes(searchText.toLowerCase())
-            : true
-          : true;
+        // const matchesColumnSearch = searchText
+        //   ? searchedColumn
+        //     ? household[searchedColumn]?.toString().toLowerCase().includes(searchText.toLowerCase())
+        //     : true
+        //   : true;
 
         // Sub-population filters
         const matchesSubPopulationFilters = Object.entries(subPopulationFilters).every(
@@ -223,7 +191,7 @@ export const EditableTable: React.FC = () => {
           }
         );
 
-        return matchesGlobalSearch && matchesColumnSearch && matchesSubPopulationFilters;
+        return matchesGlobalSearch && matchesSubPopulationFilters; // && matchesColumnSearch;
       });
     };
 
@@ -249,54 +217,70 @@ export const EditableTable: React.FC = () => {
     }));
 
     setTableData({ data: mappedData, pagination: initialPagination, loading: false });
-  }, [filteredHouseholds]);
+  }, [filteredHouseholds, searchText]);
 
   const getColumnSearchProps = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
-      <div style={{ padding: 8 }
-      }>
+      <div style={{ padding: 8 }}>
         <Input
           ref={searchInput}
           placeholder={`Search ${dataIndex}`}
           value={selectedKeys[0]}
-          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-          onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+          onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => {
+            handleSearch(selectedKeys as string[], confirm, dataIndex);
+            // Update columnFilters state when a filter is applied
+            setColumnFilters((prevFilters) => ({
+              ...prevFilters,
+              [dataIndex]: (selectedKeys[0] as string) || '',
+            }));
+          }}
           style={{ marginBottom: 8, display: 'block' }}
         />
-        < Space >
+        <Space>
           <Button
             type="primary"
-            onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
-            icon={< SearchOutlined />}
+            onClick={() => {
+              handleSearch(selectedKeys as string[], confirm, dataIndex);
+              // Update columnFilters state when a filter is applied
+              setColumnFilters((prevFilters) => ({
+                ...prevFilters,
+                [dataIndex]: (selectedKeys[0] as string) || '',
+              }));
+            }}
+            icon={<SearchOutlined />}
             size="small"
-            style={{ width: 90 }}
+            style={{ width: 95 }}
           >
             Search
           </Button>
-          < Button
-            onClick={() => clearFilters && handleReset(clearFilters)}
-            size="small"
-            style={{ width: 90 }}
-          >
-            Clear
-          </Button>
-          < Button
-            type="link"
+          <Button
+            type="primary"
             size="small"
             onClick={() => {
-              confirm({ closeDropdown: false });
-              setSearchText((selectedKeys as string[])[0]);
-              setSearchedColumn(dataIndex);
+              if (clearFilters) {
+                handleReset(clearFilters); // Clear the column-specific filter
+                setSearchText(''); // Clear the search text
+                setSearchedColumn(''); // Clear the searched column
+                // Remove the column filter from columnFilters state
+                setColumnFilters((prevFilters) => {
+                  const newFilters = { ...prevFilters };
+                  delete newFilters[dataIndex];
+                  return newFilters;
+                });
+                confirm({ closeDropdown: false }); // Keep the dropdown open
+              }
             }}
+            style={{ width: 130 }}
           >
-            Reset table
+            Reset column
           </Button>
-          < Button
+          <Button
             type="link"
             size="small"
             onClick={close}
           >
-            Close
+           X
           </Button>
         </Space>
       </div>
@@ -304,28 +288,61 @@ export const EditableTable: React.FC = () => {
     filterIcon: (filtered: boolean) => (
       <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
     ),
-    onFilter: (value: string, record: { [x: string]: any }) => {
-      const fieldValue = record[dataIndex];
-      return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toLowerCase()) : false;
-    },
-    onFilterDropdownOpenChange: (visible: boolean) => {
-      if (visible) {
-        setTimeout(() => searchInput.current?.select(), 100);
+  
+    onFilter: (value: string | number | boolean, record: Household) => {
+      const fieldValue = dataIndex in record ? record[dataIndex as keyof Household] : '';
+      if (fieldValue !== null) {
+        return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toString().toLowerCase()) : false;
       }
+      return false;
     },
-    render: (text: string) =>
-      searchedColumn === dataIndex ? (
+    render: (text: string, record: Household) => {
+      const searchTextForColumn = columnFilters[dataIndex] || '';
+  
+      if (dataIndex === 'address') {
+        // Split the address into its components
+        const addressFields = [
+          `Address: ${record.homeaddress}`,
+          `Facility: ${record.facility}`,
+          `Province: ${record.province}`,
+          `District: ${record.district}`,
+          `Ward: ${record.ward}`,
+        ];
+  
+        return (
+          <div>
+            {addressFields.map((field, index) => (
+              <div key={index}>
+                {searchTextForColumn ? (
+                  <Highlighter
+                    highlightStyle={{ backgroundColor: '#FFC069', padding: 0 }}
+                    searchWords={[searchTextForColumn]}
+                    autoEscape
+                    textToHighlight={field}
+                  />
+                ) : (
+                  field
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      }
+  
+      // Highlight search text for other columns
+      return searchTextForColumn ? (
         <Highlighter
           highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
-          searchWords={[searchText]}
+          searchWords={[searchTextForColumn]}
           autoEscape
           textToHighlight={text ? text.toString() : ''}
         />
       ) : (
         text
-      ),
+      );
+    },
   });
-
+  
   const columns = [
     {
       title: t('Household ID'),
@@ -361,26 +378,35 @@ export const EditableTable: React.FC = () => {
         const appliedFilters = Object.entries(subPopulationFilters)
           .filter(([key, value]) => value !== 'all') // Only show filters that are applied
           .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]) // Get labels for applied filters
-          .join(', ');
+         // Collect column-specific filters
+         const appliedColumnFilters = Object.entries(columnFilters)
+         .filter(([key, value]) => value !== '')
+         .map(([key, value]) => {
+           if (key === 'address') {
+             // Format Household Details filters based on the specific field being searched
+             return `${value}`;
+           } else {
+             // Format other columns as "Search Text"
+             return `${value}`;
+           }
+         });
 
-        // Get the graduation filter value
-        const graduationFilter = filters.find(filter => filter.key === "de_registration_reason")?.value || "";
+       // Combine all applied filters into a single array
+       const allAppliedFilters = [
+         ...appliedFilters,
+         ...appliedColumnFilters,
+       ];
 
-        // Combine search text, applied filters, and graduation filter
-        const searchValue = searchText ? `${searchText}` : '';
-        const filtersText = appliedFilters ? `${appliedFilters}` : '';
-        const graduationText = graduationFilter ? `Graduation: ${graduationFilter}` : '';
-
-        // Combine all into a single string
-        const combinedText = [searchValue, filtersText, graduationText].filter(Boolean).join(' | ');
-
-        // Render the combined text in a Tag
-        return (
-          <Tag color={appliedFilters || searchText || graduationFilter ? 'cyan' : 'black'
-          }>
-            {combinedText}
-          </Tag>
-        );
+       // Render the applied filters as tags
+       return (
+         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+           {allAppliedFilters.map((filter, index) => (
+             <Tag key={index} color="cyan">
+               {filter}
+             </Tag>
+           ))}
+         </div>
+       );
       },
     },
     {
@@ -509,6 +535,7 @@ export const EditableTable: React.FC = () => {
         pagination={tableData.pagination}
         loading={tableData.loading}
         style={{ overflowX: 'auto' }}
+        onChange={handleTableChange} // Add this line to handle table pagination
       />
     </div>
   );
