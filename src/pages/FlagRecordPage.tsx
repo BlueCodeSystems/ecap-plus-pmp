@@ -201,7 +201,7 @@ const FlagRecordPage: React.FC = () => {
         />
       )}
 
-       {/***
+       
       <Button
         type="primary"
         onClick={handleExport}
@@ -209,8 +209,7 @@ const FlagRecordPage: React.FC = () => {
       >
         Export to CSV
       </Button>
-        **/}
-        
+  
       {loadingTable ? (
         <Skeleton active paragraph={{ rows: 3 }} />
       ) : (
