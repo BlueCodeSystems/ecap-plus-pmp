@@ -27,7 +27,7 @@ interface Record {
   comment: string;
   verifier: string;
   status: string;
-  created_at: string;
+  date_created: string;
 }
 
 const FlagRecordPage: React.FC = () => {
@@ -38,12 +38,8 @@ const FlagRecordPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
-  const searchInput = useRef<typeof Input>(null);
   const navigate = useNavigate(); 
 
-  const getColumnSearchProps = (dataIndex: keyof Record): ColumnType<Record> => ({
-    // ...existing search logic
-  });
 
  
   const handleExport = () => {
@@ -55,7 +51,7 @@ const FlagRecordPage: React.FC = () => {
           .concat(
             records.map(
               (record) =>
-                `${record.household_id},${record.caseworker_name},${record.caregiver_name},${record.facility},${record.comment},${record.verifier},${record.status},${record.created_at}`
+                `${record.household_id},${record.caseworker_name},${record.caregiver_name},${record.facility},${record.comment},${record.verifier},${record.status},${record.date_created}` // Use `date_created` here
             )
           )
           .join('\n');
@@ -73,24 +69,7 @@ const FlagRecordPage: React.FC = () => {
       message.error('Failed to export records.');
     }
   };
-
   useEffect(() => {
-    console.log('Fetching user data...');
-    const fetchUserData = async () => {
-      try {
-        setLoadingUserData(true);
-        const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
-        });
-        console.log('User data fetched:', response.data.data);
-        setUser(response.data.data);
-      } catch (err) {
-        console.error('Error fetching user data:', err);
-      } finally {
-        setLoadingUserData(false);
-      }
-    };
-
     console.log('Fetching records...');
     const fetchTableData = async () => {
       try {
@@ -98,7 +77,7 @@ const FlagRecordPage: React.FC = () => {
         const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/items/flagged_forms_ecapplus_pmp`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
         });
-        console.log('Records fetched:', response.data.data);
+        console.log('Records fetched:', response.data.data); // Log the fetched data
         setRecords(response.data.data);
       } catch (err) {
         console.error('Error fetching table data:', err);
@@ -107,11 +86,10 @@ const FlagRecordPage: React.FC = () => {
         setLoadingTable(false);
       }
     };
-
-    fetchUserData();
+  
     fetchTableData();
   }, []);
-
+  
   const columns: ColumnType<Record>[] = [
     {
       title: 'Household ID',
