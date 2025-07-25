@@ -288,11 +288,15 @@ onFinish = { onFinish }
   <BaseRow gutter={ { xs: 10, md: 15, xl: 30 } }>
     <Divider />
     < BaseCol span = { 24} >
-      <SectionTitle level={ 5 }> { t('Household Deregistration Information') } </SectionTitle>
-        </BaseCol>
-{ renderCol('De-registration Reason', household.de_registration_reason) }
-{ renderCol('De-registration Date', household.de_registration_date) }
-<Divider />
+{(household.case_status !== '1' && household.case_status !== 'yes') && (
+  <>
+    <SectionTitle level={5}>{t('Household Deregistration Information')}</SectionTitle>
+    {renderCol('De-registration Reason', household.de_registration_reason)}
+    {renderCol('De-registration Date', household.de_registration_date)}
+    <Divider />
+  </>
+)}
+
   < Divider />
   <BaseCol span = { 24 } >
     <SectionTitle level={ 5 }> { t('Caregiver Personal Information') } </SectionTitle>
