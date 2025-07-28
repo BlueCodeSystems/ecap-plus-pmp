@@ -70,26 +70,38 @@ const FlagRecordPage: React.FC = () => {
     }
   };
   useEffect(() => {
-    console.log('Fetching records...');
-    const fetchTableData = async () => {
-      try {
-        setLoadingTable(true);
-        const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/items/flagged_forms_ecapplus_pmp`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
-        });
-        console.log('Records fetched:', response.data.data); // Log the fetched data
-        setRecords(response.data.data);
-      } catch (err) {
-        console.error('Error fetching table data:', err);
-        setError('Failed to fetch table data.');
-      } finally {
-        setLoadingTable(false);
-      }
-    };
-  
-    fetchTableData();
-  }, []);
-  
+  const fetchTableData = async () => {
+    try {
+      setLoadingTable(true);
+      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/items/flagged_forms_ecapplus_pmp`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      });
+      setRecords(response.data.data);
+    } catch (err) {
+      console.error('Error fetching table data:', err);
+      setError('Failed to fetch table data.');
+    } finally {
+      setLoadingTable(false);
+    }
+  };
+
+  const fetchUserData = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      });
+      setUser(response.data.data);
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+    } finally {
+      setLoadingUserData(false);
+    }
+  };
+
+  fetchTableData();
+  fetchUserData();
+}, []);
+
   const columns: ColumnType<Record>[] = [
     {
       title: 'Household ID',
