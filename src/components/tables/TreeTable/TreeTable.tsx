@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { FilterDropdownProps } from 'antd/lib/table/interface';
 import styled from 'styled-components';
 import { Parser } from 'json2csv';
+import { SearchInput } from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 
 const { Text } = Typography;
 
@@ -404,12 +405,13 @@ export const TreeTable: React.FC = () => {
   const getColumnSearchProps = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
       <div style={{ padding: 8 }}>
-        <Input
+        <SearchInput
+          className="column-filter"
           ref={searchInput}
           placeholder={`Search ${dataIndex}`}
           value={selectedKeys[0]}
           onChange={(e) => {
-            setSelectedKeys(e.target.value ? [e.target.value] : []);
+    setSelectedKeys(e.target.value ? [e.target.value] : []);
             // Track which field is being searched in the Household Details column
             if (dataIndex === 'address') {
               setHouseholdSearchField('Address');
