@@ -425,8 +425,11 @@ export const EditableTable: React.FC = () => {
 
   const handleView = (household_id: string) => {
     const selectedHousehold = households.find(household => household.household_id === household_id);
-    navigate(`/profile/household-profile/${encodeURIComponent(household_id)}`, { state: { household: selectedHousehold } });
+    console.log("households object::", selectedHousehold);
+    navigate(`/profile/household-profile/${encodeURIComponent('KLA/KSI/38313151')}`, { state: { household: selectedHousehold } });
   };
+console.log("households object::",households);
+
 
   return (
     <div>
@@ -459,55 +462,56 @@ export const EditableTable: React.FC = () => {
                   </Select>
                 </div>
               ))}
-            {/*
+            {
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '12px', paddingBottom: "0px", textAlign: "center" }}>
-                  {t('Filter by Graduation')} < Tag color="cyan" > New </Tag>
-                </span>
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+    <span style={{ fontSize: '12px', paddingBottom: "0px", textAlign: "center" }}>
+      {t('Filter by Graduation')}
+    </span>
 
-                < span >
-                  <Select
-                    style={{ width: 300, marginLeft: 1 }}
-                    value={
-                      Array.isArray(filters) && filters.find((filter) => filter.key === 'de_registration_reason')?.value || undefined
-                    }
-                    onChange={(value) => handleSubPopFilterChange('de_registration_reason', value)}
-                    placeholder="Select Option"
-                    dropdownRender={(menu) => (
-                      <div style={{ fontWeight: 'normal' }}>
-                        {menu}
-                      </div>
-                    )}
-                  >
-                    <Select.Option value="Graduated (Household has met the graduation benchmarks in ALL domains)" >
-                      Met ALL graduation benchmarks
-                    </Select.Option>
-                    < Select.Option value="Exited without graduation" >
-                      Exited without graduation
-                    </Select.Option>
-                    < Select.Option value="Transferred to other OVC program" >
-                      Transferred to other OVC program
-                    </Select.Option>
-                    < Select.Option value="Lost to follow-up" >
-                      Lost to follow - up
-                    </Select.Option>
-                    < Select.Option value="Passed on" >
-                      Passed on
-                    </Select.Option>
-                    < Select.Option value="Aging without transition plan" >
-                      Aging without transition plan
-                    </Select.Option>
-                    < Select.Option value="Moved (Relocated)" >
-                      Moved(Relocated)
-                    </Select.Option>
-                    < Select.Option value="Other" >
-                      Other
-                    </Select.Option>
-                  </Select>
-                </span>
-              </div>
-            </div> */}
+    <span>
+      <Select
+        style={{ width: 300, marginLeft: 1 }}
+        value={
+          Array.isArray(filters) && filters.find((filter) => filter.key === 'de_registration_reason')?.value || undefined
+        }
+        onChange={(value) => handleSubPopFilterChange('de_registration_reason', value)}
+        placeholder="Select Option"
+        dropdownRender={(menu) => (
+          <div style={{ fontWeight: 'normal' }}>
+            {menu}
+          </div>
+        )}
+      >
+        <Select.Option value="Graduated (Household has met the graduation benchmarks in ALL domains)" >
+          Met ALL graduation benchmarks
+        </Select.Option>
+        <Select.Option value="Exited without graduation" >
+          Exited without graduation
+        </Select.Option>
+        <Select.Option value="Transferred to other OVC program" >
+          Transferred to other OVC program
+        </Select.Option>
+        <Select.Option value="Lost to follow-up" >
+          Lost to follow - up
+        </Select.Option>
+        <Select.Option value="Passed on" >
+          Passed on
+        </Select.Option>
+        <Select.Option value="Aging without transition plan" >
+          Aging without transition plan
+        </Select.Option>
+        <Select.Option value="Moved (Relocated)" >
+          Moved(Relocated)
+        </Select.Option>
+        <Select.Option value="Other" >
+          Other
+        </Select.Option>
+      </Select>
+    </span>
+  </div>
+</div>
+ }
 
           </Row>
         </Col>
