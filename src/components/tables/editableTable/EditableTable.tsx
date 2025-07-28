@@ -14,6 +14,20 @@ import { BasicTableRow, Pagination } from 'api/table.api';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import { Parser } from 'json2csv';
 
+
+interface Service {
+  id: string;
+  name: string;
+  // add other service fields if needed
+}
+
+interface Referral {
+  id: string;
+  type: string;
+  date: string;
+  // add other referral fields if needed
+}
+
 interface Household {
   household_id: string;
   caregiver_name: string;
@@ -23,7 +37,9 @@ interface Household {
   district: string;
   ward: string;
   caseworker_name: string;
-  [key: string]: string | undefined;
+  services?: Service[];     // <-- added optional services array
+  referrals?: Referral[];   // <-- added optional referrals array
+  [key: string]: any;       // loosened to allow arrays too
 }
 
 const initialPagination: Pagination = {
@@ -96,8 +112,11 @@ export const EditableTable: React.FC = () => {
       if (!user) return;
       try {
         setTableData((prev) => ({ ...prev, loading: true }));
-        const response = await axios.get(`https://ecapplus.server.dqa.bluecodeltd.com/household/all-households/${user?.location}`);
-        setHouseholds(response.data.data);
+        const response = await axios.get(
+         `https://ecapplus.server.dqa.bluecodeltd.com/household/all-households/${user?.location}?include=services,referrals`
+   );
+    setHouseholds(response.data.data);
+
       } catch (error) {
         console.error('Error fetching households data:', error);
       } finally {
@@ -116,18 +135,31 @@ export const EditableTable: React.FC = () => {
   };
 
   const exportToCSV = () => {
-    try {
-      const parser = new Parser();
-      const csvData = parser.parse(filteredHouseholds);
-      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'households_data.csv';
-      link.click();
-    } catch (error) {
-      console.error('Error exporting data:', error);
-    }
-  };
+  try {
+    const exportData = filteredHouseholds.map((hh) => ({
+      household_id: hh.household_id,
+      caregiver_name: hh.caregiver_name,
+      homeaddress: hh.homeaddress,
+      facility: hh.facility,
+      province: hh.province,
+      district: hh.district,
+      ward: hh.ward,
+      caseworker_name: hh.caseworker_name,
+      service_list: hh.services?.map(s => s.name).join('; ') || '',
+      referral_list: hh.referrals?.map(r => `${r.type}@${r.date}`).join('; ') || '',
+    }));
+
+    const parser = new Parser();
+    const csvData = parser.parse(exportData);
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'households_data.csv';
+    link.click();
+  } catch (error) {
+    console.error('Error exporting data:', error);
+  }
+};
 
   // const handleSubPopFilterChange = (filterType: string, value: string) => {
   //   setFilters(prevFilters => {
@@ -222,7 +254,8 @@ export const EditableTable: React.FC = () => {
   const getColumnSearchProps = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters, close }: FilterDropdownProps) => (
       <div style={{ padding: 8 }}>
-        <Input
+       <S.SearchInput
+          className="column-filter"
           ref={searchInput}
           placeholder={`Search ${dataIndex}`}
           value={selectedKeys[0]}
