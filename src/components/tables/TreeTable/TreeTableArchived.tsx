@@ -777,10 +777,9 @@ export const TreeTableArchived: React.FC = () => {
             {/* Filter by Graduation */}
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '12px', paddingBottom: "0px", textAlign: "center" }}>
-                  {t('Filter by Graduation')} < Tag color="cyan" > New </Tag>
-                </span>
-
+               <span style={{ fontSize: '12px', paddingBottom: "0px", textAlign: "center" }}>
+                  {t('Filter by Graduation')}
+               </span>
                 <span>
                   <Select
                     style={{ width: 300, marginLeft: 1 }}
