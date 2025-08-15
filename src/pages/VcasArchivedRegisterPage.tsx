@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Skeleton, Tag, Typography } from 'antd';
@@ -83,7 +84,7 @@ const buildExportPayload = () => ({
 const content = (
   <>
     <Typography.Title level={4}>
-      {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Archived Register
+      {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location || ''} District VCAs Archived Register`}
     </Typography.Title>
 
     <Tag color="volcano">
@@ -93,9 +94,6 @@ const content = (
     <br />
     <br />
 
-    <BaseButton type="primary" onClick={handleExport} disabled={loadingUserData || !vcaProfile}>
-      Export Profile
-    </BaseButton>
 
     <br />
     <br />
@@ -108,7 +106,7 @@ const content = (
       {loadingTable ? (
         <Skeleton active paragraph={{ rows: 2 }} />
       ) : (
-        <TreeTableArchived />
+        <TreeTableArchived/>
       )}
     </>
   );

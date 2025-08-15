@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import React, { useEffect } from 'react';
 import { LeftOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -66,10 +67,10 @@ const CaregiverProfileLayout: React.FC = () => {
 
   return (
     <>
-    {/*
+
     <TitleContainer>
         <Typography.Title level={3}>{t('Caregiver Profile')}</Typography.Title>
-      </TitleContainer> */}
+      </TitleContainer> 
     <BaseButton icon={<LeftOutlined />} type="text" onClick={() => navigate(-1)}>
   {t('Go Previous')}
 </BaseButton>

@@ -1,10 +1,11 @@
+/* eslint-disable prettier/prettier */
 import React, { useState, useEffect, useRef } from 'react';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { Input, InputRef, Button, Tooltip, Row, Col, Select, Space, Modal, Typography, Alert, Tag } from 'antd';
-import { SearchOutlined, CloseOutlined } from '@ant-design/icons';
+import { Input, InputRef, Button, Tooltip, Row, Col, Select, Space, Modal, Typography, Tag } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import { BasicTableRow, Pagination } from '@app/api/table.api';
@@ -47,6 +48,7 @@ interface Vca {
   under_5_malnourished: string;
   pbfw: string;
   reason: string;
+  [key: string]: any;
 }
 
 interface TableDataItem extends BasicTableRow {
@@ -132,8 +134,9 @@ export const TreeTableArchived: React.FC = () => {
   });
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const [loadingUserData, setLoadingUserData] = useState<boolean>(true);
+  const [vcaProfile, setVcaProfile] = useState<Vca | null>(null);
   const searchInput = useRef<InputRef>(null);
   const navigate = useNavigate();
   const [searchText, setSearchText] = useState<string>('');
@@ -149,9 +152,17 @@ export const TreeTableArchived: React.FC = () => {
     }), {} as Record<keyof typeof subPopulationFilterLabels, string>)
   );
 
+  // --- NEW: flagged records state ---
+  const [flaggedMap, setFlaggedMap] = useState<Record<string, any>>({});
+  const [flagsLoading, setFlagsLoading] = useState(false);
+
+  // --- NEW: per-row exporting state ---
+  const [exportingUid, setExportingUid] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        setLoadingUserData(true);
         const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -160,6 +171,8 @@ export const TreeTableArchived: React.FC = () => {
         setUser(response.data.data);
       } catch (error) {
         console.error('Error fetching user data:', error);
+      } finally {
+        setLoadingUserData(false);
       }
     };
 
@@ -167,81 +180,105 @@ export const TreeTableArchived: React.FC = () => {
   }, []);
 
   const [filters, setFilters] = useState([
-    { key: "reason", value: "" }
+    { key: 'reason', value: '' }
   ]);
 
-  const fetchVcas = async (filters: any, isInitialFetch: boolean = false) => {
+  // Unified fetch function (single source of truth)
+  const fetchVcas = async (isInitialFetch: boolean = false) => {
     if (!user) return;
 
     try {
-      setLoading(true);
+      // set table loading
+      setTableData(prev => ({ ...prev, loading: true }));
 
-      // Determine the filter value for reason
-      const filterValue = filters.find((filter: any) => filter.key === "reason")?.value || "";
-
-      // Fetch data from the API
+      const filterValue = filters.find((filter) => filter.key === 'reason')?.value || '';
+      const base = process.env.REACT_APP_BASE_URL || 'https://ecapplus.server.dqa.bluecodeltd.com';
       const response = await axios.get(
-        `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-archived-register/${user?.location}`,
+        `${base}/child/vcas-archived-register/${user.location}`,
         {
-          params: {
-            reason: filterValue,
-          },
+          params: { reason: filterValue }
         }
       );
 
-      // Set the fetched data to the appropriate state
+      const data: Vca[] = Array.isArray(response.data?.data) ? response.data.data : [];
+
       if (isInitialFetch) {
-        setInitialVcas(response.data.data); 
+        setInitialVcas(prev => prev.length === 0 ? data : prev);
       }
-      setVcas(response.data.data); 
-      setFilteredVcas(response.data.data); 
+
+      setVcas(data);
+      setFilteredVcas(data);
+
+      // Map to table rows immediately so BaseTable has data to render
+      const mappedData: TableDataItem[] = data.map((vca, index) => ({
+        key: index,
+        unique_id: vca.uid,
+        name: `${vca.firstname || ''} ${vca.lastname || ''}`.trim(),
+        gender: vca.vca_gender,
+        age: calculateAge(vca.birthdate),
+        address: {
+          homeaddress: vca.homeaddress,
+          facility: vca.facility,
+          province: vca.province,
+          district: vca.district,
+          ward: vca.ward
+        }
+      }));
+
+      setTableData(prev => ({ ...prev, data: mappedData, pagination: { ...prev.pagination, current: 1 }, loading: false }));
+      console.log('Fetched VCAs:', data);
     } catch (error) {
-      console.error("Error fetching households data:", error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching VCAs data:', error);
+      setTableData(prev => ({ ...prev, loading: false }));
     }
   };
+
+  // Fetch once when user becomes available (initial)
   useEffect(() => {
-    const fetchVcas = async (isInitialFetch: boolean = false) => {
-      if (!user) return;
+    if (!user) return;
+    fetchVcas(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
+  // Fetch when filters change (not initial)
+  useEffect(() => {
+    if (!user) return;
+    fetchVcas(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  // --- NEW: fetch active flagged records (keyed by vca uid / vca_id / unique_id) ---
+  useEffect(() => {
+    let mounted = true;
+    const fetchFlags = async () => {
+      setFlagsLoading(true);
       try {
-        setLoading(true);
-        // Determine the filter value for reason
-        const filterValue = filters.find((filter) => filter.key === "reason")?.value || "";
-
-        // Fetch data from the API
-        const response = await axios.get(
-          `https://ecapplus.server.dqa.bluecodeltd.com/child/vcas-archived-register/${user?.location}`,
-          {
-            params: {
-              reason: filterValue,
-            },
-          }
+        const base = process.env.REACT_APP_BASE_URL || 'https://ecapplus.server.dqa.bluecodeltd.com';
+        const token = localStorage.getItem('access_token');
+        const res = await axios.get(
+          `${base}/items/flagged_forms_ecapplus_pmp?filter[status][_neq]=Resolved&limit=-1`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
         );
 
-        // Set the fetched data to the appropriate state
-        if (isInitialFetch) {
-          setInitialVcas(response.data.data); // Set initial data
-        }
-        setVcas(response.data.data); // Set current data
-        setFilteredVcas(response.data.data); // Set* filtered data
+        const items: any[] = res.data?.data || res.data || [];
+        const map: Record<string, any> = {};
+        items.forEach((f: any) => {
+          if (f.vca_id) map[f.vca_id] = f;
+          if (f.unique_id) map[f.unique_id] = f;
+          if (f.uid) map[f.uid] = f;
+        });
 
-        console.log("Fetched households with filter:", response.data.data);
-      } catch (error) {
-        console.error("Error fetching households data:", error);
+        if (mounted) setFlaggedMap(map);
+      } catch (err) {
+        console.error('Error fetching flagged records (archived VCA table)', err);
       } finally {
-        setLoading(false);
+        if (mounted) setFlagsLoading(false);
       }
     };
 
-    // Fetch initial data (without filters) when the user changes
-    fetchVcas(true);
-
-    // Fetch data with filters applied when the filters change
-    fetchVcas();
-  }, [user, filters]);
-
+    fetchFlags();
+    return () => { mounted = false; };
+  }, [user]);
 
   useEffect(() => {
     const lowerCaseQuery = searchQuery.toLowerCase();
@@ -290,15 +327,14 @@ export const TreeTableArchived: React.FC = () => {
         }
 
         const vcaValue = vca[dataKey as keyof Vca];
-        return vcaValue === null ? false :
-          value === 'yes' ? vcaValue === '1' || vcaValue === 'true' :
-            vcaValue === '0' || vcaValue === 'false';
+        if (vcaValue === null || vcaValue === undefined) return false;
+        if (value === 'yes') return vcaValue === '1' || vcaValue === 'true' || vcaValue === 1 || vcaValue === true;
+        return vcaValue === '0' || vcaValue === 'false' || vcaValue === 0 || vcaValue === false;
       });
 
       // Check if the record matches the graduation filter
-      const matchesGraduationFilter =
-        filters.find(filter => filter.key === "reason")?.value === "" ||
-        vca.reason === filters.find(filter => filter.key === "reason")?.value;
+      const graduationFilterValue = filters.find(filter => filter.key === "reason")?.value || '';
+      const matchesGraduationFilter = graduationFilterValue === '' || vca.reason === graduationFilterValue;
 
       // Return true if the record matches all conditions
       return matchesSearch && matchesSubPopulationFilters && matchesGraduationFilter;
@@ -311,7 +347,7 @@ export const TreeTableArchived: React.FC = () => {
     const mappedData: TableDataItem[] = filtered.map((vca, index) => ({
       key: index,
       unique_id: vca.uid,
-      name: `${vca.firstname} ${vca.lastname}`,
+      name: `${vca.firstname || ''} ${vca.lastname || ''}`.trim(),
       gender: vca.vca_gender,
       age: calculateAge(vca.birthdate),
       address: {
@@ -324,11 +360,12 @@ export const TreeTableArchived: React.FC = () => {
     }));
 
     // Update the table data state and reset pagination to the first page
-    setTableData({
+    setTableData(prev => ({
       data: mappedData,
-      pagination: { ...tableData.pagination, current: 1 },
+      pagination: { ...prev.pagination, current: 1 },
       loading: false
-    });
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, vcas, subPopulationFilters, filters]);
 
   const calculateAge = (birthdate: string): number => {
@@ -390,8 +427,194 @@ export const TreeTableArchived: React.FC = () => {
       link.href = URL.createObjectURL(blob);
       link.download = 'vca.csv';
       link.click();
+      URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error('Error exporting data:', error);
+    }
+  };
+
+  // Exports all currently filtered VCAs as a single JSON file
+  const handleExport = async () => {
+    try {
+      const payload = {
+        vcas: filteredVcas || [],
+        exportedAt: new Date().toISOString(),
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const filename = `vcas_profiles_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error('Error exporting profiles (global export):', err);
+    }
+  };
+
+  // --- NEW: per-row export handler (CSV) ---
+  const handleExportProfile = async (uid: string) => {
+    try {
+      setExportingUid(uid);
+      const base = process.env.REACT_APP_BASE_URL || 'https://ecapplus.server.dqa.bluecodeltd.com';
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+      // Try to get the VCA row data from current state
+      const selectedVca = vcas.find((v) => v.uid === uid) || null;
+      const householdId = selectedVca?.household_id || (selectedVca && (selectedVca.household?.household_id || selectedVca.household)) || undefined;
+
+      const tryPaths = async (paths: string[]) => {
+        for (const p of paths) {
+          try {
+            const res = await axios.get(p, { headers });
+            if (res?.status === 200 && (res.data?.data || res.data)) return res.data?.data ?? res.data;
+          } catch (e) {
+            // ignore and try next
+          }
+        }
+        return null;
+      };
+
+      const vcaPaths = [
+        `${base}/child/vca/${uid}`,
+        `${base}/child/vca/${uid}/profile`,
+        `${base}/child/vcas/${uid}`,
+        `${base}/child/${uid}`,
+      ];
+
+      const familyPaths = [
+        `${base}/child/vca-family/${uid}`,
+        ...(householdId ? [`${base}/household/family-members/${householdId}`, `${base}/family-members/${householdId}`] : []),
+        `${base}/child/family-members/${uid}`,
+      ];
+
+      const casePlanPaths = [
+        `${base}/case-plans?filter[uid][_eq]=${uid}&limit=-1`,
+        `${base}/case_plans?filter[uid][_eq]=${uid}&limit=-1`,
+        `${base}/case-plans?filter[vca_uid][_eq]=${uid}&limit=-1`,
+        `${base}/child/${uid}/case-plans`,
+      ];
+
+      const servicesPaths = [
+        `${base}/child/vca-services/${uid}`,
+        `${base}/services?filter[uid][_eq]=${uid}&limit=-1`,
+        `${base}/services?filter[vca_uid][_eq]=${uid}&limit=-1`,
+      ];
+
+      const referralsPaths = [
+        `${base}/child/vca-referrals/${uid}`,
+        `${base}/referrals?filter[vca_uid][_eq]=${uid}&limit=-1`,
+      ];
+
+      const flagsPaths = [
+        `${base}/items/flagged_forms_ecapplus_pmp?filter[uid][_eq]=${uid}&limit=-1`,
+        `${base}/items/flagged_forms_ecapplus_pmp?filter[vca_id][_eq]=${uid}&limit=-1`,
+        `${base}/items/flagged_forms_ecapplus_pmp?filter[unique_id][_eq]=${uid}&limit=-1`,
+        `${base}/items/flagged_forms_ecapplus_pmp?limit=-1`,
+      ];
+
+      const [vcaRes, familyRes, casePlansRes, servicesRes, referralsRes, flagsRes] = await Promise.all([
+        tryPaths(vcaPaths),
+        tryPaths(familyPaths),
+        tryPaths(casePlanPaths),
+        tryPaths(servicesPaths),
+        tryPaths(referralsPaths),
+        tryPaths(flagsPaths),
+      ]);
+
+      const vcaRecord: any = vcaRes ?? selectedVca ?? null;
+      const familyMembers: any[] = Array.isArray(familyRes) ? familyRes : (familyRes ? [familyRes] : []);
+      const casePlans: any[] = Array.isArray(casePlansRes) ? casePlansRes : (casePlansRes ? [casePlansRes] : []);
+      const services: any[] = Array.isArray(servicesRes) ? servicesRes : (servicesRes ? [servicesRes] : []);
+      const referrals: any[] = Array.isArray(referralsRes) ? referralsRes : (referralsRes ? [referralsRes] : []);
+
+      // flagged: prefer flaggedMap preloaded; else use API result (flagsRes)
+      let flagged: any = null;
+      if (flaggedMap[uid]) flagged = flaggedMap[uid];
+      else if (Array.isArray(flagsRes) && flagsRes.length > 0) flagged = flagsRes;
+      else if (flagsRes) flagged = Array.isArray(flagsRes) ? flagsRes : [flagsRes];
+
+      const rows: any[] = [];
+
+      const pushObjectAsRows = (section: string, profileId: string | undefined, entityName: string, entityId: string | undefined, obj: any) => {
+        if (!obj) return;
+        if (Array.isArray(obj)) {
+          obj.forEach((item, idx) => {
+            const itemId = (item && (item.id || item._id || item.member_id || item.uid || item.unique_id)) || `${entityName}-${idx}`;
+            rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: '__item_start__', value: '' });
+            Object.entries(item).forEach(([k, v]) => {
+              let val = '';
+              try { val = (v === null || v === undefined) ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); } catch (e) { val = String(v); }
+              rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: k, value: val });
+            });
+            rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: '__item_end__', value: '' });
+          });
+        } else {
+          const item = obj;
+          const itemId = (item && (item.id || item._id || item.member_id || item.uid || item.unique_id)) || entityId || '';
+          rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: '__item_start__', value: '' });
+          Object.entries(item || {}).forEach(([k, v]) => {
+            let val = '';
+            try { val = (v === null || v === undefined) ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); } catch (e) { val = String(v); }
+            rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: k, value: val });
+          });
+          rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: '__item_end__', value: '' });
+        }
+      };
+
+      // Build rows
+      pushObjectAsRows('VCA', uid, 'VCA', vcaRecord?.uid || uid, vcaRecord || {});
+      pushObjectAsRows('Family Member', uid, 'FamilyMember', undefined, familyMembers.length ? familyMembers : []);
+      pushObjectAsRows('Case Plan', uid, 'CasePlan', undefined, casePlans.length ? casePlans : []);
+      pushObjectAsRows('Service', uid, 'Service', undefined, services.length ? services : []);
+      pushObjectAsRows('Referral', uid, 'Referral', undefined, referrals.length ? referrals : []);
+      pushObjectAsRows('Flagged Record', uid, 'Flag', undefined, flagged ? flagged : []);
+
+      // Export metadata
+      rows.unshift({ section: 'Export Metadata', profile_id: uid, entity: 'ExportInfo', entity_id: '', key: 'exportedAt', value: new Date().toISOString() });
+
+      const fields = ['section', 'profile_id', 'entity', 'entity_id', 'key', 'value'];
+      const parser = new Parser({ fields });
+      const csv = parser.parse(rows);
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `vca_profile_${uid}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+    } catch (err) {
+      console.error('Error exporting VCA profile', err);
+      // Fallback: export minimal in-memory record as CSV
+      try {
+        const selectedVca = vcas.find((v) => v.uid === uid) || {};
+        const flagged = flaggedMap[uid] || null;
+        const rowsFallback: any[] = [];
+        rowsFallback.push({ section: 'VCA', profile_id: uid, entity: 'VCA', entity_id: uid, key: 'uid', value: selectedVca.uid || '' });
+        Object.entries(selectedVca || {}).forEach(([k, v]) => rowsFallback.push({ section: 'VCA', profile_id: uid, entity: 'VCA', entity_id: uid, key: k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }));
+        if (flagged) rowsFallback.push({ section: 'Flagged Record', profile_id: uid, entity: 'Flag', entity_id: flagged.id || '', key: 'comment', value: flagged.comment || '' });
+        const parserFallback = new Parser({ fields: ['section', 'profile_id', 'entity', 'entity_id', 'key', 'value'] });
+        const csvFallback = parserFallback.parse(rowsFallback);
+        const blob = new Blob([csvFallback], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `vca_profile_${uid}_fallback.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      } catch (err2) {
+        console.error('Fallback export also failed', err2);
+      }
+    } finally {
+      setExportingUid(null);
     }
   };
 
@@ -442,7 +665,7 @@ export const TreeTableArchived: React.FC = () => {
     const mappedData: TableDataItem[] = initialvcas.map((vca, index) => ({
       key: index,
       unique_id: vca.uid,
-      name: `${vca.firstname} ${vca.lastname}`,
+      name: `${vca.firstname || ''} ${vca.lastname || ''}`.trim(),
       gender: vca.vca_gender,
       age: calculateAge(vca.birthdate),
       address: {
@@ -456,20 +679,10 @@ export const TreeTableArchived: React.FC = () => {
 
     setTableData({ data: mappedData, pagination: initialPagination, loading: false });
 
-    // Clear search input fields for each column
-    columns.forEach((column) => {
-      if ('filterDropdown' in column) {
-        const filterDropdownProps = column.filterDropdown as unknown as FilterDropdownProps;
-        if (filterDropdownProps.clearFilters) {
-          filterDropdownProps.clearFilters(); // Clear the column-specific filter
-        }
-      }
-      if (searchInput.current) {
-        if (searchInput.current && searchInput.current.input) {
-          searchInput.current.input.value = ''; // Clear the search input field
-        }
-      }
-    });
+    // Clear search input fields (if visible)
+    if (searchInput.current && (searchInput.current as any).input) {
+      (searchInput.current as any).input.value = '';
+    }
   };
 
   const handleSubPopulationFilterChange = (filterName: keyof typeof subPopulationFilters, value: string) => {
@@ -496,29 +709,27 @@ export const TreeTableArchived: React.FC = () => {
         <Input
           ref={searchInput}
           placeholder={`Search ${dataIndex}`}
-          value={selectedKeys[0]} // Use selectedKeys[0] instead of selectedKeys[1]
+          value={selectedKeys[0]}
           onChange={(e) => {
             const searchValue = e.target.value;
             setSelectedKeys(searchValue ? [searchValue] : []);
-  
+
             // If the dataIndex is 'address', determine which subfield is being searched
             if (dataIndex === 'address') {
-              // Loop through the subfields of the address object to find a match
               const subfields = ['homeaddress', 'facility', 'province', 'district', 'ward'];
-              let matchedSubfield = ''; // No default value
-  
-              // Check which subfield the search value belongs to
+              let matchedSubfield = '';
+
               if (searchValue && vcas.length > 0) {
-                const firstVca = vcas[0]; // Use the first VCA as a reference
+                const firstVca = vcas[0];
                 for (const subfield of subfields) {
-                  if (firstVca[subfield as keyof Vca]?.toString().toLowerCase().includes(searchValue.toLowerCase())) {
-                    matchedSubfield = subfield.charAt(0).toUpperCase() + subfield.slice(1); // Capitalize the subfield name
+                  const val = firstVca[subfield as keyof Vca];
+                  if (val && val.toString().toLowerCase().includes(searchValue.toLowerCase())) {
+                    matchedSubfield = subfield.charAt(0).toUpperCase() + subfield.slice(1);
                     break;
                   }
                 }
               }
-  
-              // Update the householdSearchField state
+
               setHouseholdSearchField(matchedSubfield);
             }
           }}
@@ -530,7 +741,6 @@ export const TreeTableArchived: React.FC = () => {
             type="primary"
             onClick={() => {
               handleSearch(selectedKeys as string[], confirm, dataIndex);
-              // Update columnFilters state when a filter is applied
               setColumnFilters((prevFilters) => ({
                 ...prevFilters,
                 [dataIndex]: (selectedKeys[0] as string) || '',
@@ -547,20 +757,18 @@ export const TreeTableArchived: React.FC = () => {
             size="small"
             onClick={() => {
               if (clearFilters) {
-                clearFilters(); 
-                setSearchText(''); 
-                setSearchedColumn(''); 
-                // Remove the column filter from columnFilters state
+                clearFilters();
+                setSearchText('');
+                setSearchedColumn('');
                 setColumnFilters((prevFilters) => {
                   const newFilters = { ...prevFilters };
                   delete newFilters[dataIndex];
                   return newFilters;
                 });
-                // Reset the household search field ONLY if the Household Details filter is being reset
                 if (dataIndex === 'address') {
                   setHouseholdSearchField('');
                 }
-                confirm({ closeDropdown: false }); 
+                confirm({ closeDropdown: false });
               }
             }}
             style={{ width: 125 }}
@@ -583,47 +791,41 @@ export const TreeTableArchived: React.FC = () => {
     onFilter: (value: string | number | boolean, record: { [x: string]: any }) => {
       const fieldValue = record[dataIndex];
       const filterValue = value.toString().toLowerCase();
-  
-      // Handle Household Details column differently
+
       if (dataIndex === 'address') {
-        const addressFields = Object.values(record.address).filter(Boolean);
+        const addressFields = Object.values(record.address || {}).filter(Boolean);
         const addressString = addressFields.join(' ').toLowerCase();
-  
-        // Check if the search value matches the ward field specifically
-        if (record.address.ward?.toLowerCase().includes(filterValue)) {
-          return true; // Match found in the ward field
+
+        if (record.address?.ward?.toLowerCase().includes(filterValue)) {
+          return true;
         }
-  
-        // Check if the search value matches any other address field
+
         return addressString.includes(filterValue);
       }
-  
-      // Exact match for unique_id, gender, and age
+
       if (dataIndex === 'unique_id' || dataIndex === 'gender' || dataIndex === 'age') {
         return fieldValue ? fieldValue.toString().toLowerCase() === filterValue : false;
       }
-  
-      // Partial match for other fields (e.g., name)
+
       return fieldValue ? fieldValue.toString().toLowerCase().includes(filterValue) : false;
     },
     render: (text: any, record: TableDataItem) => {
       if (dataIndex === 'address') {
-        // Render only non-empty address fields
         const addressFields = [
           `Address: ${record.address.homeaddress || ''}`,
           `Facility: ${record.address.facility || ''}`,
           `Province: ${record.address.province || ''}`,
           `District: ${record.address.district || ''}`,
           `Ward: ${record.address.ward || ''}`,
-        ].filter((field) => !field.endsWith(': ')); // Remove empty fields
-  
+        ].filter((field) => !field.endsWith(': '));
+
         return (
           <div>
             {addressFields.map((field, index) => (
               <div key={index}>
                 {searchedColumn === dataIndex && searchText && field.toLowerCase().includes(searchText.toLowerCase()) ? (
                   <Highlighter
-                    highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
+                    highlightStyle={{ backgroundColor: '#ffc069', padding: 0}}
                     searchWords={[searchText]}
                     autoEscape
                     textToHighlight={field}
@@ -636,7 +838,7 @@ export const TreeTableArchived: React.FC = () => {
           </div>
         );
       }
-  
+
       return searchedColumn === dataIndex ? (
         <Highlighter
           highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
@@ -649,7 +851,7 @@ export const TreeTableArchived: React.FC = () => {
       );
     },
   });
-  
+
   const handleView = (uid: string) => {
     const selectedVca = vcas.find((vca) => vca.uid === uid);
     navigate(`/profile/vca-profile/${encodeURIComponent(uid)}`, { state: { vca: selectedVca } });
@@ -686,40 +888,58 @@ export const TreeTableArchived: React.FC = () => {
       width: '35%',
       ...getColumnSearchProps('address'),
     },
+    // --- NEW: Flag column ---
+    {
+      title: t('Flag'),
+      dataIndex: 'flag',
+      width: '8%',
+      render: (_: any, record: TableDataItem) => {
+        const keyId = record.unique_id ?? (record as any).vca_id ?? (record as any).uid ?? (record as any).id;
+        const flag = keyId ? flaggedMap[keyId] : undefined;
+        if (!flag) return null;
+
+        const tooltipContent = (
+          <div style={{ maxWidth: 360, wordBreak: 'break-word' }}>
+            <div style={{ marginBottom: 6, fontWeight: 600 }}>{t('Comment')}</div>
+            <div style={{ whiteSpace: 'normal' }}>{flag.comment || '—'}</div>
+            {flag.date_created && <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>Created: {new Date(flag.date_created).toLocaleString()}</div>}
+          </div>
+        );
+
+        return (
+          <Tooltip placement="topLeft" title={tooltipContent}>
+            <Tag color="red" style={{ cursor: 'pointer' }}>{t('Flagged')}</Tag>
+          </Tooltip>
+        );
+      }
+    },
     {
       title: t('Applied Filters & Search'),
       dataIndex: 'appliedFilters',
       width: '20%',
       render: (text: string, record: Vca) => {
-        // Collect all applied sub-population filters
         const appliedSubPopulationFilters = Object.entries(subPopulationFilters)
           .filter(([key, value]) => value !== 'all')
           .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]);
 
-        // Collect the graduation filter (if applied)
         const graduationFilter = filters.find(filter => filter.key === "reason")?.value || "";
 
-        // Collect column-specific filters
         const appliedColumnFilters = Object.entries(columnFilters)
           .filter(([key, value]) => value !== '')
           .map(([key, value]) => {
             if (key === 'address') {
-              // Format Household Details filters based on the specific field being searched
               return `${householdSearchField}: ${value}`;
             } else {
-              // Format other columns as "Column Name: Search Text"
               return `${key}: ${value}`;
             }
           });
 
-        // Combine all applied filters into a single array
         const allAppliedFilters = [
           ...appliedSubPopulationFilters,
           ...(graduationFilter ? [`${graduationFilter}`] : []),
           ...appliedColumnFilters,
         ];
 
-        // Render the applied filters as tags
         return (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
             {allAppliedFilters.map((filter, index) => (
@@ -737,9 +957,19 @@ export const TreeTableArchived: React.FC = () => {
       width: '10%',
       dataIndex: '',
       render: (_: any, record: TableDataItem) => (
-        <BaseButton type="primary" onClick={() => handleView(record.unique_id)}>
-          {t('View')}
-        </BaseButton>
+        <Space size="middle">
+          <BaseButton type="primary" onClick={() => handleView(record.unique_id)}>
+            {t('View')}
+          </BaseButton>
+
+          <BaseButton
+            type="default"
+            onClick={() => handleExportProfile(record.unique_id)}
+            disabled={exportingUid === record.unique_id}
+          >
+            {exportingUid === record.unique_id ? t('Exporting...') : t('Export Profile')}
+          </BaseButton>
+        </Space>
       ),
     },
   ];
@@ -794,7 +1024,7 @@ export const TreeTableArchived: React.FC = () => {
                       </div>
                     )}
                   >
-                    <Select.Option value="Graduated (Household has met the graduation benchmarks in ALL domains)">
+                                       <Select.Option value="Graduated (Household has met the graduation benchmarks in ALL domains)">
                       Met ALL graduation benchmarks
                     </Select.Option>
                     <Select.Option value="Exited without graduation">
@@ -861,13 +1091,13 @@ export const TreeTableArchived: React.FC = () => {
       </Modal>
 
       <BaseTable
-        // key={filteredVcas.length} // Force re-render when data changes
         columns={columns}
         dataSource={tableData.data}
-        loading={loading}
+        pagination={tableData.pagination}
+        loading={tableData.loading}
         scroll={{ x: 1000 }}
         style={{ overflowX: 'auto' }}
-        onChange={handleTableChange} 
+        onChange={handleTableChange}
       />
     </div>
   );

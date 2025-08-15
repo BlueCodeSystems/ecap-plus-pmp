@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Skeleton, Tag, Typography } from 'antd';
@@ -44,17 +45,25 @@ const VcasRegisterPage: React.FC = () => {
   }, []);
 
   const content = (
-    <>
-      <Typography.Title level={4}>
-        {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District VCAs Register
-      </Typography.Title>
-      <Tag color="volcano">
-        Note: Only active VCAs are shown.
-      </Tag>
-      <br />
-      <br />
-    </>
-  );
+  <>
+    <Typography.Title level={4}>
+      {loadingUserData ? (
+        <Skeleton.Input active size="small" />
+      ) : user?.location ? (
+        `${user.location} District VCAs Register`
+      ) : (
+        'VCAs Register'
+      )}
+    </Typography.Title>
+    
+    <Tag color="volcano">
+      Note: Only active VCAs are shown.
+    </Tag>
+    <br />
+    <br />
+  </>
+);
+
 
   return (
     <>

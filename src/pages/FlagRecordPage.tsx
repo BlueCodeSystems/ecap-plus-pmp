@@ -1,6 +1,8 @@
+
+/* eslint-disable prettier/prettier */
 import React, { useEffect, useState, useRef } from 'react';
 import { Table, Typography, Skeleton, Alert, Button, Space, Input, Tag, message, Select } from 'antd';
-import { SearchOutlined} from '@ant-design/icons';
+import { SearchOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import Highlighter from 'react-highlight-words';
 import type { ColumnType } from 'antd/es/table';
@@ -40,8 +42,6 @@ const FlagRecordPage: React.FC = () => {
   const [searchedColumn, setSearchedColumn] = useState('');
   const navigate = useNavigate(); 
 
-
- 
   const handleExport = () => {
     console.log('Exporting records...');
     try {
@@ -51,7 +51,7 @@ const FlagRecordPage: React.FC = () => {
           .concat(
             records.map(
               (record) =>
-                `${record.household_id},${record.caseworker_name},${record.caregiver_name},${record.facility},${record.comment},${record.verifier},${record.status},${record.date_created}` // Use `date_created` here
+                `${record.household_id},${record.caseworker_name},${record.caregiver_name},${record.facility},${record.comment},${record.verifier},${record.status},${record.date_created}`
             )
           )
           .join('\n');
@@ -69,38 +69,43 @@ const FlagRecordPage: React.FC = () => {
       message.error('Failed to export records.');
     }
   };
+
   useEffect(() => {
-  const fetchTableData = async () => {
-    try {
-      setLoadingTable(true);
-      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/items/flagged_forms_ecapplus_pmp`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
-      });
-      setRecords(response.data.data);
-    } catch (err) {
-      console.error('Error fetching table data:', err);
-      setError('Failed to fetch table data.');
-    } finally {
-      setLoadingTable(false);
-    }
-  };
+    const fetchTableData = async () => {
+      try {
+        setLoadingTable(true);
+        const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/items/flagged_forms_ecapplus_pmp`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+        });
+        setRecords(response.data.data);
+      } catch (err) {
+        console.error('Error fetching table data:', err);
+        setError('Failed to fetch table data.');
+      } finally {
+        setLoadingTable(false);
+      }
+    };
 
-  const fetchUserData = async () => {
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
-      });
-      setUser(response.data.data);
-    } catch (err) {
-      console.error('Error fetching user data:', err);
-    } finally {
-      setLoadingUserData(false);
-    }
-  };
+    const fetchUserData = async () => {
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+        });
+        setUser(response.data.data);
+      } catch (err: any) {
+        console.error('Error fetching table data:', err.response?.data || err.message || err);
+        setError('Failed to fetch user data.');
+      } finally {
+        setLoadingUserData(false);
+      }
+    };
 
-  fetchTableData();
-  fetchUserData();
-}, []);
+    fetchTableData();
+    console.log("BASE_URL:", process.env.REACT_APP_BASE_URL);
+    console.log("ACCESS TOKEN:", localStorage.getItem('access_token'));
+
+    fetchUserData();
+  }, []);
 
   const columns: ColumnType<Record>[] = [
     {
@@ -163,21 +168,22 @@ const FlagRecordPage: React.FC = () => {
     return {
       onClick: () => {
         navigate(`/profile/household-profile/${encodeURIComponent(record.household_id)}`, {
-          state: { household: record }, // Pass the full household object
+          state: { household: record },
         });
       },
-      style: { cursor: 'pointer' }, 
+      style: { cursor: 'pointer' },
     };
   };
-  
 
   return (
     <>
       <Typography.Title level={4}>
         {loadingUserData ? (
           <Skeleton.Input active size="small" />
+        ) : user?.location ? (
+          `${user.location} District Flagged Records`
         ) : (
-          `${user?.location} District Flagged Records`
+          'District Flagged Records' // Fallback title if location is unavailable
         )}
       </Typography.Title>
 
@@ -191,15 +197,14 @@ const FlagRecordPage: React.FC = () => {
         />
       )}
 
-       
       <Button
         type="primary"
         onClick={handleExport}
-        style={{ marginBottom: '20px' }} 
+        style={{ marginBottom: '20px' }}
       >
         Export to CSV
       </Button>
-  
+
       {loadingTable ? (
         <Skeleton active paragraph={{ rows: 3 }} />
       ) : (
@@ -209,7 +214,7 @@ const FlagRecordPage: React.FC = () => {
           columns={columns}
           rowKey="id"
           pagination={{ pageSize: 10 }}
-          onRow={handleRowClick} 
+          onRow={handleRowClick}
         />
       )}
     </>

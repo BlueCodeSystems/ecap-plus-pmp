@@ -8,10 +8,10 @@ export const httpApi = axios.create({
 });
 
 httpApi.interceptors.request.use((config) => {
-  config.headers = { ...config.headers, Authorization: `Bearer ${readToken()}` };
-
+  config.headers?.set?.('Authorization', `Bearer ${readToken()}`);
   return config;
 });
+
 
 httpApi.interceptors.response.use(undefined, (error: AxiosError) => {
   throw new ApiError<ApiErrorData>(error.response?.data.message || error.message, error.response?.data);

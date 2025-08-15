@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import axios from 'axios';
-import { Button, Space, Tooltip, Spin, message, Modal, Form, Input, Select, Popconfirm, Divider, Tabs, Tag } from 'antd';
+import { Button, Space, Tooltip, Spin, message, Modal, Form, Input, Select, Popconfirm, Divider, Tag } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
-import TabPane from 'antd/lib/tabs/TabPane';
 import { notificationController } from '@app/controllers/notificationController';
+import { Tabs } from 'antd';
+
+const { TabPane } = Tabs;
+
 
 interface User {
   id: string;

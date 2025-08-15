@@ -1,8 +1,6 @@
+/* eslint-disable prettier/prettier */
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-
-// no lazy loading for auth pages to avoid flickering
-const AuthLayout = React.lazy(() => import('@app/components/layouts/AuthLayout/AuthLayout'));
 import LoginPage from '@app/pages/LoginPage';
 import SignUpPage from '@app/pages/SignUpPage';
 import ForgotPasswordPage from '@app/pages/ForgotPasswordPage';
@@ -20,6 +18,9 @@ import RequireAuth from '@app/components/router/RequireAuth';
 import { withLoading } from '@app/hocs/withLoading.hoc';
 import NftDashboardPage from '@app/pages/DashboardPages/NftDashboardPage';
 import MedicalDashboardPage from '@app/pages/DashboardPages/MedicalDashboardPage';
+
+// no lazy loading for auth pages to avoid flickering
+const AuthLayout = React.lazy(() => import('@app/components/layouts/AuthLayout/AuthLayout'));
 
 const HouseholdsPage = React.lazy(() => import('@app/pages/HouseholdsRegisterPage'));
 const FlagRecordPage = React.lazy(() => import('@app/pages/FlagRecordPage'));

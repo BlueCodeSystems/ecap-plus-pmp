@@ -19,7 +19,7 @@ interface User {
   location: string;
 }
 
-const MedicalDashboardPage: React.FC = () => {
+const NftDashboardPage: React.FC = () => {
   
   const { isDesktop, isMobile, isTablet } = useResponsive();
   const [user, setUser] = useState<User | null>(null);
@@ -152,4 +152,4 @@ const MedicalDashboardPage: React.FC = () => {
   );
 };
 
-export default MedicalDashboardPage;
+export default NftDashboardPage;

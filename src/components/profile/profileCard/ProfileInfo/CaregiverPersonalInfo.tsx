@@ -1,6 +1,8 @@
-import React, { useCallback, useMemo, useState, useRef } from 'react';
+/* eslint-disable prettier/prettier */
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { Skeleton, Typography, Divider, Tag, Badge, Row, Col, Button, Tooltip } from 'antd';
 import { BaseButtonsForm } from '@app/components/common/forms/BaseButtonsForm/BaseButtonsForm';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
@@ -74,7 +76,7 @@ interface Household {
   biological_children: string | null;
   calhiv: string;
   caregiver_art_number: string | null;
-  caregiver_birthdate: string;
+  caregiver_birthdate: string | null;
   caregiver_hiv_status: string;
   caregiver_name: string;
   caregiver_phone: string;
@@ -131,7 +133,7 @@ interface Household {
   takes_drugs_to_prevent_other_diseases: string | null;
   tpt_client_eligibility: string | null;
   tpt_client_initiated: string | null;
-  unique_id: string;
+  unique_id?: string;
   violence_six_months: string;
   viral_load_results_on_file: string | null;
   vl_check_box: string | null;
@@ -157,241 +159,287 @@ export const CaregiverPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData
   const [form] = BaseButtonsForm.useForm();
   const { t } = useTranslation();
 
-  const onFinish = useCallback(
-    (values: any) => {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-        setFieldsChanged(false);
-        notificationController.success({ message: t('common.success') });
-      }, 600);
-    },
-    [t]
-  );
-
+  // single loader/guard: if loading or no household yet
   if (isLoading || !household) {
     return (
       <div
-        style= {{
-      display: 'flex',
-        flexDirection: 'column',
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
           justifyContent: 'center',
-            alignItems: 'center',
-        }
-  }
+          alignItems: 'center',
+        }}
       >
-    <Skeleton active />
-    </div>
+        <Skeleton active />
+      </div>
     );
   }
 
-const renderCol = (label: string, value: any, span: number = 6) => {
-  // Check if the value is "no", false, or an empty string
-  if (value === 'no' || value === 'No' || value === false || value === 'false' || value === null || value === '') {
-    return null; // Don't render this column
-  }
+  const renderCol = (label: string, value: any, span: number = 6) => {
+    // Check if the value is "no", false, or an empty string
+    if (value === 'no' || value === 'No' || value === false || value === 'false' || value === null || value === '') {
+      return null; // Don't render this column
+    }
 
-  return (
-    <BaseCol xs= { 24} md = { span } >
-      <InfoLabel>{ label } </InfoLabel>
-      < InfoValue > { value !== null && value !== undefined ? value : 'Not Applicable'
-}</InfoValue>
-  </BaseCol>
+    return (
+      <BaseCol xs={24} md={span}>
+        <InfoLabel>{label}</InfoLabel>
+        <InfoValue>{value !== null && value !== undefined ? value : 'Not Applicable'}</InfoValue>
+      </BaseCol>
     );
   };
 
-// Ref to capture the section for PDF
-const contentRef = useRef<HTMLDivElement>(null);
+  // Ref to capture the section for PDF
+  const contentRef = useRef<HTMLDivElement>(null);
 
-const exportToPDF = useCallback(() => {
-  const input = contentRef.current;
-  if (input) {
-    html2canvas(input).then((canvas) => {
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF();
-      const imgWidth = 190;
-      const pageHeight = pdf.internal.pageSize.height;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let position = 10;
+  const exportToPDF = useCallback(() => {
+    const input = contentRef.current;
+    if (input) {
+      html2canvas(input).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF();
+        const imgWidth = 190;
+        const pageHeight = pdf.internal.pageSize.height;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let position = 10;
 
-      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
 
-      // Save the PDF
-      pdf.save('Caregiver_Personal_Info.pdf');
-    });
-  }
-}, []);
+        // Save the PDF
+        pdf.save('Caregiver_Personal_Info.pdf');
+      });
+    }
+  }, []);
 
-if (isLoading || !household) {
+  // --- NEW: flagged records state ---
+  const [flaggedMap, setFlaggedMap] = useState<Record<string, any>>({});
+  const [flagsLoading, setFlagsLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchFlags = async () => {
+      setFlagsLoading(true);
+      try {
+        const base = process.env.REACT_APP_BASE_URL || 'https://ecapplus.server.dqa.bluecodeltd.com';
+        const token = localStorage.getItem('access_token');
+        const res = await axios.get(
+          `${base}/items/flagged_forms_ecapplus_pmp?filter[status][_neq]=Resolved&limit=-1`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+        );
+
+        const items: any[] = res.data?.data || res.data || [];
+        const map: Record<string, any> = {};
+        // Index flags by likely id fields that match households/caregivers
+        items.forEach((f: any) => {
+          if (f.household_id) map[f.household_id] = f;
+          if (f.unique_id) map[f.unique_id] = f;
+          if (f.vca_id) map[f.vca_id] = f;
+          if (f.uid) map[f.uid] = f;
+        });
+
+        if (mounted) setFlaggedMap(map);
+      } catch (err) {
+        console.error('Error fetching flagged records (caregiver profile)', err);
+      } finally {
+        if (mounted) setFlagsLoading(false);
+      }
+    };
+
+    fetchFlags();
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
   return (
-    <div
-        style= {{
-    display: 'flex',
-      flexDirection: 'column',
-        justifyContent: 'center',
-          alignItems: 'center',
-        }
-}
-      >
-  <Skeleton active />
-  </div>
-    );
-  }
+    <Wrapper>
+      {profileData && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Title>{household.caregiver_name}</Title>
 
-return (
-  <Wrapper>
-  { profileData && (
-    <>
-    <div style= {{ display: 'flex', justifyContent: 'space-between' }}>
-      <Title>{ household.caregiver_name } </Title>
+              {/* Flag display: check flaggedMap by household id or unique_id */}
+              {(() => {
+                const keyId = household.household_id ?? (household as any).unique_id ?? (household as any).uid;
+                const flag = keyId ? flaggedMap[keyId] : undefined;
+                if (!flag) return null;
 
-{/* <Tooltip title="Export Caregiver Profile and services">
-              <Button type="ghost" onClick={exportToPDF} icon={<FileExcelFilled />}>
-                {t('Export Profile')}
-              </Button>
-            </Tooltip> */}
+                const tooltipContent = (
+                  <div style={{ maxWidth: 360, wordBreak: 'break-word' }}>
+                    <div style={{ marginBottom: 6, fontWeight: 600 }}>{t('Comment')}</div>
+                    <div style={{ whiteSpace: 'normal' }}>{flag.comment || '—'}</div>
+                    {flag.date_created && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>
+                        Created: {moment(flag.date_created).format('LLL')}
+                      </div>
+                    )}
+                  </div>
+                );
 
-</div>
-  < Divider />
-  <Row>
-  <Col span={ 24 }>
-    <Typography.Text strong > Household ID </Typography.Text> {household.household_id}
-      </Col>
-      < Col span = { 24} >
-        <Typography.Text strong > Partner </Typography.Text> {household.partner}
-        </Col>
-        < Col span = { 24} >
-          <Typography.Text strong > Date enrolled </Typography.Text>
-{ household.date_enrolled }
-</Col>
-  < Col span = { 24} >
-    <Typography.Text strong > Case status </Typography.Text>
-      < Badge
-count = { household.case_status === '1' || household.case_status === "yes" ? "Active" : "Closed" }
-style = {{ fontWeight: 'bold', backgroundColor: household.case_status === '1' || household.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
+                return (
+                  <Tooltip placement="topLeft" title={tooltipContent}>
+                    <Tag color="red" style={{ fontWeight: 700, cursor: 'pointer' }}>Flagged Record</Tag>
+                  </Tooltip>
+                );
+              })()}
+
+            </div>
+
+            {/* right-side actions (kept commented out as in original) */}
+          </div>
+          <Divider />
+          <Row>
+            <Col span={24}>
+              <Typography.Text strong> Household ID </Typography.Text> {household.household_id}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong> Partner </Typography.Text> {household.partner}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong> Date enrolled </Typography.Text>
+              {household.date_enrolled}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong> Case status </Typography.Text>
+              <Badge
+                count={household.case_status === '1' || household.case_status === 'yes' ? 'Active' : 'Closed'}
+                style={{ fontWeight: 'bold', backgroundColor: household.case_status === '1' || household.case_status === 'yes' ? '#52c41a' : '#ff4d4f' }}
               />
-  </Col>
-  </Row>
-  </>
+            </Col>
+          </Row>
+        </>
       )}
-<BaseCard>
-  <BaseButtonsForm
-          form={ form }
-name = "info"
-loading = { isLoading }
-initialValues = { userFormValues }
-isFieldsChanged = { isFieldsChanged }
-setFieldsChanged = { setFieldsChanged }
-onFieldsChange = {() => setFieldsChanged(true)}
-onFinish = { onFinish }
-  >
-  <BaseRow gutter={ { xs: 10, md: 15, xl: 30 } }>
-    <Divider />
-    < BaseCol span = { 24} >
-{(household.case_status !== '1' && household.case_status !== 'yes') && (
-  <>
-    <SectionTitle level={5}>{t('Household Deregistration Information')}</SectionTitle>
-    {renderCol('De-registration Reason', household.de_registration_reason)}
-    {renderCol('De-registration Date', household.de_registration_date)}
-    <Divider />
-  </>
-)}
 
-  < Divider />
-  <BaseCol span = { 24 } >
-    <SectionTitle level={ 5 }> { t('Caregiver Personal Information') } </SectionTitle>
-      </BaseCol>
+      <BaseCard>
+        <BaseButtonsForm
+          form={form}
+          name="info"
+          loading={isLoading}
+          initialValues={userFormValues}
+          isFieldsChanged={isFieldsChanged}
+          setFieldsChanged={setFieldsChanged}
+          onFieldsChange={() => setFieldsChanged(true)}
+          onFinish={() => {
+            setLoading(true);
+            setTimeout(() => {
+              setLoading(false);
+              setFieldsChanged(false);
+              notificationController.success({ message: t('common.success') });
+            }, 600);
+          }}
+        >
+          <BaseRow gutter={{ xs: 10, md: 15, xl: 30 }}>
+            <Divider />
+            <BaseCol span={24}>
+              {(household.case_status !== '1' && household.case_status !== 'yes') && (
+                <>
+                  <SectionTitle level={5}>{t('Household Deregistration Information')}</SectionTitle>
+                  {renderCol('De-registration Reason', household.de_registration_reason)}
+                  {renderCol('De-registration Date', household.de_registration_date)}
+                  <Divider />
+                </>
+              )}
+            </BaseCol>
+          </BaseRow>
 
-{ renderCol('Province', household.province) }
-{ renderCol('Facility', household.facility) }
-{ renderCol('Ward', household.ward) }
-{ renderCol('VCA Gender', household.vca_gender) }
-{ renderCol('Relation', household.relation) }
-{ renderCol('Active On Treatment', household.active_on_treatment) }
-{ renderCol('Adolescent Birthdate', household.adolescent_birthdate) }
-{ renderCol('AGYW', convertToYesNo(household.agyw)) }
-{ renderCol('Approved Family', household.approved_family) }
-{ renderCol('ART Check Box', household.art_check_box) }
-{ renderCol('ART Number', household.art_number) }
-{ renderCol('Beds', household.beds) }
-{ renderCol('Biological Children', household.biological_children) }
-{ renderCol('CALHIV', convertToYesNo(household.calhiv)) }
-{ renderCol('Caregiver ART Number', household.caregiver_art_number) }
-{ renderCol('Caregiver Birthdate', household.caregiver_birthdate) }
-{ renderCol('Caregiver HIV Status', household.caregiver_hiv_status) }
-{ renderCol('Caregiver Name', household.caregiver_name) }
-{ renderCol('Caregiver Phone', household.caregiver_phone) }
-{ renderCol('Caregiver Sex', household.caregiver_sex) }
+          <Divider />
+          <BaseCol span={24}>
+            <SectionTitle level={5}>{t('Caregiver Personal Information')}</SectionTitle>
+          </BaseCol>
 
+          {renderCol('Province', household.province)}
+          {renderCol('Facility', household.facility)}
+          {renderCol('Ward', household.ward)}
+          {renderCol('VCA Gender', household.vca_gender)}
+          {renderCol('Relation', household.relation)}
+          {renderCol('Active On Treatment', household.active_on_treatment)}
+          {renderCol('Adolescent Birthdate', household.adolescent_birthdate)}
+          {renderCol('AGYW', convertToYesNo(household.agyw))}
+          {renderCol('Approved Family', household.approved_family)}
+          {renderCol('ART Check Box', household.art_check_box)}
+          {renderCol('ART Number', household.art_number)}
+          {renderCol('Beds', household.beds)}
+          {renderCol('Biological Children', household.biological_children)}
+          {renderCol('CALHIV', convertToYesNo(household.calhiv))}
+          {renderCol('Caregiver ART Number', household.caregiver_art_number)}
+          {renderCol('Caregiver Birthdate', household.caregiver_birthdate)}
+          {renderCol('Caregiver HIV Status', household.caregiver_hiv_status)}
+          {renderCol('Caregiver Name', household.caregiver_name)}
+          {renderCol('Caregiver Phone', household.caregiver_phone)}
+          {renderCol('Caregiver Sex', household.caregiver_sex)}
 
-<Divider />
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('Household Information') } </SectionTitle>
-      </BaseCol>
+          <Divider />
+          <BaseCol span={24}>
+            <SectionTitle level={5}>{t('Household Information')}</SectionTitle>
+          </BaseCol>
 
-{ renderCol('CFSW', convertToYesNo(household.cfsw)) }
-{ renderCol('Child Ever Experienced Sexual Violence', household.child_ever_experienced_sexual_violence) }
-{ renderCol('Child MMD', household.child_mmd) }
-{ renderCol('Children Violence Six Months', household.children_violence_six_months) }
-{ renderCol('Client Result', household.client_result) }
-{ renderCol('Client Screened', household.client_screened) }
-{ renderCol('Consent Check Box', household.consent_check_box) }
-{ renderCol('Contact Number', household.contact_number) }
-{ renderCol('C/SV', convertToYesNo(household.csv)) }
-{ renderCol('CWLHIV', convertToYesNo(household.cwlhiv)) }
-{ renderCol('District', household.district) }
-{ renderCol('Education', household.education) }
-{ renderCol('Emergency Name', household.emergency_name) }
-{ renderCol('Enrolled Date', household.enrolled_date) }
-{ renderCol('Entry Type', household.entry_type) }
-{ renderCol('Family Source of Income', household.fam_source_income) }
-{ renderCol('HEI', convertToYesNo(household.hei)) }
-{ renderCol('Home Address', household.homeaddress) }
-{ renderCol('Index Check Box', household.index_check_box) }
-{ renderCol('Is Biological Mother of Child Living with HIV', household.is_biological_mother_of_child_living_with_hiv) }
-{ renderCol('Is on HIV Treatment', household.is_on_hiv_treatment) }
-{ renderCol('Is the Child Caregiver an FSW', household.is_the_child_caregiver_an_fsw) }
-{ renderCol('Malaria ITNs', household.malaria_itns) }
-{ renderCol('Marital Status', household.marital_status) }
-{ renderCol('Monthly Expenses', household.monthlyexpenses) }
-{ renderCol('Number of Pregnant Women', household.number_of_pregnant_women) }
-{ renderCol('Partner', household.partner) }
+          {renderCol('CFSW', convertToYesNo(household.cfsw))}
+          {renderCol('Child Ever Experienced Sexual Violence', household.child_ever_experienced_sexual_violence)}
+          {renderCol('Child MMD', household.child_mmd)}
+          {renderCol('Children Violence Six Months', household.children_violence_six_months)}
+          {renderCol('Client Result', household.client_result)}
+          {renderCol('Client Screened', household.client_screened)}
+          {renderCol('Consent Check Box', household.consent_check_box)}
+          {renderCol('Contact Number', household.contact_number)}
+          {renderCol('C/SV', convertToYesNo(household.csv))}
+          {renderCol('CWLHIV', convertToYesNo(household.cwlhiv))}
+          {renderCol('District', household.district)}
+          {renderCol('Education', household.education)}
+          {renderCol('Emergency Name', household.emergency_name)}
+          {renderCol('Enrolled Date', household.enrolled_date)}
+          {renderCol('Entry Type', household.entry_type)}
+          {renderCol('Family Source of Income', household.fam_source_income)}
+          {renderCol('HEI', convertToYesNo(household.hei))}
+          {renderCol('Home Address', household.homeaddress)}
+          {renderCol('Index Check Box', household.index_check_box)}
+          {renderCol('Is Biological Mother of Child Living with HIV', household.is_biological_mother_of_child_living_with_hiv)}
+          {renderCol('Is on HIV Treatment', household.is_on_hiv_treatment)}
+          {renderCol('Is the Child Caregiver an FSW', household.is_the_child_caregiver_an_fsw)}
+          {renderCol('Malaria ITNs', household.malaria_itns)}
+          {renderCol('Marital Status', household.marital_status)}
+          {renderCol('Monthly Expenses', household.monthlyexpenses)}
+          {renderCol('Number of Pregnant Women', household.number_of_pregnant_women)}
+          {renderCol('Partner', household.partner)}
 
-<Divider />
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('Other Household Information') } </SectionTitle>
-      </BaseCol>
+          <Divider />
+          <BaseCol span={24}>
+            <SectionTitle level={5}>{t('Other Household Information')}</SectionTitle>
+          </BaseCol>
 
-{ renderCol('Pregnant Women', household.pregnant_woment) }
-{ renderCol('Provider ID', household.provider_id) }}
-{ renderCol('Acceptance', household.acceptance) }
-{ renderCol('School', household.school) }
-{ renderCol('Screened', household.screened) }
-{ renderCol('Screening Date', household.screening_date) }
-{ renderCol('Screening Location', household.screening_location) }
-{ renderCol('Screening Location Home', household.screening_location_home) }
-{ renderCol('Takes Drugs to Prevent Other Diseases', household.takes_drugs_to_prevent_other_diseases) }
-{ renderCol('TPT Client Eligibility', household.tpt_client_eligibility) }
-{ renderCol('TPT Client Initiated', household.tpt_client_initiated) }
-<Divider />
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('Date History') } </SectionTitle>
-      </BaseCol>
-{ renderCol('Date Enrolled', household.date_enrolled) }
-{ renderCol('Date HIV Known', household.date_hiv_known) }
-{ renderCol('Date Offered Enrollment', household.date_offered_enrollment) }
-{ renderCol('Date Referred', household.date_referred) }
-{ renderCol('Date Screened', household.date_screened) }
-{ renderCol('Date Started ART', household.date_started_art) }
-<Divider />
-  < BaseCol span = { 24} >
-    <SectionTitle level={ 5 }> { t('Caseworker  Information') } </SectionTitle>
-      </BaseCol>
-{ renderCol('Caseworker Name', household.caseworker_name) }
-{ renderCol('Caseworker Phone', household.caseworker_phone) }
-</BaseRow>
-  </BaseButtonsForm>
-  </BaseCard>
-  </Wrapper>
+          {renderCol('Pregnant Women', household.pregnant_woment)}
+          {renderCol('Provider ID', household.provider_id)}
+          {renderCol('Acceptance', household.acceptance)}
+          {renderCol('School', household.school)}
+          {renderCol('Screened', household.screened)}
+          {renderCol('Screening Date', household.screening_date)}
+          {renderCol('Screening Location', household.screening_location)}
+          {renderCol('Screening Location Home', household.screening_location_home)}
+          {renderCol('Takes Drugs to Prevent Other Diseases', household.takes_drugs_to_prevent_other_diseases)}
+          {renderCol('TPT Client Eligibility', household.tpt_client_eligibility)}
+          {renderCol('TPT Client Initiated', household.tpt_client_initiated)}
+          <Divider />
+          <BaseCol span={24}>
+            <SectionTitle level={5}>{t('Date History')}</SectionTitle>
+          </BaseCol>
+          {renderCol('Date Enrolled', household.date_enrolled)}
+          {renderCol('Date HIV Known', household.date_hiv_known)}
+          {renderCol('Date Offered Enrollment', household.date_offered_enrollment)}
+          {renderCol('Date Referred', household.date_referred)}
+          {renderCol('Date Screened', household.date_screened)}
+          {renderCol('Date Started ART', household.date_started_art)}
+          <Divider />
+          <BaseRow>
+            <BaseCol span={24}>
+              <SectionTitle level={5}>{t('Caseworker Information')}</SectionTitle>
+            </BaseCol>
+            {renderCol('Caseworker Name', household.caseworker_name)}
+            {renderCol('Caseworker Phone', household.caseworker_phone)}
+          </BaseRow>
+        </BaseButtonsForm>
+      </BaseCard>
+    </Wrapper>
   );
 };
+
+export default CaregiverPersonalInfo;

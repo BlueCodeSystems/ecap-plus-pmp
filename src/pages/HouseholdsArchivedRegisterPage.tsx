@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Skeleton, Tag, Typography } from 'antd';
@@ -44,14 +45,13 @@ const HouseholdsArchivedRegisterPage: React.FC = () => {
 
   const content = (
     <>
-      <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location}`} District Archived Households Register</Typography.Title>
+      <Typography.Title level={4}> {loadingUserData ? <Skeleton.Input active size="small" /> : `${user?.location || ''} District Archived Households Register`}</Typography.Title>
       <Tag color="volcano">
         Note: Only deregistered caregivers are shown.
       </Tag>
       <br />   
       <br />
     </>
-
   );
 
   return (

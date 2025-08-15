@@ -1,7 +1,9 @@
+/* eslint-disable prettier/prettier */
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useLocation } from 'react-router-dom';
-import { Skeleton, Typography, Divider, Alert, Tag, Badge, Row, Col, Button } from 'antd';
+import axios from 'axios';
+import { Skeleton, Typography, Divider, Alert, Tag, Badge, Row, Col, Button, Tooltip } from 'antd';
 import { BaseButtonsForm } from '@app/components/common/forms/BaseButtonsForm/BaseButtonsForm';
 import { BaseCard } from '@app/components/common/BaseCard/BaseCard';
 import { BaseRow } from '@app/components/common/BaseRow/BaseRow';
@@ -13,6 +15,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { FileExcelFilled } from '@ant-design/icons';
 import moment from 'moment';
+
 const SectionTitle = styled(Typography.Title)`
   font-size: 18px;
   color: #004080;
@@ -38,6 +41,7 @@ const Subtitle = styled(Typography.Text)`
   font-size: 16px;
   color: #004080;
 `;
+
 interface Vcas {
   firstname: string;
   lastname: string;
@@ -153,10 +157,51 @@ interface PersonalInfoProps {
 export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) => {
   const location = useLocation();
   const { unique_id } = useParams<{ unique_id: string }>();
-  const vca = location.state?.vca;
+  const vca: Vcas | undefined = location.state?.vca;
   console.log(vca);
   const [isFieldsChanged, setFieldsChanged] = useState(false);
   const [isLoading, setLoading] = useState(false);
+
+  // --- NEW: flagged records state ---
+  const [flaggedMap, setFlaggedMap] = useState<Record<string, any>>({});
+  const [flagsLoading, setFlagsLoading] = useState(false);
+
+  // Fetch active flagged records (non-resolved) and index them for quick lookup
+  useEffect(() => {
+    let mounted = true;
+    const fetchFlags = async () => {
+      setFlagsLoading(true);
+      try {
+        const base = process.env.REACT_APP_BASE_URL || 'https://ecapplus.server.dqa.bluecodeltd.com';
+        const token = localStorage.getItem('access_token');
+        const res = await axios.get(`${base}/items/flagged_forms_ecapplus_pmp?filter[status][_neq]=Resolved&limit=-1`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        const items: any[] = res.data?.data || res.data || [];
+        const map: Record<string, any> = {};
+        items.forEach((f: any) => {
+          if (f.uid) map[f.uid] = f;
+          if (f.unique_id) map[f.unique_id] = f;
+          if (f.vca_id) map[f.vca_id] = f;
+          if (f.household_id) map[f.household_id] = f;
+          if (f.id) map[f.id] = f;
+        });
+
+        if (mounted) setFlaggedMap(map);
+      } catch (err) {
+        console.error('Error fetching flagged records (vca profile)', err);
+      } finally {
+        if (mounted) setFlagsLoading(false);
+      }
+    };
+
+    fetchFlags();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Use the Vca data directly for form initial values
   const [form] = BaseButtonsForm.useForm();
   const { t } = useTranslation();
@@ -224,40 +269,72 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     );
   };
   return (
-  <Wrapper>
-    {profileData && (
-      <>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
-        </div>
-        <Divider />
-        <Row>
-          <Col span={24}>
-            <Typography.Text strong>Household ID </Typography.Text> {vca.household_id}
-          </Col>
-          <Col span={24}>
-            <Typography.Text strong>Unique ID </Typography.Text> {unique_id}
-          </Col>
-          <Col span={24}>
-            <Typography.Text strong>Case status </Typography.Text>
-            <Badge
-              count={vca.case_status === '1' || vca.case_status === "yes" ? "Active" : "Inactive"}
-              style={{ fontWeight: 'bold', backgroundColor: vca.case_status === '1' || vca.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
-            />
-          </Col>
-          <Col span={24}>
-            <Typography.Text strong>Partner</Typography.Text> {vca.partner}
-          </Col>
-          <Col span={24}>
-            <Typography.Text strong>Date enrolled </Typography.Text>
-            {vca.date_enrolled}
-          </Col>
-        </Row>
-        <br />
-        <br />
-        <br />
-      </>
-    )}
+    <Wrapper>
+      {profileData && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Title>{`${vca.firstname} ${vca.lastname}`}</Title>
+
+              {/* Flag display: check flaggedMap by uid / unique_id / id / baseentityid / household_id */}
+              {(() => {
+                const keyId = vca.uid ?? (vca as any).unique_id ?? vca.id ?? vca.baseentityid ?? vca.household_id;
+                const flag = keyId ? flaggedMap[keyId] : undefined;
+                if (!flag) return null;
+
+                const tooltipContent = (
+                  <div style={{ maxWidth: 360, wordBreak: 'break-word' }}>
+                    <div style={{ marginBottom: 6, fontWeight: 600 }}>{t('Comment')}</div>
+                    <div style={{ whiteSpace: 'normal' }}>{flag.comment || '—'}</div>
+                    {flag.date_created && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>
+                        Created: {moment(flag.date_created).format('LLL')}
+                      </div>
+                    )}
+                  </div>
+                );
+
+                return (
+                  <Tooltip placement="topLeft" title={tooltipContent}>
+                    <Tag color="red" style={{ fontWeight: 700, cursor: 'pointer' }}>Flagged Record</Tag>
+                  </Tooltip>
+                );
+              })()}
+
+            </div>
+
+            <div>
+              {/* right-side actions (kept same as original) */}
+            </div>
+          </div>
+          <Divider />
+          <Row>
+            <Col span={24}>
+              <Typography.Text strong>Household ID </Typography.Text> {vca.household_id}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong>Unique ID </Typography.Text> {unique_id}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong>Case status </Typography.Text>
+              <Badge
+                count={vca.case_status === '1' || vca.case_status === "yes" ? 'Active' : 'Inactive'}
+                style={{ fontWeight: 'bold', backgroundColor: vca.case_status === '1' || vca.case_status === "yes" ? '#52c41a' : '#ff4d4f' }}
+              />
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong>Partner</Typography.Text> {vca.partner}
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong>Date enrolled </Typography.Text>
+              {vca.date_enrolled}
+            </Col>
+          </Row>
+          <br />
+          <br />
+          <br />
+        </>
+      )}
       <BaseCard>
         <BaseButtonsForm
           form={form}
@@ -385,3 +462,5 @@ export const VcaPersonalInfo: React.FC<PersonalInfoProps> = ({ profileData }) =>
     </Wrapper>
   );
 };
+
+export default VcaPersonalInfo;

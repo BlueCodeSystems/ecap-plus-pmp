@@ -1,10 +1,11 @@
+/* eslint-disable prettier/prettier */
 import React, { useState, useEffect, useRef } from 'react';
 import { BaseTable } from '@app/components/common/BaseTable/BaseTable';
 import { BaseButton } from '@app/components/common/BaseButton/BaseButton';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { Input, InputRef, Button, Tooltip, Row, Col, Select, Space, Modal, Typography, Alert, Tag } from 'antd';
-import { SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Input, InputRef, Button, Tooltip, Row, Col, Select, Space, Modal, Typography, Tag } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import * as S from '@app/components/common/inputs/SearchInput/SearchInput.styles';
 import { BasicTableRow, Pagination } from '@app/api/table.api';
@@ -47,6 +48,8 @@ interface Vca {
   child_adolescent_in_female_headed_household: string;
   under_5_malnourished: string;
   pbfw: string;
+  household_id?: string;
+  [key: string]: any;
 }
 
 interface TableDataItem extends BasicTableRow {
@@ -141,7 +144,6 @@ export const TreeTable: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [householdSearchField, setHouseholdSearchField] = useState<string>('');
-  
 
   const [subPopulationFilters, setSubPopulationFilters] = useState(
     Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({
@@ -149,6 +151,13 @@ export const TreeTable: React.FC = () => {
       [key]: 'all'
     }), {} as Record<keyof typeof subPopulationFilterLabels, string>)
   );
+
+  // --- NEW: flagged records state ---
+  const [flaggedMap, setFlaggedMap] = useState<Record<string, any>>({});
+  const [flagsLoading, setFlagsLoading] = useState(false);
+
+  // --- NEW: per-row exporting state ---
+  const [exportingUid, setExportingUid] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -168,7 +177,7 @@ export const TreeTable: React.FC = () => {
   }, []);
 
   const [filters, setFilters] = useState([
-    { key: "reason", value: "" }
+    { key: 'reason', value: '' }
   ]);
   
   useEffect(() => {
@@ -188,6 +197,39 @@ export const TreeTable: React.FC = () => {
     };
 
     fetchData();
+  }, [user]);
+
+  // --- NEW: fetch active flagged records once (keyed by vca uid and possible vca_id) ---
+  useEffect(() => {
+    let mounted = true;
+    const fetchFlags = async () => {
+      setFlagsLoading(true);
+      try {
+        const base = process.env.REACT_APP_BASE_URL || 'https://ecapplus.server.dqa.bluecodeltd.com';
+        const token = localStorage.getItem('access_token');
+        const res = await axios.get(
+          `${base}/items/flagged_forms_ecapplus_pmp?filter[status][_neq]=Resolved&limit=-1`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+        );
+
+        const items: any[] = res.data?.data || res.data || [];
+        const map: Record<string, any> = {};
+        items.forEach((f: any) => {
+          if (f.vca_id) map[f.vca_id] = f;
+          if (f.unique_id) map[f.unique_id] = f; // sometimes flagged records may store a unique id
+          if (f.uid) map[f.uid] = f;
+        });
+
+        if (mounted) setFlaggedMap(map);
+      } catch (e) {
+        console.error('Error fetching flagged records (VCA table)', e);
+      } finally {
+        if (mounted) setFlagsLoading(false);
+      }
+    };
+
+    fetchFlags();
+    return () => { mounted = false; };
   }, [user]);
 
   useEffect(() => {
@@ -318,6 +360,168 @@ export const TreeTable: React.FC = () => {
     }
   };
 
+  // --- NEW: per-row export handler (CSV) ---
+  const handleExportProfile = async (uid: string) => {
+    try {
+      setExportingUid(uid);
+      const base = process.env.REACT_APP_BASE_URL || 'https://ecapplus.server.dqa.bluecodeltd.com';
+      const token = localStorage.getItem('access_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+      const selectedVca = vcas.find((v) => v.uid === uid) || null;
+      const householdId = selectedVca?.household_id || (selectedVca && (selectedVca.household?.household_id || selectedVca.household)) || undefined;
+
+      const tryPaths = async (paths: string[]) => {
+        for (const p of paths) {
+          try {
+            const res = await axios.get(p, { headers });
+            if (res?.status === 200 && (res.data?.data || res.data)) return res.data?.data ?? res.data;
+          } catch (e) {
+            // ignore
+          }
+        }
+        return null;
+      };
+
+      const vcaPaths = [
+        `${base}/child/vca/${uid}`,
+        `${base}/child/vca/${uid}/profile`,
+        `${base}/child/vcas/${uid}`,
+        `${base}/child/${uid}`,
+      ];
+
+      const familyPaths = [
+        `${base}/child/vca-family/${uid}`,
+        ...(householdId ? [`${base}/household/family-members/${householdId}`, `${base}/family-members/${householdId}`] : []),
+        `${base}/child/family-members/${uid}`,
+      ];
+
+      const casePlanPaths = [
+        `${base}/case-plans?filter[uid][_eq]=${uid}&limit=-1`,
+        `${base}/case_plans?filter[uid][_eq]=${uid}&limit=-1`,
+        `${base}/case-plans?filter[vca_uid][_eq]=${uid}&limit=-1`,
+        `${base}/child/${uid}/case-plans`,
+      ];
+
+      const servicesPaths = [
+        `${base}/child/vca-services/${uid}`,
+        `${base}/services?filter[uid][_eq]=${uid}&limit=-1`,
+        `${base}/services?filter[vca_uid][_eq]=${uid}&limit=-1`,
+      ];
+
+      const referralsPaths = [
+        `${base}/child/vca-referrals/${uid}`,
+        `${base}/referrals?filter[vca_uid][_eq]=${uid}&limit=-1`,
+      ];
+
+      const flagsPaths = [
+        `${base}/items/flagged_forms_ecapplus_pmp?filter[uid][_eq]=${uid}&limit=-1`,
+        `${base}/items/flagged_forms_ecapplus_pmp?filter[vca_id][_eq]=${uid}&limit=-1`,
+        `${base}/items/flagged_forms_ecapplus_pmp?filter[unique_id][_eq]=${uid}&limit=-1`,
+        `${base}/items/flagged_forms_ecapplus_pmp?limit=-1`,
+      ];
+
+      const [vcaRes, familyRes, casePlansRes, servicesRes, referralsRes, flagsRes] = await Promise.all([
+        tryPaths(vcaPaths),
+        tryPaths(familyPaths),
+        tryPaths(casePlanPaths),
+        tryPaths(servicesPaths),
+        tryPaths(referralsPaths),
+        tryPaths(flagsPaths),
+      ]);
+
+      const vcaRecord: any = vcaRes ?? selectedVca ?? null;
+      const familyMembers: any[] = Array.isArray(familyRes) ? familyRes : (familyRes ? [familyRes] : []);
+      const casePlans: any[] = Array.isArray(casePlansRes) ? casePlansRes : (casePlansRes ? [casePlansRes] : []);
+      const services: any[] = Array.isArray(servicesRes) ? servicesRes : (servicesRes ? [servicesRes] : []);
+      const referrals: any[] = Array.isArray(referralsRes) ? referralsRes : (referralsRes ? [referralsRes] : []);
+
+      // flagged: prefer flaggedMap preloaded; else use API result (flagsRes)
+      let flagged: any = null;
+      if (flaggedMap[uid]) flagged = flaggedMap[uid];
+      else if (Array.isArray(flagsRes) && flagsRes.length > 0) flagged = flagsRes;
+      else if (flagsRes) flagged = Array.isArray(flagsRes) ? flagsRes : [flagsRes];
+
+      const rows: any[] = [];
+
+      const pushObjectAsRows = (section: string, profileId: string | undefined, entityName: string, entityId: string | undefined, obj: any) => {
+        if (!obj) return;
+        if (Array.isArray(obj)) {
+          obj.forEach((item, idx) => {
+            const itemId = (item && (item.id || item._id || item.member_id || item.uid || item.unique_id)) || `${entityName}-${idx}`;
+            rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: '__item_start__', value: '' });
+            Object.entries(item).forEach(([k, v]) => {
+              let val = '';
+              try { val = (v === null || v === undefined) ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); } catch (e) { val = String(v); }
+              rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: k, value: val });
+            });
+            rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: '__item_end__', value: '' });
+          });
+        } else {
+          const item = obj;
+          const itemId = (item && (item.id || item._id || item.member_id || item.uid || item.unique_id)) || entityId || '';
+          rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: '__item_start__', value: '' });
+          Object.entries(item || {}).forEach(([k, v]) => {
+            let val = '';
+            try { val = (v === null || v === undefined) ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); } catch (e) { val = String(v); }
+            rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: k, value: val });
+          });
+          rows.push({ section, profile_id: profileId || uid, entity: entityName, entity_id: itemId, key: '__item_end__', value: '' });
+        }
+      };
+
+      // Build rows
+      pushObjectAsRows('VCA', uid, 'VCA', vcaRecord?.uid || uid, vcaRecord || {});
+      pushObjectAsRows('Family Member', uid, 'FamilyMember', undefined, familyMembers.length ? familyMembers : []);
+      pushObjectAsRows('Case Plan', uid, 'CasePlan', undefined, casePlans.length ? casePlans : []);
+      pushObjectAsRows('Service', uid, 'Service', undefined, services.length ? services : []);
+      pushObjectAsRows('Referral', uid, 'Referral', undefined, referrals.length ? referrals : []);
+      pushObjectAsRows('Flagged Record', uid, 'Flag', undefined, flagged ? flagged : []);
+
+      // Export metadata
+      rows.unshift({ section: 'Export Metadata', profile_id: uid, entity: 'ExportInfo', entity_id: '', key: 'exportedAt', value: new Date().toISOString() });
+
+      const fields = ['section', 'profile_id', 'entity', 'entity_id', 'key', 'value'];
+      const parser = new Parser({ fields });
+      const csv = parser.parse(rows);
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `vca_profile_${uid}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+    } catch (err) {
+      console.error('Error exporting VCA profile', err);
+      // Fallback: export minimal in-memory record as CSV
+      try {
+        const selectedVca = vcas.find((v) => v.uid === uid) || {};
+        const flagged = flaggedMap[uid] || null;
+        const rowsFallback: any[] = [];
+        rowsFallback.push({ section: 'VCA', profile_id: uid, entity: 'VCA', entity_id: uid, key: 'uid', value: selectedVca.uid || '' });
+        Object.entries(selectedVca || {}).forEach(([k, v]) => rowsFallback.push({ section: 'VCA', profile_id: uid, entity: 'VCA', entity_id: uid, key: k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }));
+        if (flagged) rowsFallback.push({ section: 'Flagged Record', profile_id: uid, entity: 'Flag', entity_id: flagged.id || '', key: 'comment', value: flagged.comment || '' });
+        const parserFallback = new Parser({ fields: ['section', 'profile_id', 'entity', 'entity_id', 'key', 'value'] });
+        const csvFallback = parserFallback.parse(rowsFallback);
+        const blob = new Blob([csvFallback], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `vca_profile_${uid}_fallback.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      } catch (err2) {
+        console.error('Fallback export also failed', err2);
+      }
+    } finally {
+      setExportingUid(null);
+    }
+  };
+
   const showModal = () => {
     setIsModalVisible(true);
   };
@@ -384,8 +588,8 @@ export const TreeTable: React.FC = () => {
         }
       }
       if (searchInput.current) {
-        if (searchInput.current && searchInput.current.input) {
-          searchInput.current.input.value = ''; // Clear the search input field
+        if (searchInput.current && (searchInput.current as any).input) {
+          (searchInput.current as any).input.value = ''; // Clear the search input field
         }
       }
     });
@@ -411,7 +615,7 @@ export const TreeTable: React.FC = () => {
           placeholder={`Search ${dataIndex}`}
           value={selectedKeys[0]}
           onChange={(e) => {
-    setSelectedKeys(e.target.value ? [e.target.value] : []);
+            setSelectedKeys(e.target.value ? [e.target.value] : []);
             // Track which field is being searched in the Household Details column
             if (dataIndex === 'address') {
               setHouseholdSearchField('Address');
@@ -485,19 +689,19 @@ export const TreeTable: React.FC = () => {
     ),
     onFilter: (value: string | number | boolean, record: { [x: string]: any }) => {
       const fieldValue = record[dataIndex];
-  
+
       // Handle Household Details column differently
       if (dataIndex === 'address') {
         const addressFields = Object.values(record.address).filter(Boolean);
         const addressString = addressFields.join(' ').toLowerCase();
         return addressString.includes(value.toString().toLowerCase());
       }
-  
+
       // Exact match for unique_id, gender, and age
       if (dataIndex === 'unique_id' || dataIndex === 'gender' || dataIndex === 'age') {
         return fieldValue ? fieldValue.toString().toLowerCase() === value.toString().toLowerCase() : false;
       }
-  
+
       // Partial match for other fields (e.g., name)
       return fieldValue ? fieldValue.toString().toLowerCase().includes(value.toString().toLowerCase()) : false;
     },
@@ -511,7 +715,7 @@ export const TreeTable: React.FC = () => {
           `District: ${record.address.district || ''}`,
           `Ward: ${record.address.ward || ''}`,
         ].filter((field) => !field.endsWith(': ')); // Remove empty fields
-  
+
         return (
           <div>
             {addressFields.map((field, index) => (
@@ -520,7 +724,7 @@ export const TreeTable: React.FC = () => {
           </div>
         );
       }
-  
+
       return searchedColumn === dataIndex ? (
         <Highlighter
           highlightStyle={{ backgroundColor: '#ffc069', padding: 0 }}
@@ -570,6 +774,31 @@ export const TreeTable: React.FC = () => {
       width: '35%',
       ...getColumnSearchProps('address'),
     },
+    // --- NEW: Flag column ---
+    {
+      title: t('Flag'),
+      dataIndex: 'flag',
+      width: '8%',
+      render: (_: any, record: TableDataItem) => {
+        const keyId = record.unique_id;
+        const flag = keyId ? flaggedMap[keyId] : undefined;
+        if (!flag) return null;
+
+        const tooltipContent = (
+          <div style={{ maxWidth: 360, wordBreak: 'break-word' }}>
+            <div style={{ marginBottom: 6, fontWeight: 600 }}>{t('Comment')}</div>
+            <div style={{ whiteSpace: 'normal' }}>{flag.comment || '—'}</div>
+            {flag.date_created && <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>Created: {new Date(flag.date_created).toLocaleString()}</div>}
+          </div>
+        );
+
+        return (
+          <Tooltip placement="topLeft" title={tooltipContent}>
+            <Tag color="red" style={{ cursor: 'pointer' }}>{t('Flagged')}</Tag>
+          </Tooltip>
+        );
+      }
+    },
     {
       title: t('Applied Filters & Search'),
       dataIndex: 'appliedFilters',
@@ -579,10 +808,10 @@ export const TreeTable: React.FC = () => {
         const appliedSubPopulationFilters = Object.entries(subPopulationFilters)
           .filter(([key, value]) => value !== 'all')
           .map(([key]) => subPopulationFilterLabels[key as keyof typeof subPopulationFilterLabels]);
-    
+      
         // Collect the graduation filter (if applied)
         const graduationFilter = filters.find(filter => filter.key === "reason")?.value || "";
-    
+      
         // Collect column-specific filters
         const appliedColumnFilters = Object.entries(columnFilters)
           .filter(([key, value]) => value !== '')
@@ -595,14 +824,14 @@ export const TreeTable: React.FC = () => {
               return `${key}: ${value}`;
             }
           });
-    
+      
         // Combine all applied filters into a single array
         const allAppliedFilters = [
           ...appliedSubPopulationFilters,
           ...(graduationFilter ? [`Graduation: ${graduationFilter}`] : []),
           ...appliedColumnFilters,
         ];
-    
+      
         // Render the applied filters as tags
         return (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -620,9 +849,19 @@ export const TreeTable: React.FC = () => {
       width: '10%',
       dataIndex: '',
       render: (_: any, record: TableDataItem) => (
-        <BaseButton type="primary" onClick={() => handleView(record.unique_id)}>
-          {t('View')}
-        </BaseButton>
+        <Space size="middle">
+          <BaseButton type="primary" onClick={() => handleView(record.unique_id)}>
+            {t('View')}
+          </BaseButton>
+
+          <BaseButton
+            type="default"
+            onClick={() => handleExportProfile(record.unique_id)}
+            disabled={exportingUid === record.unique_id}
+          >
+            {exportingUid === record.unique_id ? t('Exporting...') : t('Export Profile')}
+          </BaseButton>
+        </Space>
       ),
     },
   ];
@@ -672,7 +911,6 @@ export const TreeTable: React.FC = () => {
                   {t('Export to CSV')}
                 </Button>
               </Space>
-
             </ExportWrapper>
           </div>
         </Col>
@@ -695,7 +933,6 @@ export const TreeTable: React.FC = () => {
           ))}
         </div>
       </Modal>
-
 
       <BaseTable
       key={filteredVcas.length}
