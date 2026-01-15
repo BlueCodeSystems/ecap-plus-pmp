@@ -1,12 +1,26 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import LoginCard from "@/components/LoginCard";
+import VersionFooter from "@/components/VersionFooter";
+import classroomBg from "@/assets/classroom-bg.jpg";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="relative min-h-screen w-full overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${classroomBg})` }}
+      />
+      
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-overlay/60" />
+      
+      {/* Content */}
+      <main className="relative z-10 flex min-h-screen items-center justify-center px-4 pb-20">
+        <LoginCard />
+      </main>
+      
+      {/* Footer */}
+      <VersionFooter />
     </div>
   );
 };
