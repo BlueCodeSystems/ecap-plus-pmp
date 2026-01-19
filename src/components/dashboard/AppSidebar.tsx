@@ -37,14 +37,13 @@ const mainItems = [
 const registerItems = [
   { title: "Household Register", url: "/households", icon: Home },
   { title: "VCA Register", url: "/vcas", icon: Users },
-  { title: "Index Mother Register", url: "/index-mothers", icon: HeartPulse },
   { title: "Household Archived Register", url: "/households/archived", icon: Archive },
   { title: "VCA Archived Register", url: "/vcas/archived", icon: Archive },
 ];
 
 const serviceItems = [
-  { title: "VCA Services", url: "/vca-services", icon: ClipboardList },
-  { title: "Caregiver Services", url: "/caregiver-services", icon: Users },
+  // { title: "VCA Services", url: "/vca-services", icon: ClipboardList },
+  // { title: "Caregiver Services", url: "/caregiver-services", icon: Users },
   { title: "Flags", url: "/flags", icon: Flag },
 ];
 
@@ -74,11 +73,11 @@ export function AppSidebar() {
         <div className="px-4 py-2 mb-4">
           {!collapsed ? (
             <div className="flex items-center gap-2">
-              <img src="/ecap-logo.png" alt="ECAP II logo" className="w-full h-auto max-w-none" />
+              <img src="/ecap-logo.png" alt="ECAP + logo" className="w-full h-auto max-w-none" />
             </div>
           ) : (
             <div className="flex items-center justify-center">
-              <img src="/ecap-logo.png" alt="ECAP II logo" className="h-8 w-auto" />
+              <img src="/ecap-logo.png" alt="ECAP + logo" className="h-8 w-auto" />
             </div>
           )}
         </div>

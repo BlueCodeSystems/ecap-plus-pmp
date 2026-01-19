@@ -31,7 +31,6 @@ const mobileMenuItems = [
   { title: "Districts", url: "/districts", icon: MapPin },
   { title: "Household Register", url: "/households", icon: Home },
   { title: "VCA Register", url: "/vcas", icon: Users },
-  { title: "Index Mother Register", url: "/index-mothers", icon: HeartPulse },
   { title: "VCA Services", url: "/vca-services", icon: ClipboardList },
   { title: "Caregiver Services", url: "/caregiver-services", icon: Users },
   { title: "Flags", url: "/flags", icon: Flag },

@@ -57,11 +57,11 @@ const ForgotPassword = () => {
             <div className="max-w-md w-full">
               <img
                 src="/ecap-logo.png"
-                alt="ECAP II logo"
+                alt="ECAP + logo"
                 className="w-auto"
               />
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-                ECAP II
+                ECAP +
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-slate-900">
                 Forgot your password?
@@ -109,7 +109,7 @@ const ForgotPassword = () => {
             />
             <div className="absolute bottom-10 left-10 right-10 text-white">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/70">
-                ECAP II Platform
+                ECAP + Platform
               </p>
               <h2 className="mt-3 text-2xl font-semibold">
                 Track progress across communities with confidence.

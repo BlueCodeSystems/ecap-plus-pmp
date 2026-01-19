@@ -1,6 +1,6 @@
-# ECAP II PMP App
+# ECAP + PMP App
 
-Web client for ECAP II reporting and monitoring.
+Web client for ECAP + reporting and monitoring.
 
 ## Getting started
 
