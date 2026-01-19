@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunklightence_admin=self.webpackChunklightence_admin||[]).push([[4768],{94768(e,n,s){s.r(n),s.d(n,{default:()=>c});s(65043);var t=s(49092),l=s(48670),r=s(95111),a=s(70579);const c=()=>{const{t:e}=(0,t.B)();return(0,a.jsxs)(a.Fragment,{children:[(0,a.jsx)(l.s,{children:e("profile.nav.personalInfo.title")}),(0,a.jsx)(r.N,{})]})}}}]);
+//# sourceMappingURL=4768.fa12f88d.chunk.js.map

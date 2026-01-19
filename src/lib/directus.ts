@@ -1,6 +1,6 @@
 import { getStoredToken } from "@/lib/auth";
 
-const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL;
+const DIRECTUS_URL = "/api/directus";
 const DIRECTUS_USER_ROLE = import.meta.env.VITE_DIRECTUS_USER_ROLE;
 
 const requireDirectusUrl = () => {

@@ -25,9 +25,9 @@ const DashboardHeader = ({
   const navigate = useNavigate();
   const displayName =
     [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
-    user?.email ||
+    (typeof user?.email === 'string' ? user.email : user?.email?.name) ||
     "User";
-  const initials = displayName
+  const initials = (typeof displayName === 'string' ? displayName : String(displayName))
     .split(" ")
     .map((part) => part[0])
     .slice(0, 2)

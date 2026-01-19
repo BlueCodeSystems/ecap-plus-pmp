@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import { useAuth } from "@/context/AuthContext";
 import {
   DEFAULT_DISTRICT,
   getCaseworkerCountByDistrict,
@@ -62,9 +63,8 @@ const MetricCard = ({
           <p className="text-xs text-muted-foreground">{subtitle}</p>
           {trend && (
             <div
-              className={`flex items-center gap-1 text-xs ${
-                trend.isPositive ? "text-emerald-500" : "text-destructive"
-              }`}
+              className={`flex items-center gap-1 text-xs ${trend.isPositive ? "text-emerald-500" : "text-destructive"
+                }`}
             >
               {trend.isPositive ? (
                 <TrendingUp className="h-3 w-3" />
@@ -81,14 +81,27 @@ const MetricCard = ({
 };
 
 const MetricsGrid = () => {
+  const { user } = useAuth();
+  const userLocation = user?.location;
+
+  console.log("MetricsGrid: user data:", user);
+  console.log("MetricsGrid: user keys:", user ? Object.keys(user) : "no user");
+  console.log("MetricsGrid: userLocation:", userLocation);
+
   const totalVcasQuery = useQuery({
-    queryKey: ["metrics", "total-vcas"],
-    queryFn: getTotalVcasCount,
+    queryKey: ["metrics", "total-vcas", userLocation],
+    queryFn: () => getTotalVcasCount(userLocation),
+  });
+
+  console.log("MetricsGrid: totalVcasQuery state:", {
+    data: totalVcasQuery.data,
+    isLoading: totalVcasQuery.isLoading,
+    error: totalVcasQuery.error,
   });
 
   const totalHouseholdsQuery = useQuery({
-    queryKey: ["metrics", "total-households"],
-    queryFn: getTotalHouseholdsCount,
+    queryKey: ["metrics", "total-households", userLocation],
+    queryFn: () => getTotalHouseholdsCount(userLocation),
   });
 
   const totalMothersQuery = useQuery({

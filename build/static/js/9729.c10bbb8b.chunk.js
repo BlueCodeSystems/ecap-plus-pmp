@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunklightence_admin=self.webpackChunklightence_admin||[]).push([[9729],{99729(e,t,n){n.r(t),n.d(t,{default:()=>h});var c=n(65043),s=n(17183),a=n(73216),u=n(13081),l=n(70579);const h=()=>{const e=(0,s.j)();return(0,c.useEffect)(()=>{e((0,u.yb)())},[e]),(0,l.jsx)(a.C5,{to:"/auth/login",replace:!0})}}}]);
+//# sourceMappingURL=9729.c10bbb8b.chunk.js.map

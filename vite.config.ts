@@ -10,6 +10,23 @@ export default defineConfig(() => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      '/api/directus': {
+        target: 'https://api.achieve.bluecodeltd.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/directus/, ''),
+      },
+      '/api/dqa': {
+        target: 'https://ecapplus.server.dqa.bluecodeltd.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/dqa/, ''),
+      },
+      '/api': {
+        target: 'https://api.achieve.bluecodeltd.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
   plugins: [react()],
   resolve: {

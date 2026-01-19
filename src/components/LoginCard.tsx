@@ -15,11 +15,17 @@ const LoginCard = () => {
   const { login, isLoading } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
+    console.log("Login form submitted");
     setError(null);
     e.preventDefault();
-    login(email, password)
-      .then(() => navigate("/dashboard"))
+    console.log("Calling login...", { email });
+    login({ email, password })
+      .then(() => {
+        console.log("Login successful, navigating...");
+        navigate("/dashboard");
+      })
       .catch((err) => {
+        console.error("Login caught error:", err);
         setError(err instanceof Error ? err.message : "Login failed");
       });
   };
@@ -29,10 +35,10 @@ const LoginCard = () => {
       <div className="mb-8 max-w-md">
         <img
           src="/ecap-logo.png"
-          alt="ECAP II logo"
+          alt="ECAP+ logo"
           className="w-auto"
         />
-        <Title className="mt-4 text-center">ECAP II Program Management Platform</Title>
+        <Title className="mt-4 text-center">ECAP+ Program Management Platform</Title>
         <h1 className="mt-2 text-3xl font-semibold text-slate-900">Welcome back</h1>
         <p className="mt-2 text-sm text-slate-600">
           Sign in to continue data reporting and monitoring.
@@ -43,6 +49,8 @@ const LoginCard = () => {
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
           <Input
+            id="email"
+            name="email"
             type="email"
             placeholder="Email address"
             value={email}
@@ -55,6 +63,8 @@ const LoginCard = () => {
         <div className="relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
           <Input
+            id="password"
+            name="password"
             type="password"
             placeholder="Password"
             value={password}

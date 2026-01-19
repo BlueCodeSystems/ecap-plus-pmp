@@ -1,7 +1,6 @@
 import { getStoredToken } from "@/lib/auth";
 
-const DQA_BASE_URL =
-  import.meta.env.VITE_DQA_BASE_URL ?? "https://server.dqa.bluecodeltd.com";
+const DQA_BASE_URL = "/api/dqa";
 
 export const DEFAULT_DISTRICT = import.meta.env.VITE_DEFAULT_DISTRICT;
 
@@ -112,67 +111,81 @@ const dqaGet = async (path: string) => {
   return data;
 };
 
-export const getTotalVcasCount = async () => {
-  const data = await dqaGet("/child/total/vcas/count");
+export const getTotalVcasCount = async (location?: string) => {
+  const path = location ? `/child/vcas-count/${encodeURIComponent(location)}` : "/child/vcas-count";
+  console.log("getTotalVcasCount: requesting path:", path, "with location:", location);
+  const data = await dqaGet(path);
+  console.log("getTotalVcasCount: received data:", data);
   return getCountValue(data);
 };
 
-export const getTotalHouseholdsCount = async () => {
-  const data = await dqaGet("/household/hh/total/count");
+export const getTotalHouseholdsCount = async (location?: string) => {
+  const path = location ? `/household/households-count/${encodeURIComponent(location)}` : "/household/households-count";
+  const data = await dqaGet(path);
   return getCountValue(data);
 };
 
 export const getTotalMothersCount = async () => {
-  const data = await dqaGet("/household/mothers/total/count");
+  const data = await dqaGet("/household/members-count");
   return getCountValue(data);
 };
 
 export const getCaseworkerCountByDistrict = async (district: string) => {
-  const data = await dqaGet(`/child/caseworker/count/${encodeURIComponent(district)}`);
-  return getCountValue(data);
+  // Endpoint not available in backend
+  // const data = await dqaGet(`/child/caseworker/count/${encodeURIComponent(district)}`);
+  return null;
 };
 
 export const getHouseholdCountByDistrict = async (district: string) => {
-  const data = await dqaGet(`/household/district/count/${encodeURIComponent(district)}`);
+  // Backend does not support filtering by district yet, returning total count
+  const data = await dqaGet("/household/households-count");
   return getCountValue(data);
 };
 
 export const getVcaCountByDistrict = async (district: string) => {
-  const data = await dqaGet(`/child/district/count/${encodeURIComponent(district)}`);
+  // Backend does not support filtering by district yet, returning total count
+  const data = await dqaGet("/child/vcas-count");
   return getCountValue(data);
 };
 
 export const getHouseholdsByDistrict = async (district: string) => {
-  const data = await dqaGet(`/household/district/${encodeURIComponent(district)}`);
+  // Backend does not support filtering by district yet, returning all
+  const data = await dqaGet("/household/all-households");
   return getListValue(data);
 };
 
 export const getHouseholdArchivedRegister = async (district: string) => {
-  const data = await dqaGet(`/household/archived-register/${encodeURIComponent(district)}`);
-  return getListValue(data);
+  // Endpoint not available
+  // const data = await dqaGet(`/household/archived-register/${encodeURIComponent(district)}`);
+  return [];
 };
 
 export const getMothersByDistrict = async (district: string) => {
-  const data = await dqaGet(`/mother/district/${encodeURIComponent(district)}`);
+  // Backend has no specific mother endpoint, using household members
+  const data = await dqaGet("/household/all-household-members-register");
   return getListValue(data);
 };
 
 export const getChildrenByDistrict = async (district: string) => {
-  const data = await dqaGet(`/child/district/${encodeURIComponent(district)}`);
+  // Backend does not support filtering by district yet, returning all assessed
+  const data = await dqaGet("/child/vcas-assessed-register");
   return getListValue(data);
 };
 
 export const getChildrenArchivedRegister = async (district: string) => {
-  const data = await dqaGet(`/child/vcas-archived-register/${encodeURIComponent(district)}`);
-  return getListValue(data);
+  // Endpoint not available
+  // const data = await dqaGet(`/child/vcas-archived-register/${encodeURIComponent(district)}`);
+  return [];
 };
 
 export const getCaregiverServicesByDistrict = async (district: string) => {
-  const data = await dqaGet(`/household/district/caregiver-services/${encodeURIComponent(district)}`);
+  // Backend does not support filtering by district yet
+  const data = await dqaGet("/household/caregiver-services");
   return getListValue(data);
 };
 
 export const getVcaServicesByDistrict = async (district: string) => {
-  const data = await dqaGet(`/child/district/vcaservices/${encodeURIComponent(district)}`);
+  // Backend does not support filtering by district yet
+  const data = await dqaGet("/child/vca-services");
   return getListValue(data);
 };

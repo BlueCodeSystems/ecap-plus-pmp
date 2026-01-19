@@ -74,11 +74,11 @@ export function AppSidebar() {
         <div className="px-4 py-2 mb-4">
           {!collapsed ? (
             <div className="flex items-center gap-2">
-              <img src="/ecap-logo.png" alt="ECAP II logo" className="w-full h-auto max-w-none" />
+              <img src="/ecap-logo.png" alt="ECAP+ logo" className="w-full h-auto max-w-none" />
             </div>
           ) : (
             <div className="flex items-center justify-center">
-              <img src="/ecap-logo.png" alt="ECAP II logo" className="h-8 w-auto" />
+              <img src="/ecap-logo.png" alt="ECAP+ logo" className="h-8 w-auto" />
             </div>
           )}
         </div>
