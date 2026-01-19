@@ -97,7 +97,8 @@ const HouseholdRegister = () => {
             </div>
           </div>
 
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Screened</TableHead>
@@ -209,7 +210,8 @@ const HouseholdRegister = () => {
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </GlowCard>
     </DashboardLayout>

@@ -8,7 +8,7 @@ const Index = () => {
     <AuroraBackground>
       <main className="relative z-10 min-h-screen">
         <div className="grid min-h-screen md:grid-cols-[1.05fr_0.95fr]">
-          <section className="flex flex-col justify-center bg-white/95 px-8 py-12 sm:px-12 lg:px-16">
+          <section className="flex flex-col justify-center bg-white/95 px-6 py-12 sm:px-12 lg:px-16">
             <LoginCard />
           </section>
           <aside className="relative min-h-[320px] md:min-h-0">

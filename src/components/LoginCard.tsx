@@ -26,7 +26,7 @@ const LoginCard = () => {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-8">
+      <div className="mb-8 max-w-md">
         <img
           src="/ecap-logo.png"
           alt="ECAP II logo"
