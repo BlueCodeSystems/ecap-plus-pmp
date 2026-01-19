@@ -1,12 +1,22 @@
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  FileCheck, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock 
+import {
+  TrendingUp,
+  TrendingDown,
+  FileCheck,
+  Home,
+  Users,
+  User,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import GlowCard from "@/components/aceternity/GlowCard";
+import LoadingDots from "@/components/aceternity/LoadingDots";
+import {
+  DEFAULT_DISTRICT,
+  getCaseworkerCountByDistrict,
+  getTotalHouseholdsCount,
+  getTotalMothersCount,
+  getTotalVcasCount,
+} from "@/lib/api";
 
 interface MetricCardProps {
   title: string;
@@ -20,7 +30,15 @@ interface MetricCardProps {
   variant?: "default" | "success" | "warning" | "danger";
 }
 
-const MetricCard = ({ title, value, subtitle, icon, trend, variant = "default" }: MetricCardProps) => {
+const MetricCard = ({
+  title,
+  value,
+  subtitle,
+  icon,
+  trend,
+  variant = "default",
+  isLoading,
+}: MetricCardProps & { isLoading?: boolean }) => {
   const variantStyles = {
     default: "text-primary",
     success: "text-emerald-500",
@@ -29,23 +47,25 @@ const MetricCard = ({ title, value, subtitle, icon, trend, variant = "default" }
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <GlowCard>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <div className={variantStyles[variant]}>
-          {icon}
-        </div>
+        <div className={variantStyles[variant]}>{icon}</div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-foreground">{value}</div>
+        <div className="text-2xl font-bold text-foreground">
+          {isLoading ? <LoadingDots className="text-slate-600" /> : value}
+        </div>
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-muted-foreground">{subtitle}</p>
           {trend && (
-            <div className={`flex items-center gap-1 text-xs ${
-              trend.isPositive ? "text-emerald-500" : "text-destructive"
-            }`}>
+            <div
+              className={`flex items-center gap-1 text-xs ${
+                trend.isPositive ? "text-emerald-500" : "text-destructive"
+              }`}
+            >
               {trend.isPositive ? (
                 <TrendingUp className="h-3 w-3" />
               ) : (
@@ -56,49 +76,81 @@ const MetricCard = ({ title, value, subtitle, icon, trend, variant = "default" }
           )}
         </div>
       </CardContent>
-    </Card>
+    </GlowCard>
   );
 };
 
 const MetricsGrid = () => {
+  const totalVcasQuery = useQuery({
+    queryKey: ["metrics", "total-vcas"],
+    queryFn: getTotalVcasCount,
+  });
+
+  const totalHouseholdsQuery = useQuery({
+    queryKey: ["metrics", "total-households"],
+    queryFn: getTotalHouseholdsCount,
+  });
+
+  const totalMothersQuery = useQuery({
+    queryKey: ["metrics", "total-mothers"],
+    queryFn: getTotalMothersCount,
+  });
+
+  const caseworkerQuery = useQuery({
+    queryKey: ["metrics", "caseworkers", DEFAULT_DISTRICT ?? "all"],
+    queryFn: () =>
+      DEFAULT_DISTRICT ? getCaseworkerCountByDistrict(DEFAULT_DISTRICT) : Promise.resolve(null),
+  });
+
+  const formatCount = (value: number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "N/A";
+    }
+
+    return new Intl.NumberFormat("en-GB").format(value);
+  };
+
+  const districtLabel = DEFAULT_DISTRICT ?? "All districts";
+
   const metrics = [
     {
-      title: "Total Assessments",
-      value: "1,284",
-      subtitle: "This quarter",
+      title: "Total VCAs",
+      value: formatCount(totalVcasQuery.data),
+      subtitle: "All registered children",
       icon: <FileCheck className="h-5 w-5" />,
-      trend: { value: 12.5, isPositive: true },
       variant: "default" as const,
+      isLoading: totalVcasQuery.isLoading,
     },
     {
-      title: "Data Quality Score",
-      value: "87.3%",
-      subtitle: "Average across all provinces",
-      icon: <CheckCircle2 className="h-5 w-5" />,
-      trend: { value: 4.2, isPositive: true },
+      title: "Total Households",
+      value: formatCount(totalHouseholdsQuery.data),
+      subtitle: "Households tracked",
+      icon: <Home className="h-5 w-5" />,
       variant: "success" as const,
+      isLoading: totalHouseholdsQuery.isLoading,
     },
     {
-      title: "Issues Found",
-      value: "156",
-      subtitle: "Requires attention",
-      icon: <AlertTriangle className="h-5 w-5" />,
-      trend: { value: 8.1, isPositive: false },
+      title: "Index Mothers",
+      value: formatCount(totalMothersQuery.data),
+      subtitle: "Registered mothers",
+      icon: <Users className="h-5 w-5" />,
       variant: "warning" as const,
+      isLoading: totalMothersQuery.isLoading,
     },
     {
-      title: "Pending Reviews",
-      value: "43",
-      subtitle: "Awaiting validation",
-      icon: <Clock className="h-5 w-5" />,
+      title: "Caseworkers",
+      value: formatCount(caseworkerQuery.data),
+      subtitle: `${districtLabel} district`,
+      icon: <User className="h-5 w-5" />,
       variant: "default" as const,
+      isLoading: caseworkerQuery.isLoading,
     },
   ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {metrics.map((metric, index) => (
-        <MetricCard key={index} {...metric} />
+      {metrics.map((metric) => (
+        <MetricCard key={metric.title} {...metric} />
       ))}
     </div>
   );

@@ -1,15 +1,18 @@
 import {
-  LayoutDashboard,
-  FileCheck,
+  Archive,
   BarChart3,
-  Users,
-  Settings,
-  MapPin,
-  FileText,
+  ClipboardList,
+  Flag,
+  Home,
   LogOut,
+  MapPin,
+  Users,
+  UserCog,
+  HeartPulse,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 import {
   Sidebar,
@@ -26,16 +29,27 @@ import {
 import { Button } from "@/components/ui/button";
 
 const mainItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "DQA Assessments", url: "/assessments", icon: FileCheck },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
-  { title: "Provinces", url: "/provinces", icon: MapPin },
+  { title: "Home", url: "/dashboard", icon: Home },
+  { title: "Districts", url: "/districts", icon: MapPin },
+  { title: "Charts", url: "/charts", icon: BarChart3 },
 ];
 
-const managementItems = [
-  { title: "Users", url: "/users", icon: Users },
-  { title: "Reports", url: "/reports", icon: FileText },
-  { title: "Settings", url: "/settings", icon: Settings },
+const registerItems = [
+  { title: "Household Register", url: "/households", icon: Home },
+  { title: "VCA Register", url: "/vcas", icon: Users },
+  { title: "Index Mother Register", url: "/index-mothers", icon: HeartPulse },
+  { title: "Household Archived Register", url: "/households/archived", icon: Archive },
+  { title: "VCA Archived Register", url: "/vcas/archived", icon: Archive },
+];
+
+const serviceItems = [
+  { title: "VCA Services", url: "/vca-services", icon: ClipboardList },
+  { title: "Caregiver Services", url: "/caregiver-services", icon: Users },
+  { title: "Flags", url: "/flags", icon: Flag },
+];
+
+const adminItems = [
+  { title: "User Management", url: "/users", icon: UserCog },
 ];
 
 export function AppSidebar() {
@@ -43,11 +57,13 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const currentPath = location.pathname;
 
   const isActive = (path: string) => currentPath === path;
 
   const handleLogout = () => {
+    logout();
     navigate("/");
   };
 
@@ -58,17 +74,11 @@ export function AppSidebar() {
         <div className="px-4 py-2 mb-4">
           {!collapsed ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">E</span>
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground text-sm">ECAP II</h2>
-                <p className="text-xs text-muted-foreground">DQA Dashboard</p>
-              </div>
+              <img src="/ecap-logo.png" alt="ECAP II logo" className="w-full h-auto max-w-none" />
             </div>
           ) : (
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto">
-              <span className="text-primary-foreground font-bold text-sm">E</span>
+            <div className="flex items-center justify-center">
+              <img src="/ecap-logo.png" alt="ECAP II logo" className="h-8 w-auto" />
             </div>
           )}
         </div>
@@ -101,12 +111,65 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Management */}
         <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupLabel>Registers</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {managementItems.map((item) => (
+              {registerItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    tooltip={item.title}
+                  >
+                    <NavLink
+                      to={item.url}
+                      end
+                      className="hover:bg-accent/50"
+                      activeClassName="bg-accent text-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Services</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {serviceItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    tooltip={item.title}
+                  >
+                    <NavLink
+                      to={item.url}
+                      end
+                      className="hover:bg-accent/50"
+                      activeClassName="bg-accent text-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

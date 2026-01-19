@@ -1,39 +1,36 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/dashboard/AppSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import MetricsGrid from "@/components/dashboard/MetricsGrid";
 import DataQualityChart from "@/components/dashboard/DataQualityChart";
 import ProvincialBreakdown from "@/components/dashboard/ProvincialBreakdown";
 import RecentActivity from "@/components/dashboard/RecentActivity";
+import PageIntro from "@/components/dashboard/PageIntro";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 const Dashboard = () => {
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
-        
-        <main className="flex-1 flex flex-col">
-          <header className="h-14 flex items-center border-b bg-card px-4 gap-4">
-            <SidebarTrigger />
-            <DashboardHeader />
-          </header>
-          
-          <div className="flex-1 p-6 space-y-6 overflow-auto">
-            {/* Metrics Grid */}
-            <MetricsGrid />
-            
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <DataQualityChart />
-              <ProvincialBreakdown />
-            </div>
-            
-            {/* Recent Activity */}
-            <RecentActivity />
-          </div>
-        </main>
+    <DashboardLayout subtitle="Home">
+      <PageIntro
+        eyebrow="Home"
+        title="Bring DQA and program delivery together."
+        description="Monitor screening coverage, validate data quality, and coordinate fieldwork without jumping between tools."
+        actions={
+          <>
+            <Badge className="bg-emerald-100 text-emerald-700">Live Monitoring</Badge>
+            <Button variant="outline" className="border-slate-200">Start DQA Review</Button>
+          </>
+        }
+      />
+
+      <MetricsGrid />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DataQualityChart />
+        <ProvincialBreakdown />
       </div>
-    </SidebarProvider>
+
+      <RecentActivity />
+    </DashboardLayout>
   );
 };
 
