@@ -19,7 +19,6 @@ type DashboardHeaderProps = {
 };
 
 const DashboardHeader = ({
-  title = "ECAP II PMP",
   subtitle = "Data Quality & Program Operations",
 }: DashboardHeaderProps) => {
   const { user, logout } = useAuth();
@@ -38,13 +37,10 @@ const DashboardHeader = ({
   return (
     <div className="flex-1 flex items-center justify-between">
       <div className="hidden sm:flex flex-col">
-        <h1 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-600">
-          {title}
-        </h1>
         {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
       </div>
 
-      <div className="flex flex-1 items-center gap-3">
+      <div className="flex flex-1 items-center gap-3 md:pl-6">
         {/* Search */}
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -55,7 +51,7 @@ const DashboardHeader = ({
           />
         </div>
 
-        <div className="flex w-full items-center justify-end gap-3 sm:ml-0 sm:w-auto">
+        <div className="flex w-full items-center justify-end gap-3 sm:ml-0 sm:w-auto md:ml-auto">
           {/* Notifications */}
           <Button
             variant="ghost"
