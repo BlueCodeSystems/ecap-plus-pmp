@@ -1,6 +1,7 @@
 import { getStoredToken } from "@/lib/auth";
 
 const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL;
+const DIRECTUS_USER_ROLE = import.meta.env.VITE_DIRECTUS_USER_ROLE;
 
 const requireDirectusUrl = () => {
   if (!DIRECTUS_URL) {
@@ -58,9 +59,14 @@ export type DirectusRole = {
 };
 
 export const listUsers = async () => {
-  const data = await directusRequest(
-    "/users?fields=id,email,first_name,last_name,role,status&limit=100",
-  );
+  const params = new URLSearchParams({
+    fields: "id,email,first_name,last_name,role,status",
+    limit: "100",
+  });
+  if (DIRECTUS_USER_ROLE) {
+    params.set("filter[role][_eq]", DIRECTUS_USER_ROLE);
+  }
+  const data = await directusRequest(`/users?${params.toString()}`);
   return data?.data ?? [];
 };
 

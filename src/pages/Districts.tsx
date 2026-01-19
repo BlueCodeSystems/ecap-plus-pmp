@@ -131,7 +131,8 @@ const Districts = () => {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>District No.</TableHead>
@@ -172,7 +173,8 @@ const Districts = () => {
                 )
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </GlowCard>
     </DashboardLayout>

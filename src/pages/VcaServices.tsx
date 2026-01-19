@@ -119,7 +119,8 @@ const VcaServices = () => {
                 {district ? `District: ${district}` : "Set a default district to load services."}
               </p>
             </div>
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>VCA ID</TableHead>
@@ -186,7 +187,8 @@ const VcaServices = () => {
                   </TableRow>
                 )}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </div>
         </CardContent>
       </GlowCard>

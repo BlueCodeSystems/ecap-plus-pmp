@@ -89,7 +89,8 @@ const VcaRegister = () => {
             </div>
           </div>
 
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Screened</TableHead>
@@ -199,7 +200,8 @@ const VcaRegister = () => {
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </GlowCard>
     </DashboardLayout>

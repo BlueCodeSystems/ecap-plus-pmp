@@ -69,7 +69,8 @@ const IndexMotherRegister = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Index Mother ID</TableHead>
@@ -153,7 +154,8 @@ const IndexMotherRegister = () => {
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </GlowCard>
     </DashboardLayout>
