@@ -62,7 +62,8 @@ const HouseholdArchivedRegister = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Household ID</TableHead>
@@ -145,7 +146,8 @@ const HouseholdArchivedRegister = () => {
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </GlowCard>
     </DashboardLayout>

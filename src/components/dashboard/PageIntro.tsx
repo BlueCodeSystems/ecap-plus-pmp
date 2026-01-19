@@ -24,10 +24,12 @@ const PageIntro = ({
             {eyebrow}
           </p>
         )}
-        <h2 className="mt-2 text-2xl font-semibold text-slate-900">{title}</h2>
-        {description && <p className="mt-2 text-sm text-slate-600 max-w-2xl">{description}</p>}
+        <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h2>
+        {description && (
+          <p className="mt-2 text-sm text-slate-600 max-w-2xl">{description}</p>
+        )}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap gap-2 sm:justify-end">{actions}</div>}
     </div>
   );
 };

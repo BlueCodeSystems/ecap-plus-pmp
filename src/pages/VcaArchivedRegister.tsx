@@ -62,7 +62,8 @@ const VcaArchivedRegister = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>VCA ID</TableHead>
@@ -145,7 +146,8 @@ const VcaArchivedRegister = () => {
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </GlowCard>
     </DashboardLayout>
