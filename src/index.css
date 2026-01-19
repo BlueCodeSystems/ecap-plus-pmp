@@ -106,3 +106,43 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .bg-grid-slate {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+    background-size: 64px 64px;
+    background-position: -8px -8px;
+  }
+
+  @keyframes aurora {
+    0% {
+      transform: translate3d(-12%, 0, 0) rotate(0deg);
+    }
+    50% {
+      transform: translate3d(8%, -4%, 0) rotate(12deg);
+    }
+    100% {
+      transform: translate3d(-12%, 0, 0) rotate(0deg);
+    }
+  }
+
+  .animate-aurora {
+    animation: aurora 18s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(300%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+}
