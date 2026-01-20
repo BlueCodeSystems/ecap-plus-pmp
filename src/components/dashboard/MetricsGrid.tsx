@@ -3,20 +3,22 @@ import {
   TrendingDown,
   FileCheck,
   Home,
-  Users,
-  User,
+  Archive,
+  BookOpen,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import {
-  DEFAULT_DISTRICT,
-  getCaseworkerCountByDistrict,
   getTotalHouseholdsCount,
-  getTotalMothersCount,
   getTotalVcasCount,
+  getHouseholdsByDistrict,
+  getChildrenByDistrict,
+  getHouseholdArchivedRegister,
+  getChildrenArchivedRegister,
 } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface MetricCardProps {
   title: string;
@@ -62,9 +64,8 @@ const MetricCard = ({
           <p className="text-xs text-muted-foreground">{subtitle}</p>
           {trend && (
             <div
-              className={`flex items-center gap-1 text-xs ${
-                trend.isPositive ? "text-emerald-500" : "text-destructive"
-              }`}
+              className={`flex items-center gap-1 text-xs ${trend.isPositive ? "text-emerald-500" : "text-destructive"
+                }`}
             >
               {trend.isPositive ? (
                 <TrendingUp className="h-3 w-3" />
@@ -81,38 +82,59 @@ const MetricCard = ({
 };
 
 const MetricsGrid = () => {
+  const { user } = useAuth();
+  const district = user?.location ?? "";
+
   const totalVcasQuery = useQuery({
-    queryKey: ["metrics", "total-vcas"],
-    queryFn: getTotalVcasCount,
+    queryKey: ["metrics", "total-vcas", district],
+    queryFn: () => getTotalVcasCount(district),
+    enabled: !!district,
   });
 
   const totalHouseholdsQuery = useQuery({
-    queryKey: ["metrics", "total-households"],
-    queryFn: getTotalHouseholdsCount,
+    queryKey: ["metrics", "total-households", district],
+    queryFn: () => getTotalHouseholdsCount(district),
+    enabled: !!district,
   });
 
-  const totalMothersQuery = useQuery({
-    queryKey: ["metrics", "total-mothers"],
-    queryFn: getTotalMothersCount,
+  // Register Queries (fetching lists to get lengths)
+  const householdRegisterQuery = useQuery({
+    queryKey: ["metrics", "household-register", district],
+    queryFn: () => getHouseholdsByDistrict(district),
+    enabled: !!district,
   });
 
-  const caseworkerQuery = useQuery({
-    queryKey: ["metrics", "caseworkers", DEFAULT_DISTRICT ?? "all"],
-    queryFn: () =>
-      DEFAULT_DISTRICT ? getCaseworkerCountByDistrict(DEFAULT_DISTRICT) : Promise.resolve(null),
+  const vcaRegisterQuery = useQuery({
+    queryKey: ["metrics", "vca-register", district],
+    queryFn: () => getChildrenByDistrict(district),
+    enabled: !!district,
+  });
+
+  const householdArchivedQuery = useQuery({
+    queryKey: ["metrics", "household-archived", district],
+    queryFn: () => getHouseholdArchivedRegister(district),
+    enabled: !!district,
+  });
+
+  const vcaArchivedQuery = useQuery({
+    queryKey: ["metrics", "vca-archived", district],
+    queryFn: () => getChildrenArchivedRegister(district),
+    enabled: !!district,
   });
 
   const formatCount = (value: number | null | undefined) => {
     if (value === null || value === undefined) {
       return "N/A";
     }
-
     return new Intl.NumberFormat("en-GB").format(value);
   };
 
-  const districtLabel = DEFAULT_DISTRICT ?? "All districts";
+  const getListCount = (data: any[] | undefined) => {
+    if (!data) return "N/A";
+    return Array.isArray(data) ? formatCount(data.length) : "0";
+  }
 
-  const metrics = [
+  const summaryMetrics = [
     {
       title: "Total VCAs",
       value: formatCount(totalVcasQuery.data),
@@ -129,29 +151,55 @@ const MetricsGrid = () => {
       variant: "success" as const,
       isLoading: totalHouseholdsQuery.isLoading,
     },
+  ];
+
+  const registerMetrics = [
     {
-      title: "Index Mothers",
-      value: formatCount(totalMothersQuery.data),
-      subtitle: "Registered mothers",
-      icon: <Users className="h-5 w-5" />,
-      variant: "warning" as const,
-      isLoading: totalMothersQuery.isLoading,
+      title: "Household Register",
+      value: getListCount(householdRegisterQuery.data),
+      subtitle: "Active Households",
+      icon: <BookOpen className="h-5 w-5" />,
+      variant: "default" as const,
+      isLoading: householdRegisterQuery.isLoading,
     },
     {
-      title: "Caseworkers",
-      value: formatCount(caseworkerQuery.data),
-      subtitle: `${districtLabel} district`,
-      icon: <User className="h-5 w-5" />,
+      title: "VCA Register",
+      value: getListCount(vcaRegisterQuery.data),
+      subtitle: "Active VCAs",
+      icon: <BookOpen className="h-5 w-5" />,
       variant: "default" as const,
-      isLoading: caseworkerQuery.isLoading,
+      isLoading: vcaRegisterQuery.isLoading,
+    },
+    {
+      title: "Household Archived Register",
+      value: getListCount(householdArchivedQuery.data),
+      subtitle: "Archived Households",
+      icon: <Archive className="h-5 w-5" />,
+      variant: "warning" as const,
+      isLoading: householdArchivedQuery.isLoading,
+    },
+    {
+      title: "VCA Archived Register",
+      value: getListCount(vcaArchivedQuery.data), // Assuming backend returns list
+      subtitle: "Archived VCAs",
+      icon: <Archive className="h-5 w-5" />,
+      variant: "warning" as const,
+      isLoading: vcaArchivedQuery.isLoading,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {metrics.map((metric) => (
-        <MetricCard key={metric.title} {...metric} />
-      ))}
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {summaryMetrics.map((metric) => (
+          <MetricCard key={metric.title} {...metric} />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {registerMetrics.map((metric) => (
+          <MetricCard key={metric.title} {...metric} />
+        ))}
+      </div>
     </div>
   );
 };

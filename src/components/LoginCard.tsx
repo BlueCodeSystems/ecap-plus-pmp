@@ -29,10 +29,10 @@ const LoginCard = () => {
       <div className="mb-8 max-w-md">
         <img
           src="/ecap-logo.png"
-          alt="ECAP II logo"
+          alt="ECAP +logo"
           className="w-auto"
         />
-        <Title className="mt-4 text-center">ECAP II Program Management Platform</Title>
+        <Title className="mt-4 text-center">ECAP + Program Management Platform</Title>
         <h1 className="mt-2 text-3xl font-semibold text-slate-900">Welcome back</h1>
         <p className="mt-2 text-sm text-slate-600">
           Sign in to continue data reporting and monitoring.

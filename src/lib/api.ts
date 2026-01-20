@@ -28,8 +28,27 @@ const getCountValue = (data: unknown): number | null => {
   }
 
   const record = data as Record<string, unknown>;
+
+  // Check generic "count" property which might be a number, string, or object (nested count)
+  if (record.count) {
+    if (typeof record.count === "number") {
+      return record.count;
+    }
+    if (typeof record.count === "string") {
+      const parsed = Number(record.count);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    if (typeof record.count === "object" && record.count !== null) {
+      // Handle case: { count: { count: "123" } }
+      const nestedCount = (record.count as Record<string, unknown>).count;
+      if (nestedCount) {
+        const parsed = Number(nestedCount);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+    }
+  }
+
   const candidates = [
-    record.count,
     record.total,
     record.totalCount,
     record.total_count,
@@ -135,18 +154,27 @@ const dqaGet = async (path: string) => {
   return data;
 };
 
-export const getTotalVcasCount = async () => {
-  const data = await dqaGet("/child/total/vcas/count");
+export const getTotalVcasCount = async (district?: string) => {
+  const path = district
+    ? `/child/vcas-count/${encodeURIComponent(district)}`
+    : "/child/vcas-count";
+  const data = await dqaGet(path);
   return getCountValue(data);
 };
 
-export const getTotalHouseholdsCount = async () => {
-  const data = await dqaGet("/household/hh/total/count");
+export const getTotalHouseholdsCount = async (district?: string) => {
+  const path = district
+    ? `/household/households-count/${encodeURIComponent(district)}`
+    : "/household/households-count";
+  const data = await dqaGet(path);
   return getCountValue(data);
 };
 
-export const getTotalMothersCount = async () => {
-  const data = await dqaGet("/household/mothers/total/count");
+export const getTotalMothersCount = async (district?: string) => {
+  const path = district
+    ? `/household/members-count/${encodeURIComponent(district)}`
+    : "/household/members-count";
+  const data = await dqaGet(path);
   return getCountValue(data);
 };
 
@@ -166,12 +194,24 @@ export const getVcaCountByDistrict = async (district: string) => {
 };
 
 export const getHouseholdsByDistrict = async (district: string) => {
-  const data = await dqaGet(`/household/district/${encodeURIComponent(district)}`);
+  const data = await dqaGet(`/household/all-households/${encodeURIComponent(district)}`);
   return getListValue(data);
 };
 
-export const getHouseholdArchivedRegister = async (district: string) => {
-  const data = await dqaGet(`/household/archived-register/${encodeURIComponent(district)}`);
+export const getHouseholdArchivedRegister = async (
+  district: string,
+  params?: { de_registration_reason?: string }
+) => {
+  const queryParams = new URLSearchParams();
+  if (params?.de_registration_reason) {
+    queryParams.append("de_registration_reason", params.de_registration_reason);
+  }
+
+  const queryString = queryParams.toString();
+  const url = `/household/all-households-archived/${encodeURIComponent(district)}${queryString ? `?${queryString}` : ""
+    }`;
+
+  const data = await dqaGet(url);
   return getListValue(data);
 };
 
@@ -181,12 +221,24 @@ export const getMothersByDistrict = async (district: string) => {
 };
 
 export const getChildrenByDistrict = async (district: string) => {
-  const data = await dqaGet(`/child/district/${encodeURIComponent(district)}`);
+  const data = await dqaGet(`/child/vcas-assessed-register/${encodeURIComponent(district)}`);
   return getListValue(data);
 };
 
-export const getChildrenArchivedRegister = async (district: string) => {
-  const data = await dqaGet(`/child/vcas-archived-register/${encodeURIComponent(district)}`);
+export const getChildrenArchivedRegister = async (
+  district: string,
+  params?: { reason?: string }
+) => {
+  const queryParams = new URLSearchParams();
+  if (params?.reason) {
+    queryParams.append("reason", params.reason);
+  }
+
+  const queryString = queryParams.toString();
+  const url = `/child/vcas-archived-register/${encodeURIComponent(district)}${queryString ? `?${queryString}` : ""
+    }`;
+
+  const data = await dqaGet(url);
   return getListValue(data);
 };
 
@@ -198,4 +250,54 @@ export const getCaregiverServicesByDistrict = async (district: string) => {
 export const getVcaServicesByDistrict = async (district: string) => {
   const data = await dqaGet(`/child/district/vcaservices/${encodeURIComponent(district)}`);
   return getListValue(data);
+};
+
+export const getCaregiverServicesByMonth = async (district: string) => {
+  const data = await dqaGet(
+    `/household/caregiver-services-by-month/${encodeURIComponent(district)}`
+  );
+  return getListValue(data);
+};
+
+export const getVcaServicesByMonth = async (district: string) => {
+  const data = await dqaGet(
+    `/child/vca-services-by-month/${encodeURIComponent(district)}`
+  );
+  return getListValue(data);
+};
+
+export const getCaregiverReferralsByMonth = async (district: string) => {
+  const data = await dqaGet(
+    `/household/caregiver-referrals-by-month/${encodeURIComponent(district)}`
+  );
+  return getListValue(data);
+};
+
+export const getVcaReferralsByMonth = async (district: string) => {
+  const data = await dqaGet(
+    `/child/vca-referrals-by-month/${encodeURIComponent(district)}`
+  );
+  return getListValue(data);
+};
+// ... existing code ...
+
+export const getFlaggedRecords = async () => {
+  const token = getStoredToken();
+  if (!token) return [];
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const data = await safeJson(response);
+    return getListValue(data);
+  } catch (error) {
+    console.error("Error fetching flagged records:", error);
+    return [];
+  }
 };

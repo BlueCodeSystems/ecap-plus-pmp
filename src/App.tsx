@@ -8,7 +8,6 @@ import Dashboard from "./pages/Dashboard";
 import Districts from "./pages/Districts";
 import HouseholdRegister from "./pages/HouseholdRegister";
 import VcaRegister from "./pages/VcaRegister";
-import IndexMotherRegister from "./pages/IndexMotherRegister";
 import VcaServices from "./pages/VcaServices";
 import CaregiverServices from "./pages/CaregiverServices";
 import Flags from "./pages/Flags";
@@ -68,14 +67,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/index-mothers"
-              element={
-                <ProtectedRoute>
-                  <IndexMotherRegister />
-                </ProtectedRoute>
-              }
-            />
+
             <Route
               path="/vca-services"
               element={

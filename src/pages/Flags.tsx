@@ -1,148 +1,204 @@
-import { Flag, AlertTriangle, Clock } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Flag, Search } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { DEFAULT_DISTRICT, getCaregiverServicesByDistrict, getVcaServicesByDistrict } from "@/lib/api";
-
-const pickValue = (record: Record<string, unknown>, keys: string[]) => {
-  for (const key of keys) {
-    const value = record[key];
-    if (value !== null && value !== undefined && value !== "") {
-      return value;
-    }
-  }
-  return "N/A";
-};
+import { getFlaggedRecords } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 const Flags = () => {
-  const district = DEFAULT_DISTRICT;
-  const vcaServicesQuery = useQuery({
-    queryKey: ["flags", "vca-services", district],
-    queryFn: () => getVcaServicesByDistrict(district ?? ""),
-    enabled: Boolean(district),
-  });
-  const caregiverServicesQuery = useQuery({
-    queryKey: ["flags", "caregiver-services", district],
-    queryFn: () => getCaregiverServicesByDistrict(district ?? ""),
-    enabled: Boolean(district),
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const flagsQuery = useQuery({
+    queryKey: ["flags", "records"],
+    queryFn: getFlaggedRecords,
   });
 
-  const vcaServices = vcaServicesQuery.data ?? [];
-  const caregiverServices = caregiverServicesQuery.data ?? [];
+  const records = useMemo(() => flagsQuery.data ?? [], [flagsQuery.data]);
 
-  const flaggedItems = [
-    ...vcaServices
-      .filter((record) => pickValue(record as Record<string, unknown>, ["service_date", "visit_date"]) === "N/A")
-      .slice(0, 3)
-      .map((record) => ({
-        title: "VCA Service Missing Date",
-        detail: `VCA ${pickValue(record as Record<string, unknown>, ["vca_id", "vcaid", "child_id", "unique_id", "id"])} • Service date not provided`,
-        status: "Review Needed",
-      })),
-    ...caregiverServices
-      .filter((record) => pickValue(record as Record<string, unknown>, ["service_date", "visit_date"]) === "N/A")
-      .slice(0, 3)
-      .map((record) => ({
-        title: "Caregiver Service Missing Date",
-        detail: `Household ${pickValue(record as Record<string, unknown>, ["household_id", "householdId", "hh_id", "id", "unique_id"])} • Service date not provided`,
-        status: "Pending",
-      })),
-  ].slice(0, 3);
+  const filteredRecords = useMemo(() => {
+    if (!searchQuery) return records;
+    const lowerQuery = searchQuery.toLowerCase();
+    return records.filter((record: any) =>
+      Object.values(record).some((val) =>
+        String(val).toLowerCase().includes(lowerQuery)
+      )
+    );
+  }, [records, searchQuery]);
 
-  const isLoading = vcaServicesQuery.isLoading || caregiverServicesQuery.isLoading;
-  const totalFlags = flaggedItems.length;
+  const handleExport = () => {
+    try {
+      const headers = [
+        "Household ID",
+        "Caseworker Name",
+        "Caregiver Name",
+        "Facility",
+        "Comment",
+        "Verifier",
+        "Status",
+        "Created At",
+      ];
+      const csvContent =
+        "data:text/csv;charset=utf-8," +
+        [
+          headers.join(","),
+          ...filteredRecords.map((record: any) =>
+            [
+              record.household_id,
+              record.caseworker_name,
+              record.caregiver_name,
+              record.facility,
+              `"${(record.comment || "").replace(/"/g, '""')}"`, // Escape quotes in comments
+              record.verifier,
+              record.status,
+              record.date_created,
+            ].join(",")
+          ),
+        ].join("\n");
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `district_flagged_records_${user?.location || "all"}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+    }
+  };
+
+  const handleRowClick = (householdId: string) => {
+    navigate(`/profile/household-profile/${encodeURIComponent(householdId)}`);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "bg-amber-100 text-amber-700 hover:bg-amber-100";
+      case "approved":
+        return "bg-green-100 text-green-700 hover:bg-green-100";
+      case "rejected":
+        return "bg-red-100 text-red-700 hover:bg-red-100";
+      default:
+        return "bg-slate-100 text-slate-700 hover:bg-slate-100";
+    }
+  };
 
   return (
     <DashboardLayout subtitle="Flags">
       <PageIntro
         eyebrow="Flags"
-        title="Resolve risks before they become gaps."
-        description="Prioritize issues from DQA checks, service lags, and incomplete records."
+        title="Flagged Records"
+        description="Review and resolve flagged issues from data quality checks."
         actions={
-          <>
-            <Badge className="bg-rose-100 text-rose-700">
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  Loading <LoadingDots className="text-rose-700" />
-                </span>
-              ) : (
-                `${totalFlags} Active Flags`
-              )}
-            </Badge>
-            <Button variant="outline" className="border-slate-200">
-              Review All Flags
-            </Button>
-          </>
+          <Button variant="outline" className="border-slate-200" onClick={handleExport}>
+            Export to CSV
+          </Button>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {isLoading && (
-          <GlowCard>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Loading flags
-              </CardTitle>
-              <Flag className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                Gathering service records <LoadingDots className="text-slate-400" />
-              </div>
-            </CardContent>
-          </GlowCard>
-        )}
-        {!isLoading &&
-          flaggedItems.map((item, index) => (
-            <GlowCard key={`${item.title}-${index}`}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {item.title}
-                </CardTitle>
-                <Flag className="h-4 w-4 text-destructive" />
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-slate-600">{item.detail}</p>
-                <Badge className="bg-amber-100 text-amber-700">{item.status}</Badge>
-              </CardContent>
-            </GlowCard>
-          ))}
-        {!isLoading && flaggedItems.length === 0 && (
-          <GlowCard className="md:col-span-3">
-            <CardContent className="py-6 text-center text-slate-500">
-              No flagged records returned for the selected district.
-            </CardContent>
-          </GlowCard>
-        )}
-      </div>
-
       <GlowCard>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <CardTitle>Rapid Resolution Queue</CardTitle>
+            <Flag className="h-4 w-4 text-primary" />
+            <CardTitle>{user?.location} District Flagged Records</CardTitle>
           </div>
-          <Button className="bg-slate-900 text-white hover:bg-slate-800">
-            Assign Follow-ups
-          </Button>
+          <div className="relative w-full lg:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search records..."
+              className="pl-9 border-slate-200 bg-white"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-slate-600">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-slate-400" />
-            {district ? `District: ${district}` : "Set a default district to see queue stats."}
+        <CardContent>
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[120px]">Household ID</TableHead>
+                  <TableHead className="min-w-[150px]">Caseworker Name</TableHead>
+                  <TableHead className="min-w-[150px]">Caregiver Name</TableHead>
+                  <TableHead className="min-w-[120px]">Facility</TableHead>
+                  <TableHead className="min-w-[200px]">Comment</TableHead>
+                  <TableHead className="min-w-[120px]">Verifier</TableHead>
+                  <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead className="w-[120px]">Created At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {flagsQuery.isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-8 text-center text-slate-500">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm">Loading flagged records</span>
+                        <LoadingDots className="text-slate-400" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!flagsQuery.isLoading && filteredRecords.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-8 text-center text-slate-500">
+                      No flagged records found.
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {filteredRecords.map((record: any, index: number) => (
+                  <TableRow
+                    key={record.id || index}
+                    className="cursor-pointer hover:bg-slate-50"
+                    onClick={() => handleRowClick(record.household_id)}
+                  >
+                    <TableCell className="font-medium text-primary">
+                      {record.household_id}
+                    </TableCell>
+                    <TableCell>{record.caseworker_name}</TableCell>
+                    <TableCell>{record.caregiver_name}</TableCell>
+                    <TableCell>{record.facility}</TableCell>
+                    <TableCell className="max-w-[300px] truncate" title={record.comment}>
+                      {record.comment}
+                    </TableCell>
+                    <TableCell>{record.verifier}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(record.status)}>
+                        {record.status?.toUpperCase() || "UNKNOWN"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {record.date_created
+                        ? new Date(record.date_created).toLocaleDateString()
+                        : "N/A"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-slate-400" />
-            {vcaServices.length} VCA service records reviewed
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-slate-400" />
-            {caregiverServices.length} caregiver service records reviewed
+          <div className="mt-4 text-xs text-slate-400 text-right">
+            Showing {filteredRecords.length} records
           </div>
         </CardContent>
       </GlowCard>
