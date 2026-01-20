@@ -16,6 +16,7 @@ export type AuthUser = {
   first_name?: string;
   last_name?: string;
   role?: string | { id: string; name?: string };
+  location?: string;
 };
 
 type AuthContextValue = {
@@ -46,7 +47,7 @@ const requireDirectusUrl = () => {
 
 const fetchProfile = async (token: string) => {
   const response = await fetch(
-    `${requireDirectusUrl()}/users/me?fields=id,email,first_name,last_name,role`,
+    `${requireDirectusUrl()}/users/me?fields=id,email,first_name,last_name,role,location`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
