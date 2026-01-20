@@ -1,10 +1,8 @@
 import {
-  TrendingUp,
-  TrendingDown,
   FileCheck,
   Home,
-  Archive,
-  BookOpen,
+  Users,
+  Briefcase,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +11,8 @@ import LoadingDots from "@/components/aceternity/LoadingDots";
 import {
   getTotalHouseholdsCount,
   getTotalVcasCount,
-  getHouseholdsByDistrict,
-  getChildrenByDistrict,
-  getHouseholdArchivedRegister,
-  getChildrenArchivedRegister,
+  getTotalMothersCount,
+  getCaseworkerCountByDistrict,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -97,28 +93,15 @@ const MetricsGrid = () => {
     enabled: !!district,
   });
 
-  // Register Queries (fetching lists to get lengths)
-  const householdRegisterQuery = useQuery({
-    queryKey: ["metrics", "household-register", district],
-    queryFn: () => getHouseholdsByDistrict(district),
+  const totalMothersQuery = useQuery({
+    queryKey: ["metrics", "total-mothers", district],
+    queryFn: () => getTotalMothersCount(district),
     enabled: !!district,
   });
 
-  const vcaRegisterQuery = useQuery({
-    queryKey: ["metrics", "vca-register", district],
-    queryFn: () => getChildrenByDistrict(district),
-    enabled: !!district,
-  });
-
-  const householdArchivedQuery = useQuery({
-    queryKey: ["metrics", "household-archived", district],
-    queryFn: () => getHouseholdArchivedRegister(district),
-    enabled: !!district,
-  });
-
-  const vcaArchivedQuery = useQuery({
-    queryKey: ["metrics", "vca-archived", district],
-    queryFn: () => getChildrenArchivedRegister(district),
+  const caseworkersQuery = useQuery({
+    queryKey: ["metrics", "caseworkers", district],
+    queryFn: () => getCaseworkerCountByDistrict(district),
     enabled: !!district,
   });
 
@@ -151,52 +134,28 @@ const MetricsGrid = () => {
       variant: "success" as const,
       isLoading: totalHouseholdsQuery.isLoading,
     },
-  ];
-
-  const registerMetrics = [
     {
-      title: "Household Register",
-      value: getListCount(householdRegisterQuery.data),
-      subtitle: "Active Households",
-      icon: <BookOpen className="h-5 w-5" />,
-      variant: "default" as const,
-      isLoading: householdRegisterQuery.isLoading,
-    },
-    {
-      title: "VCA Register",
-      value: getListCount(vcaRegisterQuery.data),
-      subtitle: "Active VCAs",
-      icon: <BookOpen className="h-5 w-5" />,
-      variant: "default" as const,
-      isLoading: vcaRegisterQuery.isLoading,
-    },
-    {
-      title: "Household Archived Register",
-      value: getListCount(householdArchivedQuery.data),
-      subtitle: "Archived Households",
-      icon: <Archive className="h-5 w-5" />,
+      title: "Index Mothers",
+      value: formatCount(totalMothersQuery.data),
+      subtitle: "Registered mothers",
+      icon: <Users className="h-5 w-5" />,
       variant: "warning" as const,
-      isLoading: householdArchivedQuery.isLoading,
+      isLoading: totalMothersQuery.isLoading,
     },
     {
-      title: "VCA Archived Register",
-      value: getListCount(vcaArchivedQuery.data), // Assuming backend returns list
-      subtitle: "Archived VCAs",
-      icon: <Archive className="h-5 w-5" />,
-      variant: "warning" as const,
-      isLoading: vcaArchivedQuery.isLoading,
+      title: "Caseworkers",
+      value: formatCount(caseworkersQuery.data),
+      subtitle: "All districts district",
+      icon: <Briefcase className="h-5 w-5" />,
+      variant: "default" as const,
+      isLoading: caseworkersQuery.isLoading,
     },
   ];
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {summaryMetrics.map((metric) => (
-          <MetricCard key={metric.title} {...metric} />
-        ))}
-      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {registerMetrics.map((metric) => (
+        {summaryMetrics.map((metric) => (
           <MetricCard key={metric.title} {...metric} />
         ))}
       </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Archive, Search, Filter } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
@@ -21,10 +21,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_DISTRICT, getChildrenArchivedRegister } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+
+
+const ITEMS_PER_PAGE = 50;
 
 const subPopulationFilterLabels = {
   calhiv: "C/ALHIV",
@@ -143,6 +155,7 @@ const VcaArchivedRegister = () => {
     Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
   );
   const [graduationFilter, setGraduationFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const archivedQuery = useQuery({
     queryKey: ["vcas", "archived", district, graduationFilter],
@@ -186,6 +199,33 @@ const VcaArchivedRegister = () => {
     });
   }, [archivedVcas, searchQuery, subPopulationFilters]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, subPopulationFilters, graduationFilter]);
+
+  const totalPages = Math.ceil(filteredVcas.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedVcas = filteredVcas.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
   const handleFilterChange = (key: string, value: string) => {
     setSubPopulationFilters((prev) => ({ ...prev, [key]: value }));
   };
@@ -196,6 +236,7 @@ const VcaArchivedRegister = () => {
       Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
     );
     setGraduationFilter("all");
+    setCurrentPage(1);
   };
 
   const exportToCSV = () => {
@@ -401,7 +442,7 @@ const VcaArchivedRegister = () => {
                     </TableCell>
                   </TableRow>
                 )}
-                {filteredVcas.map((vca: any, index: number) => {
+                {paginatedVcas.map((vca: any, index: number) => {
                   const id = pickValue(vca, ["vca_id", "vcaid", "id", "unique_id", "child_id", "uid"]);
                   const fullName = `${vca.firstname || ''} ${vca.lastname || ''}`.trim();
                   const age = calculateAge(vca.birthdate);
@@ -452,8 +493,48 @@ const VcaArchivedRegister = () => {
               </TableBody>
             </Table>
           </div>
-          <div className="text-xs text-slate-400 text-right">
-            Showing {filteredVcas.length} records
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-4 border-t">
+            <div className="text-sm text-slate-500">
+              Showing {filteredVcas.length > 0 ? startIndex + 1 : 0} to{" "}
+              {Math.min(startIndex + ITEMS_PER_PAGE, filteredVcas.length)} of{" "}
+              {filteredVcas.length} entries
+            </div>
+
+            {totalPages > 1 && (
+              <Pagination className="justify-end w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+
+                  {getPageNumbers().map((page, i) => (
+                    <PaginationItem key={i}>
+                      {page === '...' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          isActive={currentPage === page}
+                          onClick={() => setCurrentPage(page as number)}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
         </CardContent>
       </GlowCard>
