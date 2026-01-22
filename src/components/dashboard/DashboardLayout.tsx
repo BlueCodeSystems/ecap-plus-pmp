@@ -32,7 +32,7 @@ const mobileMenuItems = [
   { title: "Household Register", url: "/households", icon: Home },
   { title: "VCA Register", url: "/vcas", icon: Users },
   { title: "VCA Services", url: "/vca-services", icon: ClipboardList },
-  { title: "Caregiver Services", url: "/caregiver-services", icon: Users },
+  { title: "Household Services", url: "/household-services", icon: HeartPulse },
   { title: "Flags", url: "/flags", icon: Flag },
   { title: "Household Archived Register", url: "/households/archived", icon: Archive },
   { title: "VCA Archived Register", url: "/vcas/archived", icon: Archive },

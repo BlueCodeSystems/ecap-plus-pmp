@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Pagination,
   PaginationContent,
@@ -31,6 +32,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_DISTRICT, getChildrenArchivedRegister } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -76,11 +78,11 @@ const graduationOptions = [
   "Other",
 ];
 
-const pickValue = (record: Record<string, unknown>, keys: string[]) => {
+const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
     const value = record[key];
     if (value !== null && value !== undefined && value !== "") {
-      return value;
+      return String(value);
     }
   }
   return "N/A";
@@ -148,6 +150,7 @@ const calculateAge = (birthdate: string): number => {
 
 const VcaArchivedRegister = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const district = user?.location ?? DEFAULT_DISTRICT;
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -344,15 +347,15 @@ const VcaArchivedRegister = () => {
             {/* Sub-population Filters */}
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-slate-700">Filter by Sub Population</h3>
-              <div className="flex flex-wrap gap-4">
+              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
                 {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
                   <div key={key} className="flex flex-col items-start gap-1">
-                    <span className="text-xs text-slate-500 font-medium">{label}</span>
+                    <span className="text-[10px] text-slate-500 font-medium truncate w-full">{label}</span>
                     <Select
                       value={subPopulationFilters[key]}
                       onValueChange={(val) => handleFilterChange(key, val)}
                     >
-                      <SelectTrigger className="w-[90px] h-8 text-xs">
+                      <SelectTrigger className="w-full h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -407,14 +410,14 @@ const VcaArchivedRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px]">VCA ID</TableHead>
-                  <TableHead className="w-[150px]">Full Name</TableHead>
-                  <TableHead className="w-[80px]">Gender</TableHead>
-                  <TableHead className="w-[60px]">Age</TableHead>
-                  <TableHead className="min-w-[200px]">Household Details</TableHead>
-                  <TableHead className="w-[120px]">Archived On</TableHead>
-                  <TableHead className="w-[180px]">Reason</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-[80px] hidden sm:table-cell">ID</TableHead>
+                  <TableHead className="w-[150px]">VCA Name</TableHead>
+                  <TableHead className="w-[80px] hidden sm:table-cell">Gender</TableHead>
+                  <TableHead className="w-[60px] hidden sm:table-cell">Age</TableHead>
+                  <TableHead className="min-w-[200px] hidden lg:table-cell">Household Details</TableHead>
+                  <TableHead className="w-[100px] hidden md:table-cell">Archived</TableHead>
+                  <TableHead className="w-[120px] hidden lg:table-cell">Reason</TableHead>
+                  <TableHead className="text-right w-[60px]">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -449,33 +452,49 @@ const VcaArchivedRegister = () => {
 
                   return (
                     <TableRow key={`${String(id)}-${index}`}>
-                      <TableCell className="font-medium">{String(id)}</TableCell>
-                      <TableCell className="font-medium">{fullName || 'N/A'}</TableCell>
-                      <TableCell>{vca.vca_gender || 'N/A'}</TableCell>
-                      <TableCell>{age}</TableCell>
-                      <TableCell>
-                        <div className="whitespace-pre-line text-sm text-slate-600 leading-snug">
+                      <TableCell className="font-medium align-top hidden sm:table-cell">
+                        <span className="text-xs">{String(id)}</span>
+                      </TableCell>
+                      <TableCell className="font-medium align-top px-2 sm:px-4">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2 sm:hidden">
+                            <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 rounded">{String(id)}</span>
+                          </div>
+                          <span className="text-sm leading-tight">{fullName || 'N/A'}</span>
+                          <div className="mt-1 flex gap-2 sm:hidden">
+                            <span className="text-[10px] bg-slate-50 border border-slate-100 px-1.5 rounded text-slate-600">
+                              {vca.vca_gender?.charAt(0) || '?'} • {age}y
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-col gap-1 sm:hidden">
+                            <span className="text-[10px] text-slate-500 italic">
+                              Archived: {String(pickValue(vca, ["archived_on", "archivedOn", "date_archived", "de_registration_date", "updated_at"]))}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell align-top">{vca.vca_gender || 'N/A'}</TableCell>
+                      <TableCell className="hidden sm:table-cell align-top">{age}</TableCell>
+                      <TableCell className="hidden lg:table-cell align-top">
+                        <div className="whitespace-pre-line text-[10px] text-slate-600 leading-snug">
                           {getAddressString(vca)}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {String(
-                          pickValue(vca, [
-                            "archived_on",
-                            "archivedOn",
-                            "date_archived",
-                            "de_registration_date",
-                            "updated_at",
-                          ]),
-                        )}
+                      <TableCell className="hidden md:table-cell align-top text-xs">
+                        {String(pickValue(vca, ["archived_on", "archivedOn", "date_archived", "de_registration_date", "updated_at"]))}
                       </TableCell>
-                      <TableCell>
-                        {String(
-                          pickValue(vca, ["reason", "archived_reason", "status", "case_status"]),
-                        )}
+                      <TableCell className="hidden lg:table-cell align-top text-xs">
+                        <span className="text-amber-700">
+                          {String(pickValue(vca, ["reason", "archived_reason", "status", "case_status"]))}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Button size="sm" variant="outline" className="border-slate-200">
+                      <TableCell className="text-right align-top px-2 sm:px-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs border-slate-200"
+                          onClick={() => navigate(`/profile/vca-profile/${encodeURIComponent(String(id))}`)}
+                        >
                           View
                         </Button>
                       </TableCell>

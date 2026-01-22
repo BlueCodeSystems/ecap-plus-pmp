@@ -5,6 +5,7 @@ import GlowCard from "@/components/aceternity/GlowCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_DISTRICT, getVcaServicesByDistrict } from "@/lib/api";
@@ -27,11 +28,11 @@ const serviceModules = [
   "All Services",
 ];
 
-const pickValue = (record: Record<string, unknown>, keys: string[]) => {
+const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
     const value = record[key];
     if (value !== null && value !== undefined && value !== "") {
-      return value;
+      return String(value);
     }
   }
   return "N/A";
@@ -83,17 +84,20 @@ const VcaServices = () => {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {serviceModules.map((module) => (
-              <Button key={module} variant="outline" className="border-slate-200">
-                {module}
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex w-max space-x-2 pb-4">
+              {serviceModules.map((module) => (
+                <Button key={module} variant="outline" className="border-slate-200">
+                  {module}
+                </Button>
+              ))}
+              <Button variant="destructive" className="gap-2">
+                <Flag className="h-4 w-4" />
+                Flag This Record
               </Button>
-            ))}
-            <Button variant="destructive" className="gap-2">
-              <Flag className="h-4 w-4" />
-              Flag This Record
-            </Button>
-          </div>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
@@ -121,72 +125,75 @@ const VcaServices = () => {
             </div>
             <div className="overflow-x-auto">
               <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>VCA ID</TableHead>
-                  <TableHead>Service</TableHead>
-                  <TableHead>Service Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!district && (
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="py-6 text-center text-slate-500">
-                      Set `VITE_DEFAULT_DISTRICT` to load services.
-                    </TableCell>
+                    <TableHead className="w-[100px]">ID</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+                    <TableHead className="text-right">Status</TableHead>
                   </TableRow>
-                )}
-                {servicesQuery.isLoading && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-6 text-center text-slate-500">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-sm">Loading services</span>
-                        <LoadingDots className="text-slate-400" />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-                {recentServices.map((service, index) => {
-                  const record = service as Record<string, unknown>;
-                  return (
-                    <TableRow key={`${index}-${String(record.id ?? "service")}`}>
-                      <TableCell className="font-medium">
-                        {String(
-                          pickValue(record, ["vca_id", "vcaid", "child_id", "unique_id", "id"]),
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {String(
-                          pickValue(record, ["service", "service_name", "serviceName", "form_name"]),
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {String(
-                          pickValue(record, ["service_date", "visit_date", "created_at", "date"]),
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {String(pickValue(record, ["status", "state", "outcome"]))}
+                </TableHeader>
+                <TableBody>
+                  {!district && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-slate-500">
+                        Set `VITE_DEFAULT_DISTRICT` to load services.
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-                {!servicesQuery.isLoading && district && services.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-6 text-center text-slate-500">
-                      No services found.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {servicesQuery.isError && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-6 text-center text-destructive">
-                      {(servicesQuery.error as Error).message}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
+                  )}
+                  {servicesQuery.isLoading && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-slate-500">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-sm">Loading services</span>
+                          <LoadingDots className="text-slate-400" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {recentServices.map((service, index) => {
+                    const record = service as Record<string, unknown>;
+                    return (
+                      <TableRow key={`${index}-${String(record.id ?? "service")}`}>
+                        <TableCell className="font-medium align-top">
+                          <span className="text-xs">{String(pickValue(record, ["vca_id", "vcaid", "child_id", "unique_id", "id"]))}</span>
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium leading-tight">
+                              {String(pickValue(record, ["service", "service_name", "serviceName", "form_name"]))}
+                            </span>
+                            <span className="text-[10px] text-slate-500 sm:hidden">
+                              {String(pickValue(record, ["service_date", "visit_date", "created_at", "date"]))}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell align-top text-xs">
+                          {String(pickValue(record, ["service_date", "visit_date", "created_at", "date"]))}
+                        </TableCell>
+                        <TableCell className="text-right align-top">
+                          <Badge variant="outline" className="text-[10px] h-5 px-1 font-normal border-slate-200">
+                            {String(pickValue(record, ["status", "state", "outcome"]))}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {!servicesQuery.isLoading && district && services.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-slate-500">
+                        No services found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {servicesQuery.isError && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-destructive">
+                        {(servicesQuery.error as Error).message}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
               </Table>
             </div>
           </div>

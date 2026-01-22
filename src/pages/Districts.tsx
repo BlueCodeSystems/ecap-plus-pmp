@@ -167,7 +167,7 @@ const Districts = () => {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
         <KpiCard
           title="Households Screened"
           value={formatCount(householdCountQuery.data)}
@@ -219,10 +219,10 @@ const Districts = () => {
             <Table>
               <TableHeader className="bg-muted/30">
                 <TableRow>
-                  <TableHead className="w-[80px]">No.</TableHead>
+                  <TableHead className="w-[80px] hidden md:table-cell">No.</TableHead>
                   <TableHead>District</TableHead>
-                  <TableHead>Households</TableHead>
-                  <TableHead>VCAs</TableHead>
+                  <TableHead className="hidden sm:table-cell">Households</TableHead>
+                  <TableHead className="hidden sm:table-cell">VCAs</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -230,7 +230,7 @@ const Districts = () => {
                 {areDistrictsLoading && districtData.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-32 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground p-4">
                         <LoadingDots />
                         <span className="text-xs">
                           {isDiscoveryLoading ? "Discovering districts..." : "Loading district data..."}
@@ -247,10 +247,18 @@ const Districts = () => {
                 ) : (
                   districtData.map((data: any, index) => (
                     <TableRow key={data.district} className="group">
-                      <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
-                      <TableCell className="font-semibold text-foreground">{data.district}</TableCell>
-                      <TableCell>{formatCount(data.households)}</TableCell>
-                      <TableCell>{formatCount(data.vcas)}</TableCell>
+                      <TableCell className="font-medium text-muted-foreground hidden md:table-cell">{index + 1}</TableCell>
+                      <TableCell className="font-semibold text-foreground">
+                        <div className="flex flex-col">
+                          <span>{data.district}</span>
+                          <div className="flex gap-2 mt-1 sm:hidden">
+                            <span className="text-[10px] text-muted-foreground">HHs: {formatCount(data.households)}</span>
+                            <span className="text-[10px] text-muted-foreground">VCAs: {formatCount(data.vcas)}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{formatCount(data.households)}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{formatCount(data.vcas)}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="link"
@@ -258,8 +266,9 @@ const Districts = () => {
                           className="text-pink-600 hover:text-pink-700 p-0 text-right font-medium"
                           onClick={() => navigate("/households")}
                         >
-                          View Records
-                          <ArrowRight className="ml-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <span className="hidden xs:inline">View Records</span>
+                          <span className="xs:hidden">View</span>
+                          <ArrowRight className="ml-1 h-3 w-3 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
                         </Button>
                       </TableCell>
                     </TableRow>
