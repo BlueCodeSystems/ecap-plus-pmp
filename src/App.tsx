@@ -8,7 +8,8 @@ import Dashboard from "./pages/Dashboard";
 import Districts from "./pages/Districts";
 import HouseholdRegister from "./pages/HouseholdRegister";
 import VcaRegister from "./pages/VcaRegister";
-import VcaServices from "./pages/VcaServices";
+import HouseholdServices from "./pages/HouseholdServices";
+import VcaServices from "./pages/VcaServicesDashboard";
 import CaregiverServices from "./pages/CaregiverServices";
 import Flags from "./pages/Flags";
 import HouseholdArchivedRegister from "./pages/HouseholdArchivedRegister";
@@ -18,7 +19,10 @@ import Users from "./pages/Users";
 import AddUser from "./pages/AddUser";
 import EditUser from "./pages/EditUser";
 import Profile from "./pages/Profile";
+import HouseholdProfile from "./pages/HouseholdProfile";
+import VcaProfile from "./pages/VcaProfile";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -35,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/dashboard"
               element={
@@ -73,6 +78,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <VcaServices />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/household-services"
+              element={
+                <ProtectedRoute>
+                  <HouseholdServices />
                 </ProtectedRoute>
               }
             />
@@ -145,6 +158,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/household-profile/:id"
+              element={
+                <ProtectedRoute>
+                  <HouseholdProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/vca-profile/:id"
+              element={
+                <ProtectedRoute>
+                  <VcaProfile />
                 </ProtectedRoute>
               }
             />

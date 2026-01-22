@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Mail } from "lucide-react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
@@ -11,37 +11,76 @@ import RightImageSlider from "@/components/RightImageSlider";
 const DIRECTUS_URL =
   import.meta.env.VITE_DIRECTUS_URL ?? "https://api.achieve.bluecodeltd.com";
 
-const ForgotPassword = () => {
-  const [email, setEmail] = useState("");
+const ResetPassword = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = searchParams.get("token");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (!token) {
+      toast.error("Invalid or missing reset token.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters long.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const resetUrl = `${window.location.origin}/reset-password`;
-      const response = await fetch(`${DIRECTUS_URL}/auth/password/request`, {
+      const response = await fetch(`${DIRECTUS_URL}/auth/password/reset`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, reset_url: resetUrl }),
+        body: JSON.stringify({ token, password }),
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.errors?.[0]?.message ?? "Request failed");
+        throw new Error(data?.errors?.[0]?.message ?? "Reset failed");
       }
 
-      toast.success("Check your inbox. We sent a password reset link if the email exists.");
-      setEmail("");
+      toast.success("Password reset successful. You can now sign in.");
+      navigate("/");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to request reset");
+      toast.error(error instanceof Error ? error.message : "Unable to reset password");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!token) {
+    return (
+      <AuroraBackground>
+        <main className="relative z-10 flex min-h-screen items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white/95 p-8 rounded-lg shadow-xl text-center">
+            <h1 className="text-2xl font-semibold text-slate-900 mb-4">Invalid Link</h1>
+            <p className="text-slate-600 mb-6">
+              This password reset link is invalid or has expired.
+            </p>
+            <Link to="/forgot-password">
+              <Button className="bg-amber-300 text-slate-900 hover:bg-amber-200">
+                Request a new link
+              </Button>
+            </Link>
+          </div>
+        </main>
+      </AuroraBackground>
+    );
+  }
 
   return (
     <AuroraBackground>
@@ -58,20 +97,32 @@ const ForgotPassword = () => {
                 ECAP +
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-slate-900">
-                Forgot your password?
+                Reset your password
               </h1>
               <p className="mt-2 text-sm text-slate-600">
-                Enter your email and we will send you a reset link.
+                Enter your new password below.
               </p>
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input
-                    type="email"
-                    placeholder="Email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="password"
+                    placeholder="New password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-amber-300/80"
+                    required
+                  />
+                </div>
+
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-amber-300/80"
                     required
                   />
@@ -82,16 +133,9 @@ const ForgotPassword = () => {
                   className="h-12 w-full bg-amber-300 text-slate-900 transition-transform duration-300 hover:-translate-y-0.5 hover:bg-amber-200"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Sending..." : "Send reset link"}
+                  {isLoading ? "Resetting..." : "Reset password"}
                 </Button>
               </form>
-
-              <p className="mt-6 text-sm text-slate-600">
-                Remembered it?{" "}
-                <Link to="/" className="font-semibold text-slate-900 hover:text-slate-700">
-                  Back to sign in
-                </Link>
-              </p>
             </div>
           </section>
           <aside className="relative min-h-[320px] md:min-h-0">
@@ -120,4 +164,4 @@ const ForgotPassword = () => {
   );
 };
 
-export default ForgotPassword;
+export default ResetPassword;
