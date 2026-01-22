@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Flag, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -42,6 +43,14 @@ const Flags = () => {
       )
     );
   }, [records, searchQuery]);
+
+  const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
+    for (const key of keys) {
+      const value = record[key];
+      if (value !== null && value !== undefined && value !== "") return String(value);
+    }
+    return "N/A";
+  };
 
   const handleExport = () => {
     try {
@@ -136,14 +145,11 @@ const Flags = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px]">Household ID</TableHead>
-                  <TableHead className="min-w-[150px]">Caseworker Name</TableHead>
-                  <TableHead className="min-w-[150px]">Caregiver Name</TableHead>
-                  <TableHead className="min-w-[120px]">Facility</TableHead>
-                  <TableHead className="min-w-[200px]">Comment</TableHead>
-                  <TableHead className="min-w-[120px]">Verifier</TableHead>
-                  <TableHead className="w-[100px]">Status</TableHead>
-                  <TableHead className="w-[120px]">Created At</TableHead>
+                  <TableHead className="w-[80px] hidden sm:table-cell">HH ID</TableHead>
+                  <TableHead className="hidden sm:table-cell">Caseworker</TableHead>
+                  <TableHead>Caregiver</TableHead>
+                  <TableHead className="hidden md:table-cell">Comment</TableHead>
+                  <TableHead className="text-right w-[80px]">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -172,25 +178,33 @@ const Flags = () => {
                     className="cursor-pointer hover:bg-slate-50"
                     onClick={() => handleRowClick(record.household_id)}
                   >
-                    <TableCell className="font-medium text-primary">
-                      {record.household_id}
+                    <TableCell className="font-medium text-primary align-top hidden sm:table-cell">
+                      <span className="text-xs">{record.household_id}</span>
                     </TableCell>
-                    <TableCell>{record.caseworker_name}</TableCell>
-                    <TableCell>{record.caregiver_name}</TableCell>
-                    <TableCell>{record.facility}</TableCell>
-                    <TableCell className="max-w-[300px] truncate" title={record.comment}>
-                      {record.comment}
+                    <TableCell className="hidden sm:table-cell align-top text-[10px] text-slate-500">{record.caseworker_name}</TableCell>
+                    <TableCell className="align-top px-2 sm:px-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 sm:hidden">
+                           <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 rounded">{record.household_id}</span>
+                        </div>
+                        <span className="text-sm font-medium leading-tight">{record.caregiver_name}</span>
+                        <div className="mt-1 flex flex-col gap-0.5 sm:hidden">
+                          <span className="text-[10px] text-slate-500 italic truncate max-w-[140px]">{record.facility}</span>
+                          <span className="text-[10px] text-slate-400">
+                             {record.date_created ? new Date(record.date_created).toLocaleDateString() : ""} • CW: {record.caseworker_name}
+                          </span>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell>{record.verifier}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(record.status)}>
+                    <TableCell className="hidden md:table-cell align-top">
+                      <div className="text-[10px] text-slate-600 leading-tight max-w-[200px] line-clamp-2" title={record.comment}>
+                        {record.comment}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right align-top px-2 sm:px-4">
+                      <Badge className={cn("text-[9px] h-4.5 px-1 font-normal", getStatusColor(record.status))}>
                         {record.status?.toUpperCase() || "UNKNOWN"}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {record.date_created
-                        ? new Date(record.date_created).toLocaleDateString()
-                        : "N/A"}
                     </TableCell>
                   </TableRow>
                 ))}

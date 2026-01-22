@@ -42,7 +42,7 @@ const Charts = () => {
                   It will appear correctly when deployed to the production domain.
                 </p>
                 <Button
-                  onClick={() => window.open("https://ecap-plus-dashboard.bluecodeltd.com/superset/dashboard/1/", "_blank")}
+                  onClick={() => window.open(import.meta.env.VITE_SUPERSET_DASHBOARD_URL, "_blank")}
                   variant="outline"
                 >
                   Open Dashboard in New Tab
@@ -50,8 +50,11 @@ const Charts = () => {
               </div>
             </div>
           )}
+
+
+
           <iframe
-            src="https://ecap-plus-dashboard.bluecodeltd.com/superset/dashboard/1/"
+            src={import.meta.env.VITE_SUPERSET_DASHBOARD_URL}
             style={{ width: "100%", height: "80vh", border: "none" }}
             title="Superset Dashboard"
           />

@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Pagination,
   PaginationContent,
@@ -32,6 +33,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_DISTRICT, getHouseholdsByDistrict } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -49,11 +51,11 @@ const subPopulationFilterLabels = {
   abym: "ABYM",
 };
 
-const pickValue = (record: Record<string, unknown>, keys: string[]) => {
+const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
     const value = record[key];
     if (value !== null && value !== undefined && value !== "") {
-      return value;
+      return String(value);
     }
   }
   return "N/A";
@@ -61,6 +63,7 @@ const pickValue = (record: Record<string, unknown>, keys: string[]) => {
 
 const HouseholdRegister = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const district = user?.location ?? DEFAULT_DISTRICT;
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -232,15 +235,15 @@ const HouseholdRegister = () => {
           {/* Filters Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700">Filter by Sub Population</h3>
-            <div className="flex flex-wrap gap-4">
+            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
               {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
                 <div key={key} className="flex flex-col items-start gap-1">
-                  <span className="text-xs text-slate-500 font-medium">{label}</span>
+                  <span className="text-[10px] text-slate-500 font-medium truncate w-full">{label}</span>
                   <Select
                     value={subPopulationFilters[key]}
                     onValueChange={(val) => handleFilterChange(key, val)}
                   >
-                    <SelectTrigger className="w-[100px] h-8 text-xs">
+                    <SelectTrigger className="w-full h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -273,11 +276,11 @@ const HouseholdRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[150px]">Household ID</TableHead>
-                  <TableHead className="w-[200px]">Caregiver Name</TableHead>
-                  <TableHead className="min-w-[300px]">Household Details</TableHead>
-                  <TableHead className="w-[150px]">Case Worker</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-[100px] hidden sm:table-cell">HH ID</TableHead>
+                  <TableHead className="w-[200px]">Caregiver</TableHead>
+                  <TableHead className="min-w-[200px] hidden sm:table-cell">Household Details</TableHead>
+                  <TableHead className="w-[150px] hidden lg:table-cell">Case Worker</TableHead>
+                  <TableHead className="text-right w-[60px]">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -301,16 +304,42 @@ const HouseholdRegister = () => {
                     const id = pickValue(household, ["household_id", "householdId"]);
                     return (
                       <TableRow key={`${id}-${index}`}>
-                        <TableCell className="font-medium">{String(id)}</TableCell>
-                        <TableCell>{String(pickValue(household, ["caregiver_name", "name"]))}</TableCell>
-                        <TableCell>
-                          <div className="whitespace-pre-line text-sm text-slate-600 leading-snug">
+                        <TableCell className="font-medium align-top hidden sm:table-cell">
+                          <span className="text-xs sm:text-sm">{String(id)}</span>
+                        </TableCell>
+                        <TableCell className="align-top px-2 sm:px-4">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2 sm:hidden">
+                              <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 rounded">{String(id)}</span>
+                            </div>
+                            <span className="font-medium text-slate-900 truncate max-w-[150px] sm:max-w-none">
+                              {String(pickValue(household, ["caregiver_name", "name"]))}
+                            </span>
+                            <div className="mt-1 flex flex-col gap-0.5 sm:hidden">
+                              <span className="text-[10px] text-slate-500 italic truncate max-w-[140px]">
+                                {household.facility || "No Facility"}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                CW: {String(pickValue(household, ["caseworker_name", "cwac_member_name"]))}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="whitespace-pre-line text-xs text-slate-600 leading-snug">
                             {getAddressString(household)}
                           </div>
                         </TableCell>
-                        <TableCell>{String(pickValue(household, ["caseworker_name", "cwac_member_name"]))}</TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" variant="outline">
+                        <TableCell className="hidden lg:table-cell align-top text-xs">
+                          {String(pickValue(household, ["caseworker_name", "cwac_member_name"]))}
+                        </TableCell>
+                        <TableCell className="text-right align-top px-2 sm:px-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs"
+                            onClick={() => navigate(`/profile/household-profile/${encodeURIComponent(String(id))}`)}
+                          >
                             View
                           </Button>
                         </TableCell>
