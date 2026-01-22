@@ -6,6 +6,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -14,7 +15,7 @@ import {
   getTotalHouseholdsCount,
   getTotalVcasCount,
   getTotalMothersCount,
-  getCaseworkerCountByDistrict,
+  getHouseholdsByDistrict,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -101,11 +102,21 @@ const MetricsGrid = () => {
     enabled: !!district,
   });
 
-  const caseworkersQuery = useQuery({
-    queryKey: ["metrics", "caseworkers", district],
-    queryFn: () => getCaseworkerCountByDistrict(district),
+  const householdsDataQuery = useQuery({
+    queryKey: ["metrics", "households-list", district],
+    queryFn: () => getHouseholdsByDistrict(district),
     enabled: !!district,
   });
+
+  const caseworkersCount = useMemo(() => {
+    if (!householdsDataQuery.data) return null;
+    const uniqueCaseworkers = new Set(
+      householdsDataQuery.data
+        .map((h: any) => h.caseworker_name || h.cwac_member_name)
+        .filter(Boolean)
+    );
+    return uniqueCaseworkers.size;
+  }, [householdsDataQuery.data]);
 
   const formatCount = (value: number | null | undefined) => {
     if (value === null || value === undefined) {
@@ -146,11 +157,11 @@ const MetricsGrid = () => {
     },
     {
       title: "Caseworkers",
-      value: formatCount(caseworkersQuery.data),
-      subtitle: "All districts district",
+      value: formatCount(caseworkersCount),
+      subtitle: district === "All" || !district ? "Nationwide count" : `Active in ${district}`,
       icon: <Briefcase className="h-5 w-5" />,
       variant: "default" as const,
-      isLoading: caseworkersQuery.isLoading,
+      isLoading: householdsDataQuery.isLoading,
     },
   ];
 

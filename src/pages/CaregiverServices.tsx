@@ -8,6 +8,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
 import { DEFAULT_DISTRICT, getCaregiverServicesByDistrict } from "@/lib/api";
 import {
   Table,
@@ -44,14 +45,19 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
 };
 
 const CaregiverServices = () => {
-  const district = DEFAULT_DISTRICT;
+  const { user } = useAuth();
+  const district = user?.location || DEFAULT_DISTRICT;
+
   const servicesQuery = useQuery({
     queryKey: ["caregiver-services", "district", district],
     queryFn: () => getCaregiverServicesByDistrict(district ?? ""),
-    enabled: Boolean(district),
   });
 
-  const services = servicesQuery.data ?? [];
+  const allServices = servicesQuery.data ?? [];
+  const services = useMemo(() => {
+    if (!district) return allServices;
+    return allServices.filter((s: any) => s.district === district);
+  }, [allServices, district]);
   const recentServices = services.slice(0, 5);
 
   return (

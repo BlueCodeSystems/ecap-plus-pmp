@@ -289,7 +289,7 @@ const KpiCard = ({ title, value, caption, isLoading, delay = 0 }: { title: strin
     <div style={{ animationDelay: `${delay}s` }} className="h-full">
       <GlowCard className="flex flex-col justify-between py-6 px-6 h-full">
         <div className="space-y-1">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+          <h3 className="text-sm font-medium text-muted-foreground">
             {title}
           </h3>
           <div className="text-3xl font-bold text-foreground tracking-tight">
