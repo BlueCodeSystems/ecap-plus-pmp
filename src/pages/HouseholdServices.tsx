@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, AlertCircle, Filter, Download } from "lucide-react";
+import { Search, AlertCircle, FileText } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -52,15 +52,9 @@ const HouseholdServices = () => {
   const servicesQuery = useQuery({
     queryKey: ["caregiver-services", "all-districts", selectedDistrict],
     queryFn: async () => {
-      if (selectedDistrict === "All") {
-        // Since there's no nationwide endpoint, we fetch for all discovered districts or handle empty
-        // For now, let's try fetching with empty string which often represents "all" in these patterns
-        return getCaregiverServicesByDistrict("");
-      }
-      return getCaregiverServicesByDistrict(selectedDistrict);
+      // Reverting to original district-based fetch if provided, or nationwide
+      return getCaregiverServicesByDistrict(selectedDistrict === "All" ? "" : selectedDistrict);
     },
-    // We intentionally don't set a high staleTime here to match the "500 unstable" prompt requirement if needed,
-    // though React Query handles errors gracefully.
     retry: false,
   });
 
@@ -134,100 +128,82 @@ const HouseholdServices = () => {
         </div>
 
         <div className="overflow-x-auto">
-          {servicesQuery.isError ? (
-            <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-              <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
-                <AlertCircle className="h-6 w-6 text-red-600" />
-              </div>
-              <h4 className="text-lg font-semibold text-slate-900 mb-1">
-                Internal Server Error (500) encountered while fetching services.
-              </h4>
-              <p className="text-sm text-slate-500 max-w-md">
-                The household service endpoints appear to be unstable or incorrectly routed on the backend.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-6 border-slate-200"
-                onClick={() => servicesQuery.refetch()}
-              >
-                Retry Request
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-slate-50/50">
-                <TableRow>
-                  <TableHead className="font-semibold text-slate-700 w-[80px] hidden sm:table-cell">HH ID</TableHead>
-                  <TableHead className="font-semibold text-slate-700 hidden sm:table-cell">District</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Service</TableHead>
-                  <TableHead className="font-semibold text-slate-700 hidden md:table-cell">Date</TableHead>
-                  <TableHead className="font-semibold text-slate-700 text-right w-[80px]">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {servicesQuery.isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={6} className="h-12 animate-pulse bg-slate-50/50" />
-                    </TableRow>
-                  ))
-                ) : filteredServices.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-40 text-center text-slate-500">
-                      No service records found.
-                    </TableCell>
+          <Table>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow>
+                <TableHead className="font-semibold text-slate-700 w-[80px] hidden sm:table-cell">HH ID</TableHead>
+                <TableHead className="font-semibold text-slate-700 hidden sm:table-cell">District</TableHead>
+                <TableHead className="font-semibold text-slate-700">Service</TableHead>
+                <TableHead className="font-semibold text-slate-700 hidden md:table-cell">Date</TableHead>
+                <TableHead className="font-semibold text-slate-700 text-right w-[80px]">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {servicesQuery.isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={6} className="h-12 animate-pulse bg-slate-50/50" />
                   </TableRow>
-                ) : (
-                  filteredServices.map((service: any, index: number) => (
-                    <TableRow key={`${index}-${service.id}`}>
-                      <TableCell
-                        className="font-medium text-primary cursor-pointer hover:underline align-top hidden sm:table-cell"
-                        onClick={() => {
-                          const id = pickValue(service, ["household_id", "householdId", "hh_id"]);
-                          navigate(`/profile/household-profile/${encodeURIComponent(String(id))}`);
-                        }}
-                      >
-                        <span className="text-xs">{pickValue(service, ["household_id", "householdId", "hh_id"])}</span>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell align-top text-xs">{service.district || "N/A"}</TableCell>
-                      <TableCell className="align-top px-2 sm:px-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2 sm:hidden">
-                            <span
-                              className="text-[9px] font-mono bg-slate-100 text-primary px-1 rounded cursor-pointer"
-                              onClick={() => {
-                                const id = pickValue(service, ["household_id", "householdId", "hh_id"]);
-                                navigate(`/profile/household-profile/${encodeURIComponent(String(id))}`);
-                              }}
-                            >
-                              {pickValue(service, ["household_id", "householdId", "hh_id"])}
-                            </span>
-                          </div>
-                          <span className="text-sm font-medium leading-tight">
-                            {pickValue(service, ["service", "service_name", "form_name"])}
-                          </span>
-                          <span className="text-[10px] text-slate-500 sm:hidden">
-                            {service.district || "N/A"}
-                          </span>
-                          <span className="text-[10px] text-slate-400 md:hidden mt-1">
-                            {pickValue(service, ["service_date", "visit_date", "date"])}
+                ))
+              ) : filteredServices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-20 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
+                      <FileText className="h-12 w-12 opacity-20" />
+                      <p className="text-sm font-medium">No services found in {selectedDistrict === "All" ? "All Districts" : selectedDistrict}.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredServices.map((service: any, index: number) => (
+                  <TableRow key={`${index}-${service.id}`}>
+                    <TableCell
+                      className="font-medium text-primary cursor-pointer hover:underline align-top hidden sm:table-cell"
+                      onClick={() => {
+                        const id = pickValue(service, ["household_id", "householdId", "hh_id"]);
+                        navigate(`/profile/household-profile/${encodeURIComponent(String(id))}`);
+                      }}
+                    >
+                      <span className="text-xs">{pickValue(service, ["household_id", "householdId", "hh_id"])}</span>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell align-top text-xs">{service.district || "N/A"}</TableCell>
+                    <TableCell className="align-top px-2 sm:px-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 sm:hidden">
+                          <span
+                            className="text-[9px] font-mono bg-slate-100 text-primary px-1 rounded cursor-pointer"
+                            onClick={() => {
+                              const id = pickValue(service, ["household_id", "householdId", "hh_id"]);
+                              navigate(`/profile/household-profile/${encodeURIComponent(String(id))}`);
+                            }}
+                          >
+                            {pickValue(service, ["household_id", "householdId", "hh_id"])}
                           </span>
                         </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell align-top text-xs">
-                        {pickValue(service, ["service_date", "visit_date", "date"])}
-                      </TableCell>
-                      <TableCell className="text-right align-top px-2 sm:px-4">
-                        <Badge variant="outline" className="text-[9px] h-4.5 px-1 font-normal border-slate-200 bg-slate-50 text-slate-600">
-                          {pickValue(service, ["status", "state", "outcome"])}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
+                        <span className="text-sm font-medium leading-tight">
+                          {pickValue(service, ["service", "service_name", "form_name"])}
+                        </span>
+                        <span className="text-[10px] text-slate-500 sm:hidden">
+                          {service.district || "N/A"}
+                        </span>
+                        <span className="text-[10px] text-slate-400 md:hidden mt-1">
+                          {pickValue(service, ["service_date", "visit_date", "date"])}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell align-top text-xs">
+                      {pickValue(service, ["service_date", "visit_date", "date"])}
+                    </TableCell>
+                    <TableCell className="text-right align-top px-2 sm:px-4">
+                      <Badge variant="outline" className="text-[9px] h-4.5 px-1 font-normal border-slate-200 bg-slate-50 text-slate-600">
+                        {pickValue(service, ["status", "state", "outcome"])}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       </GlowCard>
     </DashboardLayout>

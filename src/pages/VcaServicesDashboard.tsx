@@ -51,8 +51,10 @@ const VcaServicesDashboard = () => {
 
   const servicesQuery = useQuery({
     queryKey: ["vca-services-all", selectedDistrict],
-    queryFn: () => {
-      return getVcaServicesByDistrict(selectedDistrict === "All" ? "" : selectedDistrict);
+    queryFn: async () => {
+      const data = await getVcaServicesByDistrict(selectedDistrict === "All" ? "" : selectedDistrict);
+      console.log(`[VCA Services] Fetched ${data.length} records for: ${selectedDistrict}`);
+      return data;
     },
     retry: false,
   });
