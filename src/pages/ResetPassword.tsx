@@ -9,7 +9,7 @@ import VersionFooter from "@/components/VersionFooter";
 import RightImageSlider from "@/components/RightImageSlider";
 
 const DIRECTUS_URL =
-  import.meta.env.VITE_DIRECTUS_URL ?? "https://api.achieve.bluecodeltd.com";
+  import.meta.env.VITE_DIRECTUS_URL ?? "";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();

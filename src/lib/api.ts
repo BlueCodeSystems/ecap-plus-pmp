@@ -1,7 +1,7 @@
 import { getStoredToken } from "@/lib/auth";
 
 const DQA_BASE_URL =
-  import.meta.env.VITE_DQA_BASE_URL ?? "https://server.dqa.bluecodeltd.com";
+  import.meta.env.VITE_DQA_BASE_URL ?? "https://api.achieve.bluecodeltd.com";
 
 export const DEFAULT_DISTRICT = import.meta.env.VITE_DEFAULT_DISTRICT;
 
@@ -243,12 +243,18 @@ export const getChildrenArchivedRegister = async (
 };
 
 export const getCaregiverServicesByDistrict = async (district: string) => {
-  const data = await dqaGet(`/household/district/caregiver-services/${encodeURIComponent(district)}`);
+  const path = district
+    ? `/household/district/caregiver-services/${encodeURIComponent(district)}`
+    : "/household/caregiver-services";
+  const data = await dqaGet(path);
   return getListValue(data);
 };
 
 export const getVcaServicesByDistrict = async (district: string) => {
-  const data = await dqaGet(`/child/district/vcaservices/${encodeURIComponent(district)}`);
+  const path = district
+    ? `/child/district/vcaservices/${encodeURIComponent(district)}`
+    : "/child/vcaservices";
+  const data = await dqaGet(path);
   return getListValue(data);
 };
 

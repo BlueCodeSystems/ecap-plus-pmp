@@ -43,7 +43,7 @@ const registerItems = [
 
 const serviceItems = [
   { title: "VCA Services", url: "/vca-services", icon: ClipboardList },
-  { title: "Household Services", url: "/household-services", icon: HeartPulse },
+  { title: "Caregiver Services", url: "/household-services", icon: HeartPulse },
   { title: "Flags", url: "/flags", icon: Flag },
 ];
 

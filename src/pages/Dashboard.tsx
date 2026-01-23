@@ -6,8 +6,21 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import PageIntro from "@/components/dashboard/PageIntro";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 const Dashboard = () => {
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (hash === "#recent-activity-section") {
+      const element = document.getElementById("recent-activity-section");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [hash]);
+
   return (
     <DashboardLayout subtitle="Home">
       <PageIntro
@@ -28,7 +41,9 @@ const Dashboard = () => {
         <DataQualityChart />
       </div>
 
-      <RecentActivity />
+      <div id="recent-activity-section">
+        <RecentActivity />
+      </div>
     </DashboardLayout>
   );
 };

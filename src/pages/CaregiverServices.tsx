@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { DEFAULT_DISTRICT, getCaregiverServicesByDistrict } from "@/lib/api";
 import {
   Table,
@@ -44,14 +47,20 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
 };
 
 const CaregiverServices = () => {
-  const district = DEFAULT_DISTRICT;
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const district = user?.location || DEFAULT_DISTRICT;
+
   const servicesQuery = useQuery({
     queryKey: ["caregiver-services", "district", district],
     queryFn: () => getCaregiverServicesByDistrict(district ?? ""),
-    enabled: Boolean(district),
   });
 
-  const services = servicesQuery.data ?? [];
+  const allServices = servicesQuery.data ?? [];
+  const services = useMemo(() => {
+    if (!district) return allServices;
+    return allServices.filter((s: any) => s.district === district);
+  }, [allServices, district]);
   const recentServices = services.slice(0, 5);
 
   return (
@@ -163,11 +172,12 @@ const CaregiverServices = () => {
                 )}
                 {recentServices.map((service, index) => {
                   const record = service as Record<string, unknown>;
+                  const hhId = String(pickValue(record, ["household_id", "householdId", "hh_id", "unique_id", "id"]));
                   return (
-                    <TableRow key={`${index}-${String(record.id ?? "service")}`}>
+                    <TableRow key={`${index}-${String(record.id ?? "service")}`} className="cursor-pointer hover:bg-slate-50" onClick={() => hhId !== "N/A" && navigate(`/profile/household-profile/${encodeURIComponent(hhId)}`)}>
                       <TableCell className="font-medium align-top hidden sm:table-cell">
                         <span className="text-xs">
-                          {String(pickValue(record, ["household_id", "householdId", "hh_id", "id", "unique_id"]))}
+                          {hhId}
                         </span>
                       </TableCell>
                       <TableCell className="align-top px-2 sm:px-4">
