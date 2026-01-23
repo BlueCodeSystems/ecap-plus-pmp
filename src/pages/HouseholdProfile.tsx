@@ -14,6 +14,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMemo } from "react";
 
+const subPopulationFilterLabels: Record<string, string> = {
+  calhiv: "CALHIV",
+  hei: "HEI",
+  cwlhiv: "CWLHIV",
+  agyw: "AGYW",
+  csv: "C/SV",
+  cfsw: "CFSW",
+  abym: "ABYM",
+};
+
 const HouseholdProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -183,7 +193,7 @@ const HouseholdProfile = () => {
                     if (value === "1" || value === "true" || value === 1 || value === true) {
                       return (
                         <div key={key} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
-                          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">{key.replace(/_/g, " ")}</span>
+                          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">{subPopulationFilterLabels[key] || key.replace(/_/g, " ")}</span>
                           <Badge className="bg-emerald-500/10 text-emerald-600 border-0">ACTIVE</Badge>
                         </div>
                       );

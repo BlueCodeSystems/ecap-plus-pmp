@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getChildrenByDistrict, getChildrenArchivedRegister, DEFAULT_DISTRICT, getVcaServicesByDistrict, getVcaReferralsByMonth } from "@/lib/api";
+import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
@@ -13,6 +14,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+const subPopulationFilterLabels: Record<string, string> = {
+  calhiv: 'C/ALHIV',
+  hei: 'HEI',
+  cwlhiv: 'C/WLHIV',
+  agyw: 'AGYW',
+  csv: 'C/SV',
+  cfsw: 'CFSW',
+  abym: 'ABYM',
+  caahh: 'CAAHH',
+  caichh: 'CAICHH',
+  caich: 'CAICH',
+  calwd: 'CALWD',
+  caifhh: 'CAIFHH',
+  muc: 'MUC',
+  pbfw: 'PBFW'
+};
 
 const calculateAge = (birthdate: any): number => {
   if (!birthdate) return 0;
@@ -203,8 +221,16 @@ const VcaProfile = () => {
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <InfoItem label="Unique ID" value={String(id)} />
-                <p className="text-sm font-medium text-slate-500">Birthdate</p>
                 <InfoItem label="Birthdate" value={String(vca.birthdate || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                <div className="sm:col-span-1">
+                  <div className="space-y-1.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 transition-colors hover:bg-slate-50 cursor-pointer" onClick={() => vca.household_code && navigate(`/profile/household-profile/${encodeURIComponent(vca.household_code)}`)}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Household Code</p>
+                    <div className="flex items-center gap-2">
+                      <Link2 className="h-3.5 w-3.5 text-primary" />
+                      <p className="text-sm font-bold text-primary hover:underline">{String(vca.household_code || "N/A")}</p>
+                    </div>
+                  </div>
+                </div>
                 <InfoItem label="Facility" value={String(vca.facility || "N/A")} icon={<HeartPulse className="h-3.5 w-3.5" />} />
                 <InfoItem label="Ward" value={String(vca.ward || "N/A")} />
                 <InfoItem label="Province" value={String(vca.province || "N/A")} />
@@ -229,7 +255,7 @@ const VcaProfile = () => {
                     if (value === "1" || value === "true" || value === 1 || value === true) {
                       return (
                         <div key={key} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 border border-slate-100">
-                          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">{key.replace(/_/g, " ")}</span>
+                          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">{subPopulationFilterLabels[key] || key.replace(/_/g, " ")}</span>
                           <Badge className="bg-emerald-500/10 text-emerald-600 border-0">YES</Badge>
                         </div>
                       );
@@ -256,12 +282,6 @@ const VcaProfile = () => {
             value={String(vca.last_service_date || "N/A")}
             subtitle="The most recent date a service was recorded"
             color="blue"
-          />
-          <InsightCard
-            title="Household Code"
-            value={String(vca.household_code || "N/A")}
-            subtitle="Associated household identifier"
-            color="emerald"
           />
           <InsightCard
             title="Virally Suppressed"
