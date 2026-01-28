@@ -15,10 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { GlobalSearch } from "./GlobalSearch";
 import { useQuery } from "@tanstack/react-query";
 import {
-  getChildrenByDistrict,
-  getHouseholdsByDistrict,
-  getCaregiverServicesByDistrict,
-  getVcaServicesByDistrict
+  getCaregiverServicesByDistrict
 } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,69 +34,24 @@ const DashboardHeader = ({
   const district = user?.location ?? "";
 
   // Real Notifications Logic (similar to RecentActivity)
-  const { data: households } = useQuery({
-    queryKey: ["header-households", district],
-    queryFn: () => getHouseholdsByDistrict(district),
-    enabled: !!district,
-    staleTime: 1000 * 60 * 5,
+  // Directus Notifications
+  const { data: directusNotifications } = useQuery({
+    queryKey: ["directus-notifications"],
+    queryFn: async () => {
+      const { getNotifications } = await import("@/lib/directus");
+      return getNotifications();
+    },
+    staleTime: 1000 * 60 * 2,
+    refetchInterval: 1000 * 60 * 5,
   });
 
-  const { data: vcas } = useQuery({
-    queryKey: ["header-vcas", district],
-    queryFn: () => getChildrenByDistrict(district),
-    enabled: !!district,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const { data: vcaServices } = useQuery({
-    queryKey: ["header-vca-services", district],
-    queryFn: () => getVcaServicesByDistrict(district),
-    enabled: !!district,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const parseDate = (item: any) => {
-    const dateStr =
-      item.service_date ||
-      item.visit_date ||
-      item.last_service_date ||
-      item.date_registered ||
-      item.registration_date ||
-      item.date ||
-      item.created_at ||
-      item.date_created ||
-      item.last_activity_date;
-
-    if (!dateStr) return new Date(); // Fallback to current time if no date found for realness
-    const date = new Date(dateStr);
-    return isNaN(date.getTime()) ? new Date() : date;
-  };
-
-  const notifications = [
-    ...(households ?? []).map((h: any) => ({
-      id: `hh-${h.id || Math.random()}`,
-      title: "New Household Registered",
-      description: `HH ID: ${h.household_id || h.household_code || "Unknown"}`,
-      date: parseDate(h),
-      icon: <User className="h-4 w-4 text-blue-500" />,
-    })),
-    ...(vcas ?? []).map((v: any) => ({
-      id: `vca-${v.id || Math.random()}`,
-      title: "New VCA Assessed",
-      description: `${v.firstname || v.name || "Child"} registered in ${v.district || "District"}`,
-      date: parseDate(v),
-      icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-    })),
-    ...(vcaServices ?? []).map((s: any) => ({
-      id: `s-${s.id || Math.random()}`,
-      title: "Service Delivery",
-      description: `${s.service || s.form_name || "VCA Service"} recorded`,
-      date: parseDate(s),
-      icon: <Clock className="h-4 w-4 text-amber-500" />,
-    })),
-  ]
-    .sort((a, b) => b.date.getTime() - a.date.getTime())
-    .slice(0, 5);
+  const notifications = (directusNotifications ?? []).map((n: any) => ({
+    id: n.id,
+    title: n.subject,
+    description: n.message, // Use message directly
+    date: new Date(n.timestamp),
+    icon: <Bell className="h-4 w-4 text-primary" />, // Default icon
+  }));
 
   const unreadCount = notifications.length;
 

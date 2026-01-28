@@ -58,13 +58,16 @@ export type DirectusRole = {
   name: string;
 };
 
-export const listUsers = async () => {
+export const listUsers = async (status?: string) => {
   const params = new URLSearchParams({
     fields: "id,email,first_name,last_name,role,status",
     limit: "100",
   });
   if (DIRECTUS_USER_ROLE) {
     params.set("filter[role][_eq]", DIRECTUS_USER_ROLE);
+  }
+  if (status) {
+    params.set("filter[status][_eq]", status);
   }
   const data = await directusRequest(`/users?${params.toString()}`);
   return data?.data ?? [];
@@ -115,8 +118,69 @@ export const updateUser = async (
   return data?.data;
 };
 
+
 export const deleteUser = async (id: string) => {
   await directusRequest(`/users/${id}`, {
+    method: "DELETE",
+  });
+};
+
+export type Notification = {
+  id: string;
+  status: string;
+  timestamp: string;
+  sender: string | null;
+  recipient: string;
+  subject: string;
+  message: string;
+  collection: string | null;
+  item: string | null;
+};
+
+export const getNotifications = async () => {
+  const data = await directusRequest(
+    "/notifications?filter[status][_eq]=inbox&sort=-timestamp&limit=20"
+  );
+  return data?.data ?? [];
+};
+
+export type Activity = {
+  id: string;
+  user_created: string | { first_name?: string; last_name?: string; email?: string };
+  date_created: string;
+  action: string;
+  details: string;
+  related_item?: string;
+  related_collection?: string;
+};
+
+export const getActivities = async () => {
+  try {
+    const data = await directusRequest(
+      "/items/user_activities?sort=-date_created&limit=20&fields=*,user_created.first_name,user_created.last_name,user_created.email"
+    );
+    return data?.data ?? [];
+  } catch (error) {
+    console.warn("Could not fetch user_activities", error);
+    return [];
+  }
+};
+
+export const createActivity = async (payload: {
+  action: string;
+  details: string;
+  related_item?: string;
+  related_collection?: string;
+}) => {
+  const data = await directusRequest("/items/user_activities", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return data?.data;
+};
+
+export const deleteActivity = async (id: string) => {
+  await directusRequest(`/items/user_activities/${id}`, {
     method: "DELETE",
   });
 };
