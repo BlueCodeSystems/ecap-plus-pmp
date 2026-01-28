@@ -20,7 +20,7 @@ const Profile = () => {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const roleLabel = typeof user.role === "string" ? user.role : user.role?.name || "N/A";
+  const roleLabel = typeof user.role === "object" ? user.role?.name : user.role || "N/A";
 
   return (
     <DashboardLayout subtitle="Profile">

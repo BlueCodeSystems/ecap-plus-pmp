@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
@@ -22,6 +22,8 @@ import {
   type DirectusRole,
 } from "@/lib/directus";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import ConfirmDialog from "@/components/dashboard/ConfirmDialog";
 
 type UserFormState = {
   email: string;
@@ -44,6 +46,7 @@ const EditUser = () => {
     status: "active",
     password: "",
   });
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const rolesQuery = useQuery({
     queryKey: ["directus", "roles"],
@@ -54,10 +57,11 @@ const EditUser = () => {
     queryKey: ["directus", "user", id],
     queryFn: () => getUser(id ?? ""),
     enabled: Boolean(id),
-    onSuccess: (data) => {
-      if (!data) {
-        return;
-      }
+  });
+
+  useEffect(() => {
+    if (userQuery.data) {
+      const data = userQuery.data;
       const roleId = typeof data.role === "string" ? data.role : data.role?.id ?? "";
       setFormState({
         email: data.email ?? "",
@@ -67,15 +71,15 @@ const EditUser = () => {
         status: data.status ?? "active",
         password: "",
       });
-    },
-  });
+    }
+  }, [userQuery.data]);
 
   const rolesById = useMemo(() => {
-    const entries = (rolesQuery.data ?? []).map((role: DirectusRole) => [
+    const entries: [string, string][] = (rolesQuery.data ?? []).map((role: DirectusRole) => [
       role.id,
       role.name,
     ]);
-    return new Map(entries);
+    return new Map<string, string>(entries);
   }, [rolesQuery.data]);
 
   const updateMutation = useMutation({
@@ -83,15 +87,23 @@ const EditUser = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
       queryClient.invalidateQueries({ queryKey: ["directus", "user", id] });
+      toast.success("User updated successfully");
       navigate("/users");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update user");
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteUser(id ?? ""),
+  const trashMutation = useMutation({
+    mutationFn: () => updateUser(id ?? "", { status: "suspended" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
+      toast.success("User moved to trash");
       navigate("/users");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to move user to trash");
     },
   });
 
@@ -117,7 +129,7 @@ const EditUser = () => {
     updateMutation.mutate(payload);
   };
 
-  const roleLabel = formState.role ? rolesById.get(formState.role) ?? formState.role : "Unassigned";
+  const roleLabel = formState.role ? (rolesById.get(formState.role) ?? formState.role) : "Unassigned";
 
   return (
     <DashboardLayout subtitle="Edit User">
@@ -132,13 +144,6 @@ const EditUser = () => {
 
       <GlowCard className="max-w-2xl">
         <form onSubmit={onSubmit} className="space-y-4 p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">Edit User</h2>
-            <Button type="button" variant="outline" onClick={() => navigate("/users")}>
-              Back to Users
-            </Button>
-          </div>
-
           {userQuery.isLoading && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
               Loading user <LoadingDots className="text-slate-400" />
@@ -170,34 +175,40 @@ const EditUser = () => {
                 setFormState((prev) => ({ ...prev, last_name: event.target.value }))
               }
             />
-            <Input
-              placeholder="Role ID"
-              value={formState.role}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, role: event.target.value }))
-              }
-              list="directus-roles"
-            />
-            <datalist id="directus-roles">
-              {(rolesQuery.data ?? []).map((role: DirectusRole) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </datalist>
-            <Select
-              value={formState.status}
-              onValueChange={(value) => setFormState((prev) => ({ ...prev, status: value }))}
-            >
-              <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-slate-700">Role</label>
+              <Select
+                value={formState.role}
+                onValueChange={(value) => setFormState((prev) => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(rolesQuery.data ?? []).map((role: DirectusRole) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-slate-700">Account Status</label>
+              <Select
+                value={formState.status}
+                onValueChange={(value) => setFormState((prev) => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Input
               placeholder="New password (optional)"
               type="password"
@@ -220,26 +231,36 @@ const EditUser = () => {
             </Button>
             <Button
               type="button"
-              variant="destructive"
-              onClick={() => {
-                if (window.confirm("Delete this user?")) {
-                  deleteMutation.mutate();
-                }
-              }}
-              disabled={deleteMutation.isPending}
+              variant="outline"
+              className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700 font-medium"
+              onClick={() => setIsConfirmOpen(true)}
+              disabled={trashMutation.isPending}
             >
-              Delete User
+              Move to Trash
             </Button>
           </div>
 
-          {(updateMutation.error || deleteMutation.error) && (
+          {(updateMutation.error || trashMutation.error) && (
             <p className="text-sm text-destructive">
               {(updateMutation.error as Error)?.message ||
-                (deleteMutation.error as Error)?.message}
+                (trashMutation.error as Error)?.message}
             </p>
           )}
         </form>
       </GlowCard>
+
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={() => {
+          trashMutation.mutate();
+          setIsConfirmOpen(false);
+        }}
+        title="Move User to Trash?"
+        description="This user will be suspended and unable to log in. You can restore them later from the Recycle Bin."
+        confirmText="Move to Trash"
+        variant="destructive"
+      />
     </DashboardLayout>
   );
 };
