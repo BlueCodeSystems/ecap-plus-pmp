@@ -5,12 +5,12 @@ import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, MapPin, Calendar, ClipboardCheck, Briefcase, Layers, ShieldCheck, HeartPulse, FileText, Activity, Link2, Home } from "lucide-react";
+import { ArrowLeft, User, MapPin, Calendar, ClipboardCheck, Briefcase, Layers, ShieldCheck, HeartPulse, FileText, Activity, Link2, Home, Flag } from "lucide-react";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -468,6 +468,15 @@ const HouseholdProfile = () => {
             <Card className="overflow-hidden border-slate-200">
               <div className="bg-red-900/10 p-6 flex items-center justify-between border-b border-red-100">
                 <h3 className="text-lg font-bold text-red-900">Flagged Record Forms</h3>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+                  onClick={() => navigate("/flagged-record-form", { state: { household } })}
+                >
+                  <Flag className="mr-2 h-3.5 w-3.5" />
+                  Flag Record
+                </Button>
               </div>
               <CardContent className="p-0">
                 {householdFlags.length > 0 ? (
@@ -525,6 +534,33 @@ const cleanArrayString = (str: string | null | undefined) => {
 
 const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?: any[] }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const bottomScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const top = topScrollRef.current;
+    const bottom = bottomScrollRef.current;
+
+    if (!top || !bottom) return;
+
+    const handleTopScroll = () => {
+      if (bottom) bottom.scrollLeft = top.scrollLeft;
+    };
+
+    const handleBottomScroll = () => {
+      if (top) top.scrollLeft = bottom.scrollLeft;
+    };
+
+    top.addEventListener('scroll', handleTopScroll);
+    bottom.addEventListener('scroll', handleBottomScroll);
+
+    return () => {
+      top.removeEventListener('scroll', handleTopScroll);
+      bottom.removeEventListener('scroll', handleBottomScroll);
+    };
+  }, [isOpen]);
 
   // Try to find services linked to this case plan
   let linkedServices = servicesSource.filter(s => {
@@ -575,52 +611,62 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
         </TableCell>
       </TableRow>
       {isOpen && (
-        <TableRow className="bg-slate-50 hover:bg-slate-50">
-          <TableCell colSpan={4} className="p-4 pt-0">
-            <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Service Details</h4>
-                {isFallback && <span className="text-[10px] text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Showing all household services </span>}
+        <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-0">
+          <TableCell colSpan={4} className="p-4 pt-0 overflow-hidden" style={{ width: 0, minWidth: '100%' }}>
+            <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col w-full">
+              <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                <h4 className="text-lg font-bold uppercase tracking-wider text-slate-700">Service Details</h4>
+                {isFallback && <span className="text-sm text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 shadow-sm">Showing all household services </span>}
               </div>
 
               {linkedServices.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="text-[10px] h-9">Service Date</TableHead>
-                        <TableHead className="text-[10px] h-9">HIV Pos</TableHead>
-                        <TableHead className="text-[10px] h-9">Viral Load</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">Health Services</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">HIV Services</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">Other Health</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">Safe</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">Other Safe</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">Schooled</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">Other Schooled</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">Stable</TableHead>
-                        <TableHead className="text-[10px] h-9 w-32">Other Stable</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {linkedServices.map((svc: any, i: number) => (
-                        <TableRow key={i} className="hover:bg-transparent">
-                          <TableCell className="text-[10px] py-2 font-medium">{svc.service_date || "N/A"}</TableCell>
-                          <TableCell className="text-[10px] py-2">{svc.is_hiv_positive || "N/A"}</TableCell>
-                          <TableCell className="text-[10px] py-2">{svc.vl_last_result || "N/A"}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.health_services)}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.hiv_services)}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.other_health_services)}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.safe_services)}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.other_safe_services)}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.schooled_services)}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.other_schooled_services)}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.stable_services)}</TableCell>
-                          <TableCell className="text-[10px] py-2 whitespace-normal">{cleanArrayString(svc.other_stable_services)}</TableCell>
+                <div className="w-full space-y-2">
+                  {/* Top Scrollbar */}
+                  <div
+                    ref={topScrollRef}
+                    className="w-full overflow-x-auto overflow-y-hidden h-4 bg-slate-50 border-b border-slate-200"
+                  >
+                    <div className="min-w-[1800px] h-px" />
+                  </div>
+
+                  <div ref={bottomScrollRef} className="w-full overflow-x-auto">
+                    <Table className="min-w-[1800px]">
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent bg-slate-50/50">
+                          <TableHead className="text-sm font-bold h-12 text-slate-900">Service Date</TableHead>
+                          <TableHead className="text-sm font-bold h-12 text-slate-900">HIV Pos</TableHead>
+                          <TableHead className="text-sm font-bold h-12 text-slate-900">Viral Load</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Health Services</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">HIV Services</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Other Health</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Safe</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Other Safe</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Schooled</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Other Schooled</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Stable</TableHead>
+                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Other Stable</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {linkedServices.map((svc: any, i: number) => (
+                          <TableRow key={i} className="hover:bg-slate-50/30">
+                            <TableCell className="text-sm py-4 font-bold text-slate-900">{svc.service_date || "N/A"}</TableCell>
+                            <TableCell className="text-sm py-4 text-slate-700">{svc.is_hiv_positive || "N/A"}</TableCell>
+                            <TableCell className="text-sm py-4 text-slate-700">{svc.vl_last_result || "N/A"}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.health_services)}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.hiv_services)}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.other_health_services)}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.safe_services)}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.other_safe_services)}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.schooled_services)}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.other_schooled_services)}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.stable_services)}</TableCell>
+                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.other_stable_services)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               ) : (
                 <div className="p-8 text-center text-slate-400 text-xs italic">

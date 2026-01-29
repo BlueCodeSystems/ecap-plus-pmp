@@ -24,6 +24,7 @@ import VcaProfile from "./pages/VcaProfile";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import FlaggedRecordForm from "./pages/FlaggedRecordForm";
 import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
@@ -174,6 +175,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <VcaProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/flagged-record-form"
+              element={
+                <ProtectedRoute>
+                  <FlaggedRecordForm />
                 </ProtectedRoute>
               }
             />

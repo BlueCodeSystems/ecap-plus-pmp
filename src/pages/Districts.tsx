@@ -1,4 +1,4 @@
-import { MapPin, Home, Users, Download, ArrowRight, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, Home, Users, Download, ArrowRight, RefreshCw, ChevronRight } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import {
   getTotalHouseholdsCount,
   getTotalVcasCount,
@@ -25,104 +25,14 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 
-// Sub-component for Detailed View
-const DistrictDetails = ({ district }: { district: string }) => {
-  const { data: households, isLoading: loadingHH } = useQuery({
-    queryKey: ["details-households", district],
-    queryFn: () => getHouseholdsByDistrict(district),
-    enabled: !!district,
-  });
-
-  const { data: vcas, isLoading: loadingVCAs } = useQuery({
-    queryKey: ["details-vcas", district],
-    queryFn: () => getChildrenByDistrict(district),
-    enabled: !!district,
-  });
-
-
-  if (loadingHH || loadingVCAs) {
-    return <div className="p-8 text-center"><LoadingDots /></div>;
-  }
-
-  const recentHH = (households ?? []).slice(0, 5);
-  const recentVCAs = (vcas ?? []).slice(0, 5);
-
-  return (
-    <div className="p-4 bg-slate-50 border-t border-b border-border space-y-6">
-      <div className="grid md:grid-cols-2 gap-6">
-        <GlowCard className="bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Recent Households</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">HH Code</TableHead>
-                  <TableHead className="text-xs">Village</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentHH.length === 0 ? (
-                  <TableRow><TableCell colSpan={2} className="text-center text-xs text-muted-foreground">No households found.</TableCell></TableRow>
-                ) : (
-                  recentHH.map((h: any) => (
-                    <TableRow key={h.id || h.household_id}>
-                      <TableCell className="text-xs font-medium">{h.household_code || h.household_id || "N/A"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{h.village || h.community || "N/A"}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </GlowCard>
-
-        <GlowCard className="bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Recent VCAs</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Name</TableHead>
-                  <TableHead className="text-xs">HH Code</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentVCAs.length === 0 ? (
-                  <TableRow><TableCell colSpan={2} className="text-center text-xs text-muted-foreground">No VCAs found.</TableCell></TableRow>
-                ) : (
-                  recentVCAs.map((v: any) => (
-                    <TableRow key={v.id || v.individual_id}>
-                      <TableCell className="text-xs font-medium">
-                        {[v.given_name, v.firstname, v.family_name, v.lastname].filter(Boolean).join(" ") || "Unknown"}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{v.household_code || v.household_id || "N/A"}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </GlowCard>
-      </div>
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={() => window.location.href = `/households?district=${encodeURIComponent(district)}`}>
-          View All Records for {district} <ArrowRight className="ml-2 h-3 w-3" />
-        </Button>
-      </div>
-    </div>
-  );
-};
 
 const Districts = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [expandedDistrict, setExpandedDistrict] = useState<string | null>(null);
 
   // ... (Keep existing queries and logic: dashboardDistrict, kpi queries, discovery logic, etc.) ...
   const dashboardDistrict = user?.location || "All";
@@ -185,7 +95,16 @@ const Districts = () => {
   });
 
   const isDiscoveryLoading = householdsListQuery.isLoading;
-  const areDistrictsLoading = districtQueries.some((q) => q.isLoading) || isDiscoveryLoading;
+
+  // Determine if any query is currently fetching (even if it has data)
+  const isSyncing =
+    householdCountQuery.isFetching ||
+    vcaCountQuery.isFetching ||
+    mothersCountQuery.isFetching ||
+    householdsListQuery.isFetching ||
+    districtQueries.some(q => q.isFetching);
+
+  const areDistrictsLoading = districtQueries.some((q) => q.isLoading) || isDiscoveryLoading || isSyncing;
   const districtData = districtQueries.map((q) => q.data).filter(Boolean);
 
   const formatCount = (value: unknown) => {
@@ -197,9 +116,6 @@ const Districts = () => {
 
   const handleExportSummary = () => { /* ... existing export logic ... */ };
 
-  const toggleExpand = (districtName: string) => {
-    setExpandedDistrict(current => current === districtName ? null : districtName);
-  };
 
   return (
     <DashboardLayout subtitle="Districts">
@@ -232,20 +148,20 @@ const Districts = () => {
           title="Households Screened"
           value={formatCount(householdCountQuery.data)}
           caption={dashboardDistrict === "All" ? "All households" : `${dashboardDistrict} households`}
-          isLoading={householdCountQuery.isLoading}
+          isLoading={householdCountQuery.isFetching}
         />
         <KpiCard
           title="Total VCAs Screened"
           value={formatCount(vcaCountQuery.data)}
           caption={dashboardDistrict === "All" ? "All registered children" : `${dashboardDistrict} children`}
-          isLoading={vcaCountQuery.isLoading}
+          isLoading={vcaCountQuery.isFetching}
           delay={0.1}
         />
         <KpiCard
           title="Total Index Mothers Registered"
           value={formatCount(mothersCountQuery.data)}
           caption={dashboardDistrict === "All" ? "All index mothers" : `${dashboardDistrict} index mothers`}
-          isLoading={mothersCountQuery.isLoading}
+          isLoading={mothersCountQuery.isFetching}
           delay={0.2}
         />
       </div>
@@ -260,18 +176,17 @@ const Districts = () => {
           <Button
             variant="ghost"
             size="sm"
-            className="text-muted-foreground hover:text-foreground gap-2"
+            className="text-muted-foreground hover:text-foreground gap-2 transition-all disabled:opacity-50"
             onClick={() => {
-              householdsListQuery.refetch();
-              districtQueries.forEach(q => q.refetch());
-              /* ... refetch KPIs ... */
-              householdCountQuery.refetch();
-              vcaCountQuery.refetch();
-              mothersCountQuery.refetch();
+              // Invalidate all related queries to trigger a fresh background fetch
+              queryClient.invalidateQueries({ queryKey: ["kpi"] });
+              queryClient.invalidateQueries({ queryKey: ["districts-discovery"] });
+              queryClient.invalidateQueries({ queryKey: ["district-stats"] });
             }}
+            disabled={isSyncing}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh Data
+            <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
+            {isSyncing ? "Syncing..." : "Sync Districts"}
           </Button>
         </div>
 
@@ -288,7 +203,7 @@ const Districts = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {areDistrictsLoading && districtData.length === 0 ? (
+                {areDistrictsLoading ? (
                   /* ... Loading State ... */
                   <TableRow>
                     <TableCell colSpan={5} className="h-32 text-center">
@@ -309,43 +224,30 @@ const Districts = () => {
                   </TableRow>
                 ) : (
                   districtData.map((data: any, index) => (
-                    <>
-                      <TableRow key={data.district} className={`group ${expandedDistrict === data.district ? "bg-muted/30" : ""}`}>
-                        <TableCell className="font-medium text-muted-foreground hidden md:table-cell">{index + 1}</TableCell>
-                        <TableCell className="font-semibold text-foreground">
-                          <div className="flex flex-col">
-                            <span>{data.district}</span>
-                            <div className="flex gap-2 mt-1 sm:hidden">
-                              <span className="text-[10px] text-muted-foreground">HHs: {formatCount(data.households)}</span>
-                              <span className="text-[10px] text-muted-foreground">VCAs: {formatCount(data.vcas)}</span>
-                            </div>
+                    <TableRow key={data.district} className="group transition-colors hover:bg-muted/30">
+                      <TableCell className="font-medium text-muted-foreground hidden md:table-cell">{index + 1}</TableCell>
+                      <TableCell className="font-semibold text-foreground">
+                        <div className="flex flex-col">
+                          <span>{data.district}</span>
+                          <div className="flex gap-2 mt-1 sm:hidden">
+                            <span className="text-[10px] text-muted-foreground">HHs: {formatCount(data.households)}</span>
+                            <span className="text-[10px] text-muted-foreground">VCAs: {formatCount(data.vcas)}</span>
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">{formatCount(data.households)}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{formatCount(data.vcas)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={expandedDistrict === data.district ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}
-                            onClick={() => toggleExpand(data.district)}
-                          >
-                            {expandedDistrict === data.district ? (
-                              <>Hide <ChevronUp className="ml-1 h-3 w-3" /></>
-                            ) : (
-                              <>View <ChevronDown className="ml-1 h-3 w-3" /></>
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                      {expandedDistrict === data.district && (
-                        <TableRow className="bg-slate-50 hover:bg-slate-50">
-                          <TableCell colSpan={5} className="p-0 border-t-0">
-                            <DistrictDetails district={data.district} />
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{formatCount(data.households)}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{formatCount(data.vcas)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5 ml-auto"
+                          onClick={() => navigate(`/households?district=${encodeURIComponent(data.district)}`)}
+                        >
+                          Explore <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
               </TableBody>

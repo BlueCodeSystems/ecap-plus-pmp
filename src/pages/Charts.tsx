@@ -41,12 +41,12 @@ const Charts = () => {
                   The security policy of the dashboard server prevents it from being displayed inside an iframe on <code>localhost</code>.
                   It will appear correctly when deployed to the production domain.
                 </p>
-                <Button
+                {/* <Button
                   onClick={() => window.open(import.meta.env.VITE_SUPERSET_DASHBOARD_URL, "_blank")}
                   variant="outline"
                 >
                   Open Dashboard in New Tab
-                </Button>
+                </Button> */}
               </div>
             </div>
           )}
