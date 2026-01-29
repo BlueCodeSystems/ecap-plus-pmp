@@ -351,3 +351,27 @@ export const getFlaggedRecords = async () => {
     return [];
   }
 };
+
+export const createFlaggedRecord = async (payload: any) => {
+  const token = getStoredToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const response = await fetch(
+    `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await safeJson(response);
+    throw new Error(errorData?.message || "Failed to create flagged record");
+  }
+
+  return safeJson(response);
+};

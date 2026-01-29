@@ -16,6 +16,7 @@ import {
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { createUser, listRoles, type DirectusRole } from "@/lib/directus";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
 type UserFormState = {
@@ -52,6 +53,18 @@ const AddUser = () => {
       role.name,
     ]);
     return new Map<string, string>(entries);
+  }, [rolesQuery.data]);
+
+  // Auto-select ECAP+ role
+  useEffect(() => {
+    if (rolesQuery.data) {
+      const ecapRole = rolesQuery.data.find(
+        (r: DirectusRole) => r.name.toLowerCase().includes("ecap+")
+      );
+      if (ecapRole) {
+        setFormState((prev) => ({ ...prev, role: ecapRole.id }));
+      }
+    }
   }, [rolesQuery.data]);
 
   const createMutation = useMutation({
@@ -128,24 +141,7 @@ const AddUser = () => {
                 setFormState((prev) => ({ ...prev, last_name: event.target.value }))
               }
             />
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-slate-700">Role</label>
-              <Select
-                value={formState.role}
-                onValueChange={(value) => setFormState((prev) => ({ ...prev, role: value }))}
-              >
-                <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(rolesQuery.data ?? []).map((role: DirectusRole) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Role is auto-assigned to ECAP+ in the background */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium text-slate-700">Account Status</label>
               <Select
