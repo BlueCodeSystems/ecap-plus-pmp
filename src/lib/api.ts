@@ -198,6 +198,11 @@ export const getHouseholdsByDistrict = async (district: string) => {
   return getListValue(data);
 };
 
+export const getHouseholdMembers = async (hhId: string) => {
+  const data = await dqaGet(`/household/members/${encodeURIComponent(hhId)}`);
+  return getListValue(data);
+};
+
 export const getHouseholdArchivedRegister = async (
   district: string,
   params?: { de_registration_reason?: string }
@@ -250,11 +255,21 @@ export const getCaregiverServicesByDistrict = async (district: string) => {
   return getListValue(data);
 };
 
+export const getCaregiverServicesByHousehold = async (hhId: string) => {
+  const data = await dqaGet(`/household/caregiver-services/${encodeURIComponent(hhId)}`);
+  return getListValue(data);
+};
+
 export const getVcaServicesByDistrict = async (district: string) => {
   const path = district
     ? `/child/district/vcaservices/${encodeURIComponent(district)}`
     : "/child/vcaservices";
   const data = await dqaGet(path);
+  return getListValue(data);
+};
+
+export const getVcaServicesByChildId = async (childId: string) => {
+  const data = await dqaGet(`/child/vca-services/${encodeURIComponent(childId)}`);
   return getListValue(data);
 };
 
@@ -285,6 +300,35 @@ export const getVcaReferralsByMonth = async (district: string) => {
   );
   return getListValue(data);
 };
+
+export const getCaregiverCasePlansByDistrict = async (district: string) => {
+  const path = district
+    ? `/household/caregiver-caseplans/${encodeURIComponent(district)}`
+    : "/household/caregiver-caseplans";
+  const data = await dqaGet(path);
+  return getListValue(data);
+};
+
+export const getCaregiverCasePlansByHousehold = async (hhId: string) => {
+  const data = await dqaGet(`/household/caregiver-caseplans/${encodeURIComponent(hhId)}`);
+  return getListValue(data);
+};
+
+export const getHouseholdReferralsById = async (hhId: string) => {
+  const data = await dqaGet(`/household/all-referrals/${encodeURIComponent(hhId)}`);
+  return getListValue(data);
+};
+
+export const getVcaCasePlansByDistrict = async (district: string) => {
+  // The backend route is /vca-caseplans and does not accept a district parameter
+  const data = await dqaGet("/child/vca-caseplans");
+  return getListValue(data);
+};
+
+export const getVcaCasePlansById = async (vcaId: string) => {
+  const data = await dqaGet(`/child/vca-caseplans/${encodeURIComponent(vcaId)}`);
+  return getListValue(data);
+};
 // ... existing code ...
 
 export const getFlaggedRecords = async () => {
@@ -306,4 +350,28 @@ export const getFlaggedRecords = async () => {
     console.error("Error fetching flagged records:", error);
     return [];
   }
+};
+
+export const createFlaggedRecord = async (payload: any) => {
+  const token = getStoredToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const response = await fetch(
+    `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await safeJson(response);
+    throw new Error(errorData?.message || "Failed to create flagged record");
+  }
+
+  return safeJson(response);
 };

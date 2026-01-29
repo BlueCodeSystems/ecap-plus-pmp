@@ -47,7 +47,7 @@ const requireDirectusUrl = () => {
 
 const fetchProfile = async (token: string) => {
   const response = await fetch(
-    `${requireDirectusUrl()}/users/me?fields=id,email,first_name,last_name,role,location`,
+    `${requireDirectusUrl()}/users/me?fields=id,email,first_name,last_name,role.id,role.name,location`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

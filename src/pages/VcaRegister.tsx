@@ -32,7 +32,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_DISTRICT, getChildrenByDistrict } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -127,7 +127,9 @@ const calculateAge = (birthdate: any): number => {
 const VcaRegister = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const district = user?.location ?? DEFAULT_DISTRICT;
+  const [searchParams] = useSearchParams();
+  const urlDistrict = searchParams.get("district");
+  const district = urlDistrict || user?.location || DEFAULT_DISTRICT;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);

@@ -33,7 +33,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_DISTRICT, getHouseholdsByDistrict } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -64,7 +64,9 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
 const HouseholdRegister = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const district = user?.location ?? DEFAULT_DISTRICT;
+  const [searchParams] = useSearchParams();
+  const urlDistrict = searchParams.get("district");
+  const district = urlDistrict || user?.location || DEFAULT_DISTRICT;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);

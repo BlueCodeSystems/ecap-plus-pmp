@@ -28,7 +28,7 @@ const Flags = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const flagsQuery = useQuery({
-    queryKey: ["flags", "records"],
+    queryKey: ["flagged-records"],
     queryFn: getFlaggedRecords,
   });
 
@@ -179,30 +179,30 @@ const Flags = () => {
                     onClick={() => handleRowClick(record.household_id)}
                   >
                     <TableCell className="font-medium text-primary align-top hidden sm:table-cell">
-                      <span className="text-xs">{record.household_id}</span>
+                      <span className="text-sm">{record.household_id}</span>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell align-top text-[10px] text-slate-500">{record.caseworker_name}</TableCell>
+                    <TableCell className="hidden sm:table-cell align-top text-sm text-slate-500">{record.caseworker_name}</TableCell>
                     <TableCell className="align-top px-2 sm:px-4">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2 sm:hidden">
-                           <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 rounded">{record.household_id}</span>
+                          <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 rounded">{record.household_id}</span>
                         </div>
                         <span className="text-sm font-medium leading-tight">{record.caregiver_name}</span>
                         <div className="mt-1 flex flex-col gap-0.5 sm:hidden">
-                          <span className="text-[10px] text-slate-500 italic truncate max-w-[140px]">{record.facility}</span>
-                          <span className="text-[10px] text-slate-400">
-                             {record.date_created ? new Date(record.date_created).toLocaleDateString() : ""} • CW: {record.caseworker_name}
+                          <span className="text-xs text-slate-500 italic truncate max-w-[140px]">{record.facility}</span>
+                          <span className="text-xs text-slate-400">
+                            {record.date_created ? new Date(record.date_created).toLocaleDateString() : ""} • CW: {record.caseworker_name}
                           </span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell align-top">
-                      <div className="text-[10px] text-slate-600 leading-tight max-w-[200px] line-clamp-2" title={record.comment}>
+                      <div className="text-sm text-slate-600 leading-snug max-w-[250px] line-clamp-2" title={record.comment}>
                         {record.comment}
                       </div>
                     </TableCell>
                     <TableCell className="text-right align-top px-2 sm:px-4">
-                      <Badge className={cn("text-[9px] h-4.5 px-1 font-normal", getStatusColor(record.status))}>
+                      <Badge className={cn("text-xs h-5 px-2 font-normal", getStatusColor(record.status))}>
                         {record.status?.toUpperCase() || "UNKNOWN"}
                       </Badge>
                     </TableCell>

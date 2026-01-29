@@ -16,6 +16,8 @@ import {
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { createUser, listRoles, type DirectusRole } from "@/lib/directus";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 type UserFormState = {
   email: string;
@@ -46,18 +48,34 @@ const AddUser = () => {
   });
 
   const rolesById = useMemo(() => {
-    const entries = (rolesQuery.data ?? []).map((role: DirectusRole) => [
+    const entries: [string, string][] = (rolesQuery.data ?? []).map((role: DirectusRole) => [
       role.id,
       role.name,
     ]);
-    return new Map(entries);
+    return new Map<string, string>(entries);
+  }, [rolesQuery.data]);
+
+  // Auto-select ECAP+ role
+  useEffect(() => {
+    if (rolesQuery.data) {
+      const ecapRole = rolesQuery.data.find(
+        (r: DirectusRole) => r.name.toLowerCase().includes("ecap+")
+      );
+      if (ecapRole) {
+        setFormState((prev) => ({ ...prev, role: ecapRole.id }));
+      }
+    }
   }, [rolesQuery.data]);
 
   const createMutation = useMutation({
     mutationFn: createUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
+      toast.success("User created successfully");
       navigate("/users");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create user");
     },
   });
 
@@ -123,34 +141,23 @@ const AddUser = () => {
                 setFormState((prev) => ({ ...prev, last_name: event.target.value }))
               }
             />
-            <Input
-              placeholder="Role ID"
-              value={formState.role}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, role: event.target.value }))
-              }
-              list="directus-roles"
-            />
-            <datalist id="directus-roles">
-              {(rolesQuery.data ?? []).map((role: DirectusRole) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </datalist>
-            <Select
-              value={formState.status}
-              onValueChange={(value) => setFormState((prev) => ({ ...prev, status: value }))}
-            >
-              <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Role is auto-assigned to ECAP+ in the background */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-slate-700">Account Status</label>
+              <Select
+                value={formState.status}
+                onValueChange={(value) => setFormState((prev) => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Input
               placeholder="Password"
               type="password"
