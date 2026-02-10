@@ -1,4 +1,4 @@
-import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2 } from "lucide-react";
+import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,10 +13,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { GlobalSearch } from "./GlobalSearch";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getCaregiverServicesByDistrict
 } from "@/lib/api";
+import { markNotificationRead } from "@/lib/directus";
 import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import LoadingDots from "@/components/aceternity/LoadingDots";
@@ -31,6 +32,7 @@ const DashboardHeader = ({
 }: DashboardHeaderProps) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const district = user?.location ?? "";
 
   // Real Notifications Logic (similar to RecentActivity)
@@ -45,15 +47,32 @@ const DashboardHeader = ({
     refetchInterval: 1000 * 60 * 5,
   });
 
-  const notifications = (directusNotifications ?? []).map((n: any) => ({
-    id: n.id,
-    title: n.subject,
-    description: n.message, // Use message directly
-    date: new Date(n.timestamp),
-    icon: <Bell className="h-4 w-4 text-primary" />, // Default icon
-  }));
+  const notifications = (directusNotifications ?? []).map((n: any) => {
+    const isExtract = n.collection === "weekly_extracts";
+    return {
+      id: n.id,
+      title: n.subject,
+      description: n.message,
+      date: new Date(n.timestamp),
+      icon: isExtract
+        ? <DatabaseZap className="h-4 w-4 text-violet-600" />
+        : <Bell className="h-4 w-4 text-primary" />,
+      link: isExtract ? "/weekly-extracts" : undefined,
+    };
+  });
 
   const unreadCount = notifications.length;
+
+  const handleDismiss = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await markNotificationRead(id);
+      queryClient.invalidateQueries({ queryKey: ["directus-notifications"] });
+    } catch (error) {
+      console.error("Failed to dismiss notification:", error);
+    }
+  };
 
   const displayName =
     [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
@@ -107,16 +126,29 @@ const DashboardHeader = ({
                   </div>
                 ) : (
                   notifications.map((n) => (
-                    <div key={n.id} className="p-4 border-b last:border-0 hover:bg-slate-50 transition-colors flex gap-3">
-                      <div className="mt-0.5">{n.icon}</div>
-                      <div className="flex-1">
+                    <DropdownMenuItem
+                      key={n.id}
+                      className="p-4 border-b last:border-0 rounded-none cursor-pointer focus:bg-slate-50 flex gap-3 items-start"
+                      onClick={() => {
+                        if (n.link) navigate(n.link);
+                      }}
+                    >
+                      <div className="mt-0.5 shrink-0">{n.icon}</div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-900">{n.title}</p>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">{n.description}</p>
+                        <p className="text-[11px] text-slate-500 line-clamp-2 whitespace-normal">{n.description}</p>
                         <p className="text-[9px] text-slate-400 mt-1 uppercase font-medium">
                           {formatDistanceToNow(n.date, { addSuffix: true })}
                         </p>
                       </div>
-                    </div>
+                      <button
+                        className="shrink-0 mt-0.5 p-1 rounded hover:bg-slate-200 transition-colors"
+                        title="Dismiss"
+                        onClick={(e) => handleDismiss(n.id, e)}
+                      >
+                        <X className="h-3 w-3 text-slate-400" />
+                      </button>
+                    </DropdownMenuItem>
                   ))
                 )}
               </ScrollArea>

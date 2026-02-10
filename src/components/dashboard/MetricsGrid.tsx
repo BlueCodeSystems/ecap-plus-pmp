@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import AnimatedCounter from "@/components/AnimatedCounter";
 import {
   getTotalHouseholdsCount,
   getTotalVcasCount,
@@ -28,6 +29,11 @@ interface MetricCardProps {
     isPositive: boolean;
   };
   variant?: "default" | "success" | "warning" | "danger";
+  colorClass?: {
+    iconBg: string;
+    iconText: string;
+    borderAccent: string;
+  };
 }
 
 const MetricCard = ({
@@ -37,6 +43,7 @@ const MetricCard = ({
   icon,
   trend,
   variant = "default",
+  colorClass,
   isLoading,
 }: MetricCardProps & { isLoading?: boolean }) => {
   const variantStyles = {
@@ -47,16 +54,22 @@ const MetricCard = ({
   };
 
   return (
-    <GlowCard>
+    <GlowCard className={colorClass?.borderAccent}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <div className={variantStyles[variant]}>{icon}</div>
+        {colorClass ? (
+          <div className={`rounded-lg p-2 ${colorClass.iconBg} ${colorClass.iconText}`}>
+            {icon}
+          </div>
+        ) : (
+          <div className={variantStyles[variant]}>{icon}</div>
+        )}
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-foreground">
-          {isLoading ? <LoadingDots className="text-slate-600" /> : value}
+          {isLoading ? <LoadingDots className="text-slate-600" /> : <AnimatedCounter value={value} />}
         </div>
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -132,6 +145,11 @@ const MetricsGrid = () => {
       icon: <FileCheck className="h-5 w-5" />,
       variant: "default" as const,
       isLoading: totalVcasQuery.isLoading,
+      colorClass: {
+        iconBg: "bg-rose-50",
+        iconText: "text-rose-600",
+        borderAccent: "border-l-4 border-l-rose-500",
+      },
     },
     {
       title: "Total Households",
@@ -140,6 +158,11 @@ const MetricsGrid = () => {
       icon: <Home className="h-5 w-5" />,
       variant: "success" as const,
       isLoading: totalHouseholdsQuery.isLoading,
+      colorClass: {
+        iconBg: "bg-emerald-50",
+        iconText: "text-emerald-600",
+        borderAccent: "border-l-4 border-l-emerald-500",
+      },
     },
     {
       title: "Caseworkers",
@@ -148,6 +171,11 @@ const MetricsGrid = () => {
       icon: <Briefcase className="h-5 w-5" />,
       variant: "default" as const,
       isLoading: householdsDataQuery.isLoading,
+      colorClass: {
+        iconBg: "bg-blue-50",
+        iconText: "text-blue-600",
+        borderAccent: "border-l-4 border-l-blue-500",
+      },
     },
   ];
 

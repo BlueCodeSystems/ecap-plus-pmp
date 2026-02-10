@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 import {
   Table,
   TableBody,
@@ -155,11 +156,8 @@ const Flags = () => {
               <TableBody>
                 {flagsQuery.isLoading && (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-slate-500">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-sm">Loading flagged records</span>
-                        <LoadingDots className="text-slate-400" />
-                      </div>
+                    <TableCell colSpan={8} className="p-0">
+                      <TableSkeleton rows={6} columns={6} />
                     </TableCell>
                   </TableRow>
                 )}

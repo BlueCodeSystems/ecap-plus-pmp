@@ -6,6 +6,7 @@ import GlowCard from "@/components/aceternity/GlowCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 import {
   Table,
   TableBody,
@@ -430,11 +431,8 @@ const VcaArchivedRegister = () => {
                 )}
                 {archivedQuery.isLoading && (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-slate-500">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-sm">Loading archived VCAs</span>
-                        <LoadingDots className="text-slate-400" />
-                      </div>
+                    <TableCell colSpan={8} className="p-0">
+                      <TableSkeleton rows={6} columns={6} />
                     </TableCell>
                   </TableRow>
                 )}
