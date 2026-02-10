@@ -99,6 +99,9 @@ const ForgotPassword = () => {
               images={[
                 { src: "/pexels-uniqueerique-6572780.jpg", alt: "Program fieldwork photo" },
                 { src: "/pexels-uniqueerique-6572781.jpg", alt: "Community program photo" },
+                { src: "/splash1.jpg", alt: " school lunch break" },
+                { src: "/splash2.jpg", alt: "two kids smiling" },
+                { src: "/splash3.jpg", alt: "community member" }
               ]}
             />
             <div className="absolute bottom-10 left-10 right-10 text-white">
