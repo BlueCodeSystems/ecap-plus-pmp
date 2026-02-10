@@ -14,7 +14,6 @@ import LoadingDots from "@/components/aceternity/LoadingDots";
 import {
   getTotalHouseholdsCount,
   getTotalVcasCount,
-  getTotalMothersCount,
   getHouseholdsByDistrict,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -96,11 +95,6 @@ const MetricsGrid = () => {
     enabled: !!district,
   });
 
-  const totalMothersQuery = useQuery({
-    queryKey: ["metrics", "total-mothers", district],
-    queryFn: () => getTotalMothersCount(district),
-    enabled: !!district,
-  });
 
   const householdsDataQuery = useQuery({
     queryKey: ["metrics", "households-list", district],
@@ -148,14 +142,6 @@ const MetricsGrid = () => {
       isLoading: totalHouseholdsQuery.isLoading,
     },
     {
-      title: "Index Mothers",
-      value: formatCount(totalMothersQuery.data),
-      subtitle: "Registered mothers",
-      icon: <Users className="h-5 w-5" />,
-      variant: "warning" as const,
-      isLoading: totalMothersQuery.isLoading,
-    },
-    {
       title: "Caseworkers",
       value: formatCount(caseworkersCount),
       subtitle: district === "All" || !district ? "Nationwide count" : `Active in ${district}`,
@@ -167,7 +153,7 @@ const MetricsGrid = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {summaryMetrics.map((metric) => (
           <MetricCard key={metric.title} {...metric} />
         ))}
