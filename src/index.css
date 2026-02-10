@@ -38,13 +38,13 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 10% 40%;
     --sidebar-primary: 340 82% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 220 14% 92%;
     --sidebar-ring: 340 82% 52%;
 
     /* Custom ECAP tokens */
@@ -155,6 +155,25 @@ All colors MUST be HSL.
 
   .animate-shimmer {
     animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+  @keyframes border-spin {
+    0% {
+      --border-angle: 0turn;
+    }
+    100% {
+      --border-angle: 1turn;
+    }
+  }
+
+  .animate-border-spin {
+    animation: border-spin 4s linear infinite;
+  }
+
+  @property --border-angle {
+    syntax: "<angle>";
+    initial-value: 0turn;
+    inherits: false;
   }
 
 }

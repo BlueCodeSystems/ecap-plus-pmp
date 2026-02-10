@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 import { Search, Trash2, RotateCcw, UserX, UserPlus, Shield, Mail, Calendar } from "lucide-react";
 import {
   deleteUser,
@@ -174,11 +175,8 @@ const Users = () => {
               <tbody className="divide-y divide-slate-100/50">
                 {usersQuery.isLoading && (
                   <tr>
-                    <td className="py-12 text-center text-slate-500" colSpan={4}>
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <LoadingDots className="text-slate-400 scale-150" />
-                        <span className="text-sm font-medium">Fetching directory data...</span>
-                      </div>
+                    <td className="p-0" colSpan={4}>
+                      <TableSkeleton rows={5} columns={4} />
                     </td>
                   </tr>
                 )}

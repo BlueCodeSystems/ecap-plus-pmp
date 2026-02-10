@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import EmptyState from "@/components/EmptyState";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 
 const subPopulationFilterLabels: Record<string, string> = {
   calhiv: 'C/ALHIV',
@@ -158,10 +160,13 @@ const VcaProfile = () => {
   if (!vca) {
     return (
       <DashboardLayout subtitle="VCA Not Found">
-        <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
-          <p className="text-slate-500 font-medium">VCA record not found.</p>
-          <Button onClick={() => navigate("/vcas")} variant="outline" className="rounded-full">Back to Register</Button>
-        </div>
+        <EmptyState
+          icon={<User className="h-7 w-7" />}
+          title="VCA Not Found"
+          description="The VCA record you're looking for doesn't exist or has been moved."
+          action={{ label: "Back to Register", onClick: () => navigate("/vcas") }}
+          className="h-[50vh]"
+        />
       </DashboardLayout>
     );
   }
@@ -174,46 +179,56 @@ const VcaProfile = () => {
     <DashboardLayout subtitle={`VCA: ${id}`}>
       <div className="space-y-6 pb-20">
         {/* Header Section */}
-        <div className="overflow-hidden rounded-lg bg-white p-6 lg:p-8 border border-slate-200 shadow-sm">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <Badge className={cn(
-                  "text-xs",
-                  isArchived ? "bg-red-50 text-red-600 border-red-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                )}>
-                  {isArchived ? "Deregistered" : "Active VCA"}
-                </Badge>
-                {vca.virally_suppressed === "YES" && (
-                  <Badge className="text-xs bg-emerald-50 text-emerald-600 border-emerald-100">
-                    Suppressed
-                  </Badge>
-                )}
-              </div>
-              <h1 className="text-3xl font-semibold text-slate-900 lg:text-4xl mb-4">
-                {fullName}
-              </h1>
-              <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-                <span className="flex items-center gap-1.5">
-                  <User className="h-4 w-4" /> {String(vca.vca_gender || vca.gender || "N/A")}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" /> {age} Years
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" /> {String(vca.ward || vca.district || "N/A")}
-                </span>
-              </div>
-            </div>
+        <div className="relative overflow-hidden rounded-2xl shadow-lg">
+          {/* Gradient top section */}
+          <div className="relative bg-gradient-to-r from-rose-600 via-pink-600 to-fuchsia-600 p-6 lg:p-8">
+            <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.05)_50%,transparent_100%)] bg-[length:200px_100%]" />
 
-            <Button
-              onClick={() => navigate(-1)}
-              variant="outline"
-              size="sm"
-              className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
+            <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <Badge className={cn(
+                    "text-xs border-0",
+                    isArchived ? "bg-red-400/20 text-white" : "bg-white/20 text-white"
+                  )}>
+                    {isArchived ? "Deregistered" : "Active VCA"}
+                  </Badge>
+                  {vca.virally_suppressed === "YES" && (
+                    <Badge className="text-xs border-0 bg-white/20 text-white">
+                      Suppressed
+                    </Badge>
+                  )}
+                </div>
+                <h1 className="text-3xl font-bold text-white lg:text-4xl">
+                  {fullName}
+                </h1>
+              </div>
+              <Button
+                onClick={() => navigate(-1)}
+                variant="outline"
+                size="sm"
+                className="border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+            </div>
+          </div>
+
+          {/* White metadata strip */}
+          <div className="bg-white border border-slate-200 border-t-0 rounded-b-2xl px-6 py-4 lg:px-8">
+            <div className="flex flex-wrap gap-4 text-sm text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <User className="h-4 w-4" /> {String(vca.vca_gender || vca.gender || "N/A")}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" /> {age} Years
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4" /> {String(vca.ward || vca.district || "N/A")}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -270,20 +285,20 @@ const VcaProfile = () => {
         {/* Tabs Section */}
         <Tabs defaultValue="overview" className="w-full">
           <div className="mb-8 flex flex-col items-center justify-between gap-6 md:flex-row">
-            <TabsList className="h-auto w-full gap-2 rounded-[2rem] border border-slate-200 bg-white/50 p-2 md:w-auto">
-              <TabsTrigger value="overview" className="rounded-full px-8 py-3 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsList className="h-auto w-full flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/50 p-2 md:w-auto">
+              <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Summary
               </TabsTrigger>
-              <TabsTrigger value="indicators" className="rounded-full px-8 py-3 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TabsTrigger value="indicators" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Indicators
               </TabsTrigger>
-              <TabsTrigger value="history" className="rounded-full px-8 py-3 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TabsTrigger value="history" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Caseplans
               </TabsTrigger>
-              <TabsTrigger value="audit" className="rounded-full px-8 py-3 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TabsTrigger value="audit" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Referrals
               </TabsTrigger>
-              <TabsTrigger value="flags" className="rounded-full px-8 py-3 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-red-600 data-[state=active]:text-white">
+              <TabsTrigger value="flags" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-red-600 data-[state=active]:text-white">
                 Flag Record Form
               </TabsTrigger>
             </TabsList>
@@ -366,8 +381,8 @@ const VcaProfile = () => {
                       </div>
                     ))}
                   {Object.entries(vca).filter(([key, val]) => (val === "1" || val === "true" || val === 1 || val === true)).length === 0 && (
-                    <div className="col-span-full py-20 text-center text-slate-400 uppercase tracking-widest text-xs font-bold">
-                      No indicators mapped
+                    <div className="col-span-full">
+                      <EmptyState icon={<Activity className="h-7 w-7" />} title="No Indicators Mapped" description="No performance indicators have been recorded for this VCA." />
                     </div>
                   )}
                 </div>
@@ -382,9 +397,7 @@ const VcaProfile = () => {
               </CardHeader>
               <CardContent>
                 {isLoadingCasePlans ? (
-                  <div className="flex items-center justify-center py-12">
-                    <LoadingDots />
-                  </div>
+                  <TableSkeleton rows={4} columns={4} />
                 ) : vcaCasePlans.length > 0 ? (
                   <Table>
                     <TableHeader>
@@ -402,10 +415,7 @@ const VcaProfile = () => {
                     </TableBody>
                   </Table>
                 ) : (
-                  <div className="py-20 flex flex-col items-center justify-center text-center text-slate-400">
-                    <FileText className="h-8 w-8 opacity-20 mb-2" />
-                    <p className="text-xs font-bold uppercase tracking-widest">No caseplans recorded</p>
-                  </div>
+                  <EmptyState icon={<FileText className="h-7 w-7" />} title="No Caseplans Recorded" description="No case plans have been created for this VCA yet." />
                 )}
               </CardContent>
             </Card>
@@ -462,7 +472,7 @@ const VcaProfile = () => {
                     </TableBody>
                   </Table>
                 ) : (
-                  <div className="py-20 text-center text-slate-400 uppercase tracking-widest text-xs font-bold">No flagged records found</div>
+                  <EmptyState icon={<ClipboardCheck className="h-7 w-7" />} title="No Flagged Records" description="This VCA has no flagged records." />
                 )}
               </CardContent>
             </Card>

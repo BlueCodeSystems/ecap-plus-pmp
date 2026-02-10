@@ -25,6 +25,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import FlaggedRecordForm from "./pages/FlaggedRecordForm";
+import WeeklyExtracts from "./pages/WeeklyExtracts";
 import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
@@ -183,6 +184,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <FlaggedRecordForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/weekly-extracts"
+              element={
+                <ProtectedRoute>
+                  <WeeklyExtracts />
                 </ProtectedRoute>
               }
             />
