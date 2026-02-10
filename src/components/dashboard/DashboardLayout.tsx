@@ -88,7 +88,7 @@ const DashboardLayout = ({ title, subtitle, children }: DashboardLayoutProps) =>
             <DashboardHeader title={title} subtitle={subtitle} />
           </GlowHeader>
 
-          <div className="flex-1 p-4 pb-24 space-y-6 sm:p-6 sm:pb-6">{children}</div>
+          <div className="flex-1 p-4 pb-24 space-y-6 sm:p-6 sm:pb-6 animate-fade-in">{children}</div>
         </main>
       </div>
       <MobileBottomNav

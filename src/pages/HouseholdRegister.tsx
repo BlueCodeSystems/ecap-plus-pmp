@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 import {
   Table,
   TableBody,
@@ -288,11 +289,8 @@ const HouseholdRegister = () => {
               <TableBody>
                 {householdsQuery.isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-slate-500">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-sm">Loading households</span>
-                        <LoadingDots className="text-slate-400" />
-                      </div>
+                    <TableCell colSpan={5} className="p-0">
+                      <TableSkeleton rows={8} columns={5} />
                     </TableCell>
                   </TableRow>
                 ) : filteredHouseholds.length === 0 ? (

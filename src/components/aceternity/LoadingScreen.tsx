@@ -10,8 +10,8 @@ const LoadingScreen = ({ label = "ECAPII PMP" }: LoadingScreenProps) => {
   return (
     <AuroraBackground>
       <div className="relative min-h-screen flex items-center justify-center px-6">
-        <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-amber-200/50 blur-[100px]" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-teal-200/40 blur-[110px]" />
+        <div className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-rose-200/50 blur-[100px]" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-pink-200/40 blur-[110px]" />
         <GlowCard className="px-8 py-6">
           <div className="flex flex-col items-center text-center gap-3">
             <img src="/ecap-logo.png" alt="ECAP + logo" className="h-14 w-auto" />
@@ -22,7 +22,7 @@ const LoadingScreen = ({ label = "ECAPII PMP" }: LoadingScreenProps) => {
               Preparing your workspace <LoadingDots className="text-slate-700" />
             </div>
             <div className="mt-2 h-1 w-56 overflow-hidden rounded-full bg-slate-200/70">
-              <div className="h-full w-1/3 animate-shimmer bg-gradient-to-r from-transparent via-amber-300/90 to-transparent" />
+              <div className="h-full w-1/3 animate-shimmer bg-gradient-to-r from-transparent via-rose-300/90 to-transparent" />
             </div>
           </div>
         </GlowCard>

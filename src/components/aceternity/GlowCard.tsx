@@ -11,10 +11,10 @@ type GlowCardProps = {
 const GlowCard = ({ children, className, wrapperClassName }: GlowCardProps) => {
   return (
     <div className={cn("group relative", wrapperClassName)}>
-      <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-br from-amber-300/40 via-teal-200/35 to-transparent opacity-60 blur-lg transition-opacity duration-500 group-hover:opacity-100" />
+      <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-br from-rose-300/30 via-pink-200/25 to-transparent opacity-60 blur-lg transition-opacity duration-500 group-hover:opacity-100" />
       <Card
         className={cn(
-          "relative rounded-2xl border border-slate-200/70 bg-white/85 backdrop-blur-xl shadow-[0_20px_50px_-30px_rgba(15,23,42,0.35)] transition-transform duration-300 group-hover:-translate-y-0.5",
+          "relative rounded-2xl border border-slate-200/70 bg-white/85 backdrop-blur-xl shadow-[0_20px_50px_-30px_rgba(15,23,42,0.35)] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.02]",
           className,
         )}
       >

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -162,11 +163,8 @@ const CaregiverServices = () => {
                 )}
                 {servicesQuery.isLoading && (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-6 text-center text-slate-500">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-sm">Loading services</span>
-                        <LoadingDots className="text-slate-400" />
-                      </div>
+                    <TableCell colSpan={4} className="p-0">
+                      <TableSkeleton rows={6} columns={4} />
                     </TableCell>
                   </TableRow>
                 )}

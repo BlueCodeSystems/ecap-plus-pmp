@@ -47,7 +47,7 @@ const LoginCard = () => {
             placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-amber-300/80"
+            className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-primary/30"
             required
           />
         </div>
@@ -59,14 +59,14 @@ const LoginCard = () => {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-amber-300/80"
+            className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-primary/30"
             required
           />
         </div>
 
         <div className="flex items-center justify-between text-sm text-slate-600">
           <label className="flex items-center gap-2">
-            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-amber-500" />
+            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-primary" />
             Remember me
           </label>
           <button
@@ -82,7 +82,7 @@ const LoginCard = () => {
 
         <Button
           type="submit"
-          className="h-12 w-full bg-amber-300 text-slate-900 transition-transform duration-300 hover:-translate-y-0.5 hover:bg-amber-200"
+          className="h-12 w-full bg-primary text-primary-foreground transition-transform duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
           disabled={isLoading}
         >
           {isLoading ? (

@@ -6,6 +6,8 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import TableSkeleton from "@/components/ui/TableSkeleton";
+import AnimatedCounter from "@/components/AnimatedCounter";
 import {
   Table,
   TableBody,
@@ -26,6 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import EmptyState from "@/components/EmptyState";
 
 
 
@@ -149,6 +152,10 @@ const Districts = () => {
           value={formatCount(householdCountQuery.data)}
           caption={dashboardDistrict === "All" ? "All households" : `${dashboardDistrict} households`}
           isLoading={householdCountQuery.isFetching}
+          icon={<Home className="h-5 w-5" />}
+          iconBg="bg-rose-50"
+          iconText="text-rose-600"
+          borderAccent="border-l-4 border-l-rose-500"
         />
         <KpiCard
           title="Total VCAs Screened"
@@ -156,6 +163,10 @@ const Districts = () => {
           caption={dashboardDistrict === "All" ? "All registered children" : `${dashboardDistrict} children`}
           isLoading={vcaCountQuery.isFetching}
           delay={0.1}
+          icon={<Users className="h-5 w-5" />}
+          iconBg="bg-amber-50"
+          iconText="text-amber-600"
+          borderAccent="border-l-4 border-l-amber-500"
         />
         <KpiCard
           title="Total Index Mothers Registered"
@@ -163,6 +174,10 @@ const Districts = () => {
           caption={dashboardDistrict === "All" ? "All index mothers" : `${dashboardDistrict} index mothers`}
           isLoading={mothersCountQuery.isFetching}
           delay={0.2}
+          icon={<Users className="h-5 w-5" />}
+          iconBg="bg-purple-50"
+          iconText="text-purple-600"
+          borderAccent="border-l-4 border-l-purple-500"
         />
       </div>
 
@@ -204,22 +219,15 @@ const Districts = () => {
               </TableHeader>
               <TableBody>
                 {areDistrictsLoading ? (
-                  /* ... Loading State ... */
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground p-4">
-                        <LoadingDots />
-                        <span className="text-xs">
-                          {isDiscoveryLoading ? "Discovering districts..." : "Loading district data..."}
-                        </span>
-                      </div>
+                    <TableCell colSpan={5} className="p-0">
+                      <TableSkeleton rows={6} columns={4} />
                     </TableCell>
                   </TableRow>
                 ) : districtData.length === 0 ? (
-                  /* ... Empty State ... */
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                      No district data available.
+                    <TableCell colSpan={5} className="p-0">
+                      <EmptyState icon={<MapPin className="h-7 w-7" />} title="No District Data" description="No district data is available yet. Try syncing." />
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -262,17 +270,24 @@ const Districts = () => {
 // ... KpiCard component ...
 
 // Internal Component for KPI Cards
-const KpiCard = ({ title, value, caption, isLoading, delay = 0 }: { title: string, value: string, caption: string, isLoading: boolean, delay?: number }) => {
+const KpiCard = ({ title, value, caption, isLoading, delay = 0, icon, iconBg, iconText, borderAccent }: { title: string, value: string, caption: string, isLoading: boolean, delay?: number, icon?: React.ReactNode, iconBg?: string, iconText?: string, borderAccent?: string }) => {
   return (
     <div style={{ animationDelay: `${delay}s` }} className="h-full">
-      <GlowCard className="flex flex-col justify-between py-6 px-6 h-full">
-        <div className="space-y-1">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            {title}
-          </h3>
-          <div className="text-3xl font-bold text-foreground tracking-tight">
-            {isLoading ? <LoadingDots className="text-slate-400" /> : value}
+      <GlowCard className={cn("flex flex-col justify-between py-6 px-6 h-full", borderAccent)}>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              {title}
+            </h3>
+            <div className="text-3xl font-bold text-foreground tracking-tight">
+              {isLoading ? <LoadingDots className="text-slate-400" /> : <AnimatedCounter value={value} />}
+            </div>
           </div>
+          {icon && (
+            <div className={cn("rounded-lg p-2", iconBg, iconText)}>
+              {icon}
+            </div>
+          )}
         </div>
         <div className="mt-4 pt-4 border-t border-border/50">
           <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
