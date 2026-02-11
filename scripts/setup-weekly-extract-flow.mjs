@@ -31,21 +31,9 @@ if (!DIRECTUS_URL || !EMAIL || !PASSWORD) {
 // Distribution list — edit this to add/remove email recipients
 // ---------------------------------------------------------------------------
 const DISTRIBUTION_LIST = [
-  "tmungeya@pcz.org.zm",
-  "mkampamba@pcz.org.zm",
-  "cjule@pcz.org.zm",
-  "mchiyengo@pcz.org.zm",
-  "cmukelabai@pcz.org.zm",
-  "dsimbeye@pcz.org.zm",
-  "alesa@bluecodeltd.com",
-  "si@pcz.org.zm",
-  "ymulenga@pcz.org.zm",
-  "pmweene@pcz.org.zm",
-  "schiwama@pcz.org.zm",
-  "kchinambu@bluecodeltd.com",
   "jphiri@bluecodeltd.com",
   "bkapamulomo@bluecodeltd.com",
-  "mnyimbili@bluecodeltd.com",
+  "robinsdev2@gmail.com",
 ];
 
 // ---------------------------------------------------------------------------

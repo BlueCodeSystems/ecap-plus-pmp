@@ -17,7 +17,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getCaregiverServicesByDistrict
 } from "@/lib/api";
-import { markNotificationRead } from "@/lib/directus";
+import { markNotificationRead, clearAllNotifications } from "@/lib/directus";
 import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import LoadingDots from "@/components/aceternity/LoadingDots";
@@ -74,6 +74,17 @@ const DashboardHeader = ({
     }
   };
 
+  const handleClearAll = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await clearAllNotifications();
+      queryClient.invalidateQueries({ queryKey: ["directus-notifications"] });
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+    }
+  };
+
   const displayName =
     [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
     user?.email ||
@@ -115,9 +126,19 @@ const DashboardHeader = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="p-4 border-b">
-                <h3 className="font-bold text-sm">System Notifications</h3>
-                <p className="text-[11px] text-muted-foreground">Real-time alerts for {district || "your area"}</p>
+              <div className="p-4 border-b flex items-start justify-between">
+                <div>
+                  <h3 className="font-bold text-sm">System Notifications</h3>
+                  <p className="text-[11px] text-muted-foreground">Real-time alerts for {district || "your area"}</p>
+                </div>
+                {unreadCount > 0 && (
+                  <button
+                    className="text-[10px] font-semibold text-slate-400 hover:text-red-500 transition-colors whitespace-nowrap mt-0.5"
+                    onClick={handleClearAll}
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
               <ScrollArea className="h-72">
                 {notifications.length === 0 ? (
