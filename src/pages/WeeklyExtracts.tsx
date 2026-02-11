@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import {
   Home, Users, HeartHandshake, Baby, Flag,
-  Download, Loader2, RefreshCw, FolderDown, Clock, Send, CheckCircle2,
+  Download, Loader2, RefreshCw, FolderDown, Clock, Send, CheckCircle2, Zap,
 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
@@ -18,7 +18,7 @@ import {
   getFlaggedRecords,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { notifyAllUsers } from "@/lib/directus";
+import { notifyAllUsers, triggerWeeklyFlow } from "@/lib/directus";
 import { toast } from "sonner";
 
 const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
@@ -165,6 +165,8 @@ const WeeklyExtracts = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isNotifying, setIsNotifying] = useState(false);
   const [notified, setNotified] = useState(false);
+  const [isTriggering, setIsTriggering] = useState(false);
+  const [triggered, setTriggered] = useState(false);
 
   const householdsQuery = useQuery({
     queryKey: ["extract-households", district],
@@ -288,6 +290,20 @@ const WeeklyExtracts = () => {
     }
   }, [district, user]);
 
+  const handleTriggerFlow = useCallback(async () => {
+    setIsTriggering(true);
+    try {
+      const result = await triggerWeeklyFlow();
+      setTriggered(true);
+      toast.success(`Sent ${result.sent} notification(s) to ${result.matched} distribution list member(s).`);
+    } catch (error) {
+      console.error("Error triggering flow:", error);
+      toast.error("Failed to trigger flow. Please try again.");
+    } finally {
+      setIsTriggering(false);
+    }
+  }, []);
+
   const formatRefreshedAt = (date: Date) => {
     return date.toLocaleString("en-ZM", {
       weekday: "short",
@@ -347,6 +363,22 @@ const WeeklyExtracts = () => {
               <Send className="h-3.5 w-3.5" />
             )}
             {notified ? "Team Notified" : "Notify Team"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-violet-200 text-violet-700 hover:bg-violet-50 gap-2"
+            onClick={handleTriggerFlow}
+            disabled={isTriggering}
+          >
+            {isTriggering ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : triggered ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-violet-600" />
+            ) : (
+              <Zap className="h-3.5 w-3.5" />
+            )}
+            {triggered ? "Flow Triggered" : "Trigger Flow"}
           </Button>
         </div>
 

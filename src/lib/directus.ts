@@ -166,6 +166,69 @@ export const createNotification = async (payload: {
   return data?.data;
 };
 
+export const clearAllNotifications = async () => {
+  const notifications = await getNotifications();
+  await Promise.allSettled(
+    notifications.map((n: Notification) => markNotificationRead(n.id))
+  );
+  return notifications.length;
+};
+
+/**
+ * Manually triggers the same logic as the Monday scheduled flow:
+ * sends in-app notifications to distribution list members who are Directus users.
+ * Emails are handled by the scheduled Directus flow (requires SMTP on server).
+ */
+export const triggerWeeklyFlow = async () => {
+  const DISTRIBUTION_LIST = [
+    "jphiri@bluecodeltd.com",
+    "bkapamulomo@bluecodeltd.com",
+    "robinsdev2@gmail.com",
+  ];
+
+  // Fetch all active users
+  const usersData = await directusRequest(
+    "/users?filter[status][_eq]=active&fields[]=id,email&limit=-1",
+  );
+  const allUsers: { id: string; email: string }[] = usersData?.data ?? [];
+
+  // Filter to distribution list members
+  const listEmails = new Set(DISTRIBUTION_LIST.map((e) => e.toLowerCase()));
+  const matched = allUsers.filter(
+    (u) => u.email && listEmails.has(u.email.toLowerCase()),
+  );
+
+  // Build subject with ordinal date (same format as the scheduled flow)
+  const now = new Date();
+  const day = now.getDate();
+  const suffixes = ["th", "st", "nd", "rd"];
+  const s =
+    day % 100 >= 11 && day % 100 <= 13
+      ? "th"
+      : suffixes[day % 10] || "th";
+  const month = now.toLocaleDateString("en-GB", { month: "long" });
+  const year = now.getFullYear();
+  const subject = `ECAP+ weekly data extracts - ${day}${s} ${month}, ${year}`;
+
+  const message =
+    "The weekly data extracts are ready for download. Go to Data Pipeline > Weekly Extracts to get the latest CSV files for your district.";
+
+  // Send in-app notifications
+  const results = await Promise.allSettled(
+    matched.map((u) =>
+      createNotification({
+        recipient: u.id,
+        subject,
+        message,
+        collection: "weekly_extracts",
+      }),
+    ),
+  );
+
+  const sent = results.filter((r) => r.status === "fulfilled").length;
+  return { sent, matched: matched.length, subject };
+};
+
 export const notifyAllUsers = async (subject: string, message: string) => {
   const users = await listUsers("active");
   const results = await Promise.allSettled(
