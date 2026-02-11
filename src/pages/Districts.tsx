@@ -29,6 +29,10 @@ import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
+import { downloadCsv } from "@/lib/exportUtils";
+import { toast } from "sonner";
+
+
 
 
 
@@ -49,11 +53,6 @@ const Districts = () => {
   const vcaCountQuery = useQuery({
     queryKey: ["kpi", "vcas", dashboardDistrict],
     queryFn: () => getTotalVcasCount(dashboardDistrict),
-  });
-
-  const mothersCountQuery = useQuery({
-    queryKey: ["kpi", "mothers", dashboardDistrict],
-    queryFn: () => getTotalMothersCount(dashboardDistrict),
   });
 
   // --- District List Discovery ---
@@ -103,7 +102,6 @@ const Districts = () => {
   const isSyncing =
     householdCountQuery.isFetching ||
     vcaCountQuery.isFetching ||
-    mothersCountQuery.isFetching ||
     householdsListQuery.isFetching ||
     districtQueries.some(q => q.isFetching);
 
@@ -117,7 +115,31 @@ const Districts = () => {
     return new Intl.NumberFormat("en-GB").format(num);
   };
 
-  const handleExportSummary = () => { /* ... existing export logic ... */ };
+  const handleExportSummary = () => {
+    try {
+      if (districtData.length === 0) {
+        toast.error("No data available to export");
+        return;
+      }
+
+      const headers = ["District", "Households", "VCAs"];
+      const rows = districtData.map((data: any) => [
+        data.district,
+        String(data.households || 0),
+        String(data.vcas || 0),
+      ]);
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `districts_summary_${dateStr}.csv`;
+
+      downloadCsv(headers, rows, filename);
+      toast.success("Summary exported successfully");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export summary");
+    }
+  };
+
 
 
   return (
@@ -146,16 +168,17 @@ const Districts = () => {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
         <KpiCard
           title="Households Screened"
           value={formatCount(householdCountQuery.data)}
           caption={dashboardDistrict === "All" ? "All households" : `${dashboardDistrict} households`}
           isLoading={householdCountQuery.isFetching}
           icon={<Home className="h-5 w-5" />}
-          iconBg="bg-rose-50"
-          iconText="text-rose-600"
-          borderAccent="border-l-4 border-l-rose-500"
+          iconBg="bg-emerald-50"
+          iconText="text-emerald-600"
+          borderAccent="border-l-4 border-l-emerald-500"
+          hoverable
         />
         <KpiCard
           title="Total VCAs Screened"
@@ -167,17 +190,7 @@ const Districts = () => {
           iconBg="bg-amber-50"
           iconText="text-amber-600"
           borderAccent="border-l-4 border-l-amber-500"
-        />
-        <KpiCard
-          title="Total Index Mothers Registered"
-          value={formatCount(mothersCountQuery.data)}
-          caption={dashboardDistrict === "All" ? "All index mothers" : `${dashboardDistrict} index mothers`}
-          isLoading={mothersCountQuery.isFetching}
-          delay={0.2}
-          icon={<Users className="h-5 w-5" />}
-          iconBg="bg-purple-50"
-          iconText="text-purple-600"
-          borderAccent="border-l-4 border-l-purple-500"
+          hoverable
         />
       </div>
 
@@ -270,10 +283,10 @@ const Districts = () => {
 // ... KpiCard component ...
 
 // Internal Component for KPI Cards
-const KpiCard = ({ title, value, caption, isLoading, delay = 0, icon, iconBg, iconText, borderAccent }: { title: string, value: string, caption: string, isLoading: boolean, delay?: number, icon?: React.ReactNode, iconBg?: string, iconText?: string, borderAccent?: string }) => {
+const KpiCard = ({ title, value, caption, isLoading, delay = 0, icon, iconBg, iconText, borderAccent, hoverable }: { title: string, value: string, caption: string, isLoading: boolean, delay?: number, icon?: React.ReactNode, iconBg?: string, iconText?: string, borderAccent?: string, hoverable?: boolean }) => {
   return (
     <div style={{ animationDelay: `${delay}s` }} className="h-full">
-      <GlowCard className={cn("flex flex-col justify-between py-6 px-6 h-full", borderAccent)}>
+      <GlowCard hoverable={hoverable} className={cn("flex flex-col justify-between py-6 px-6 h-full", borderAccent)}>
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h3 className="text-sm font-medium text-muted-foreground">

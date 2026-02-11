@@ -29,29 +29,8 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
   return "";
 };
 
-const escapeCsvField = (value: string): string => {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-};
+import { downloadCsv } from "@/lib/exportUtils";
 
-const downloadCsv = (headers: string[], rows: string[][], filename: string) => {
-  const csvContent =
-    "data:text/csv;charset=utf-8," +
-    [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => escapeCsvField(cell)).join(",")),
-    ].join("\n");
-
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
 
 type ExtractConfig = {
   key: string;
@@ -281,7 +260,10 @@ const WeeklyExtracts = () => {
         `${displayName} has published the weekly data extracts for ${district || "all districts"}. Go to Data Pipeline > Weekly Extracts to download the CSV files.`
       );
       setNotified(true);
-      toast.success(`Notification sent to ${result.sent} of ${result.total} users`);
+      toast.success(
+        `Sent ${result.sent} in-app notification(s) and ${result.emailsSent} email(s) to ${result.total} user(s)`
+      );
+
     } catch (error) {
       console.error("Error notifying team:", error);
       toast.error("Failed to send notifications. Please try again.");
@@ -295,7 +277,10 @@ const WeeklyExtracts = () => {
     try {
       const result = await triggerWeeklyFlow();
       setTriggered(true);
-      toast.success(`Sent ${result.sent} notification(s) to ${result.matched} distribution list member(s).`);
+      toast.success(
+        `Sent ${result.sent} in-app notification(s) and ${result.emailsSent} email(s) to ${result.matched} distribution list member(s).`
+      );
+
     } catch (error) {
       console.error("Error triggering flow:", error);
       toast.error("Failed to trigger flow. Please try again.");

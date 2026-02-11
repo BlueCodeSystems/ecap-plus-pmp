@@ -72,7 +72,8 @@ function buildExecCode(distributionList) {
   return `
 module.exports = async function (data) {
   var directusUrl =
-    data.$env.PUBLIC_URL || data.$env.DIRECTUS_URL || "${DIRECTUS_URL}";
+    (data.$env.PUBLIC_URL || data.$env.DIRECTUS_URL || "${DIRECTUS_URL}").replace(/\/$/, "");
+
   var token = data.$accountability && data.$accountability.token;
   if (!token) throw new Error("No accountability token.");
 
@@ -140,21 +141,89 @@ async function createFlow(token) {
 
   console.log("Creating Weekly Extract Notifications flow...\n");
 
-  // 1. Create Flow
+  // 1. Ensure Trigger Collection exists (hidden if created new, but usually weekly_extracts exists)
+  await fetch(`${DIRECTUS_URL}/collections`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      collection: "weekly_extracts",
+      meta: { icon: "bolt", note: "Used for weekly data extracts and triggering notifications" },
+    }),
+  }).catch(() => { });
+
+  // 1a. Ensure triggered_at field exists in weekly_extracts
+  await fetch(`${DIRECTUS_URL.replace(/\/$/, "")}/fields/weekly_extracts`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      field: "triggered_at",
+      type: "timestamp",
+      meta: { hidden: true, note: "Timestamp of manual trigger" }
+    }),
+  }).catch(() => { });
+
+
+  // 1b. Grant 'create' and 'read' permissions to all roles for weekly_extracts
+  const rolesRes = await fetch(`${DIRECTUS_URL}/roles`, { headers });
+  if (rolesRes.ok) {
+    const roles = (await rolesRes.json()).data;
+    const existingPermsRes = await fetch(`${DIRECTUS_URL}/permissions?filter[collection][_eq]=weekly_extracts`, { headers });
+    const existingPerms = existingPermsRes.ok ? (await existingPermsRes.json()).data : [];
+
+    for (const role of roles) {
+      if (role.name === "Administrator") continue;
+
+      const hasCreate = existingPerms.find(p => p.role === role.id && p.action === "create");
+      if (!hasCreate) {
+        await fetch(`${DIRECTUS_URL}/permissions`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            role: role.id,
+            collection: "weekly_extracts",
+            action: "create",
+            permissions: {},
+            validation: {}
+          })
+        }).catch(() => { });
+      }
+
+      const hasRead = existingPerms.find(p => p.role === role.id && p.action === "read");
+      if (!hasRead) {
+        await fetch(`${DIRECTUS_URL}/permissions`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            role: role.id,
+            collection: "weekly_extracts",
+            action: "read",
+            permissions: {},
+            validation: {}
+          })
+        }).catch(() => { });
+      }
+    }
+  }
+
+  // 2. Create Flow
   const flowRes = await fetch(`${DIRECTUS_URL}/flows`, {
     method: "POST",
     headers,
     body: JSON.stringify({
       name: "Weekly Extract Notifications",
       description:
-        "Every Monday at 08:00 — sends in-app notifications to distribution list " +
-        "members who are Directus users, and emails the full distribution list.",
+        "Triggered by creating a record in weekly_extracts. " +
+        "Sends in-app notifications and emails to the distribution list.",
       status: "active",
-      trigger: "schedule",
+      trigger: "action",
       accountability: "all",
-      options: { cron: "0 8 * * 1" },
+      options: {
+        collection: "weekly_extracts",
+        action: "create"
+      },
     }),
   });
+
 
   if (!flowRes.ok) {
     const err = await flowRes.json().catch(() => null);
