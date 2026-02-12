@@ -10,6 +10,7 @@ import {
   Users,
   UserCog,
   HeartPulse,
+  CircleHelp,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -71,6 +72,12 @@ const sections = [
     label: "Admin",
     items: [
       { title: "Users", url: "/users", icon: UserCog },
+    ],
+  },
+  {
+    label: "Help & Support",
+    items: [
+      { title: "Support Center", url: "/support", icon: CircleHelp },
     ],
   },
 ];
