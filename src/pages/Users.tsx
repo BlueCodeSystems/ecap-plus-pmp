@@ -166,9 +166,9 @@ const Users = () => {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50/50 text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="py-3 px-6 font-semibold">User Details</th>
-                  <th className="py-3 px-6 font-semibold">Role & Permissions</th>
-                  <th className="py-3 px-6 font-semibold">Status</th>
+                  <th className="py-3 px-6 font-semibold border-r border-slate-200">User Details</th>
+                  <th className="py-3 px-6 font-semibold border-r border-slate-200">Role & Permissions</th>
+                  <th className="py-3 px-6 font-semibold border-r border-slate-200">Status</th>
                   <th className="py-3 px-6 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -194,7 +194,7 @@ const Users = () => {
                 )}
                 {filteredUsers.map((user: DirectusUser) => (
                   <tr key={user.id} className="group transition-all hover:bg-slate-50/80">
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-6 border-r border-slate-200">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-900 group-hover:text-amber-600 transition-colors">
                           {[user.first_name, user.last_name].filter(Boolean).join(" ") || "Unnamed User"}
@@ -205,7 +205,7 @@ const Users = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-6 border-r border-slate-200">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 capitalize">
                           {typeof user.role === "string"
@@ -214,7 +214,7 @@ const Users = () => {
                         </Badge>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-6 border-r border-slate-200">
                       <Badge className={cn(
                         "capitalize shadow-none",
                         (user.status === "active" || !user.status) ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-amber-50 text-amber-700 border-amber-100"

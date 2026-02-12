@@ -152,7 +152,7 @@ const HouseholdProfile = () => {
         {/* Header Section */}
         <div className="relative overflow-hidden rounded-2xl shadow-lg">
           {/* Gradient top section */}
-          <div className="relative bg-gradient-to-r from-rose-600 via-pink-600 to-fuchsia-600 p-6 lg:p-8">
+          <div className="relative bg-gradient-to-r from-green-700 via-emerald-600 to-teal-600 p-6 lg:p-8">
             <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.05)_50%,transparent_100%)] bg-[length:200px_100%]" />

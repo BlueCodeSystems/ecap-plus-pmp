@@ -14,11 +14,10 @@ const Index = () => {
           <aside className="relative min-h-[320px] md:min-h-0">
             <RightImageSlider
               images={[
-                { src: "/pexels-uniqueerique-6572780.jpg", alt: "Program fieldwork photo" },
-                { src: "/pexels-uniqueerique-6572781.jpg", alt: "Community program photo" },
-                // { src: "/splash1.jpg", alt: " school lunch break" },
-                // { src: "/splash2.jpg", alt: "two kids smiling" },
-                // { src: "/splash3.jpg", alt: "community member" }
+                { src: "/pic-1.jpg", alt: "Program fieldwork photo" },
+                { src: "/pic-2.jpg", alt: "Community program photo" },
+                { src: "/pic-3.jpg", alt: "Community program photo" },
+                { src: "/pic-4.jpg", alt: "children getting medicine" }
               ]}
             />
             <div className="absolute bottom-10 left-10 right-10 text-white">

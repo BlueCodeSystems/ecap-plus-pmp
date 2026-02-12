@@ -26,7 +26,9 @@ const directusRequest = async (
   if (!token) {
     throw new Error("Not authenticated.");
   }
-  const response = await fetch(`${requireDirectusUrl()}${path}`, {
+  const baseUrl = requireDirectusUrl().replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}${path}`, {
+
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -166,6 +168,23 @@ export const createNotification = async (payload: {
   return data?.data;
 };
 
+/**
+ * Sends an email via the Directus /mail endpoint.
+ */
+export const sendMail = async (payload: {
+  to: string | string[];
+  subject: string;
+  text?: string;
+  html?: string;
+}) => {
+  const data = await directusRequest("/mail", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return data;
+};
+
+
 export const clearAllNotifications = async () => {
   const notifications = await getNotifications();
   await Promise.allSettled(
@@ -175,63 +194,34 @@ export const clearAllNotifications = async () => {
 };
 
 /**
- * Manually triggers the same logic as the Monday scheduled flow:
- * sends in-app notifications to distribution list members who are Directus users.
- * Emails are handled by the scheduled Directus flow (requires SMTP on server).
+ * Manually triggers the Weekly Extract Notifications flow on the server.
+ * This flow sends in-app notifications and emails to the full distribution list.
+ * We trigger it by creating a record in the 'weekly_extracts' collection.
  */
 export const triggerWeeklyFlow = async () => {
-  const DISTRIBUTION_LIST = [
-    "jphiri@bluecodeltd.com",
-    "bkapamulomo@bluecodeltd.com",
-    "robinsdev2@gmail.com",
-  ];
+  try {
+    // We create a minimal record to trigger the Flow
+    // Using an empty object to avoid "field not found" errors if triggered_at doesn't exist
+    await directusRequest("/items/weekly_extracts", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
 
-  // Fetch all active users
-  const usersData = await directusRequest(
-    "/users?filter[status][_eq]=active&fields[]=id,email&limit=-1",
-  );
-  const allUsers: { id: string; email: string }[] = usersData?.data ?? [];
-
-  // Filter to distribution list members
-  const listEmails = new Set(DISTRIBUTION_LIST.map((e) => e.toLowerCase()));
-  const matched = allUsers.filter(
-    (u) => u.email && listEmails.has(u.email.toLowerCase()),
-  );
-
-  // Build subject with ordinal date (same format as the scheduled flow)
-  const now = new Date();
-  const day = now.getDate();
-  const suffixes = ["th", "st", "nd", "rd"];
-  const s =
-    day % 100 >= 11 && day % 100 <= 13
-      ? "th"
-      : suffixes[day % 10] || "th";
-  const month = now.toLocaleDateString("en-GB", { month: "long" });
-  const year = now.getFullYear();
-  const subject = `ECAP+ weekly data extracts - ${day}${s} ${month}, ${year}`;
-
-  const message =
-    "The weekly data extracts are ready for download. Go to Data Pipeline > Weekly Extracts to get the latest CSV files for your district.";
-
-  // Send in-app notifications
-  const results = await Promise.allSettled(
-    matched.map((u) =>
-      createNotification({
-        recipient: u.id,
-        subject,
-        message,
-        collection: "weekly_extracts",
-      }),
-    ),
-  );
-
-  const sent = results.filter((r) => r.status === "fulfilled").length;
-  return { sent, matched: matched.length, subject };
+    return {
+      sent: "Initiated",
+      emailsSent: "Initiated",
+      matched: "Server-side",
+      subject: "Weekly Extracts"
+    };
+  } catch (error) {
+    console.error("Error triggering weekly flow:", error);
+    throw error;
+  }
 };
 
 export const notifyAllUsers = async (subject: string, message: string) => {
   const users = await listUsers("active");
-  const results = await Promise.allSettled(
+  const notificationResults = await Promise.allSettled(
     users.map((u: DirectusUser) =>
       createNotification({
         recipient: u.id,
@@ -241,7 +231,26 @@ export const notifyAllUsers = async (subject: string, message: string) => {
       })
     )
   );
-  const sent = results.filter((r) => r.status === "fulfilled").length;
-  return { sent, total: users.length };
+
+  // Send emails to all active users (best effort, requires /mail permissions)
+  const emailResults = await Promise.allSettled(
+    users.map(async (u: DirectusUser) => {
+      try {
+        return await sendMail({
+          to: u.email,
+          subject,
+          text: message,
+        });
+      } catch (e: any) {
+        console.warn(`Failed to send email to ${u.email}:`, e.message);
+        throw e;
+      }
+    })
+  );
+
+  const sent = notificationResults.filter((r) => r.status === "fulfilled").length;
+  const emailsSent = emailResults.filter((r) => r.status === "fulfilled").length;
+
+  return { sent, emailsSent, total: users.length };
 };
 
