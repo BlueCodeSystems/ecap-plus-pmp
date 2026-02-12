@@ -30,7 +30,7 @@ const LoginCard = () => {
         <img
           src="/ecap-logo.png"
           alt="ECAP +logo"
-          className="w-auto"
+          className="w-auto max-h-24"
         />
         <Title className="mt-4 text-center">ECAP + Program Management Platform</Title>
         <h1 className="mt-2 text-3xl font-semibold text-slate-900">Welcome back</h1>

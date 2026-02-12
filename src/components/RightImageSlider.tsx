@@ -41,6 +41,12 @@ const RightImageSlider = ({ images, className, intervalMs = 7000 }: RightImageSl
         />
       ))}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/20 to-transparent" />
+      <span
+        className="absolute bottom-2 left-3 z-10 text-[10px] leading-tight text-white/50"
+        style={{ maxWidth: "60%" }}
+      >
+        Photos free to use · Pexels · Lagos Food Bank Initiative, Curtis Loy
+      </span>
       {images.length > 1 && (
         <div className="absolute right-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2">
           {images.map((image, index) => (
