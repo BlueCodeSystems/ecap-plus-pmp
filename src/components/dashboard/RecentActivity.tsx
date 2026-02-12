@@ -203,11 +203,10 @@ const RecentActivity = () => {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                activeTab === tab.key
-                  ? "bg-primary/10 text-primary"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-              }`}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${activeTab === tab.key
+                ? "bg-primary/10 text-primary"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                }`}
             >
               {tab.label}
             </button>

@@ -14,8 +14,8 @@ const GlowHeader = ({ children, className }: GlowHeaderProps) => {
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-300/70 to-transparent" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-rose-100/40 via-transparent to-pink-100/40 opacity-70" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/70 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-100/40 via-transparent to-green-100/40 opacity-70" />
       <div className="relative z-10 flex w-full items-center gap-4">{children}</div>
     </header>
   );

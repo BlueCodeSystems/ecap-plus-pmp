@@ -48,7 +48,7 @@ const MONTHS = [
 const DataQualityChart = () => {
   const { user } = useAuth();
   const district = user?.location ?? "";
-  const [selectedYear, setSelectedYear] = useState<string>("2024");
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedDataType, setSelectedDataType] = useState<string>("all");
 

@@ -23,8 +23,8 @@ const EmptyState = ({
 }: EmptyStateProps) => {
   return (
     <div className={cn("flex flex-col items-center justify-center py-16 px-4 text-center", className)}>
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50">
-        <span className="text-rose-400">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+        <span className="text-emerald-500">
           {icon || <InboxIcon className="h-7 w-7" />}
         </span>
       </div>

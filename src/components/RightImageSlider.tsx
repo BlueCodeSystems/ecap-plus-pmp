@@ -41,6 +41,15 @@ const RightImageSlider = ({ images, className, intervalMs = 7000 }: RightImageSl
         />
       ))}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/20 to-transparent" />
+      <a
+        href="https://www.pexels.com/photo/cheerful-black-children-standing-on-sandy-ground-5196015/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute bottom-2 left-10 z-10 text-[10px] leading-tight text-white/50 hover:text-white/70 transition-colors"
+        style={{ maxWidth: "60%" }}
+      >
+        Photos free to use · Pexels · Lagos Food Bank Initiative, Curtis Loy
+      </a>
       {images.length > 1 && (
         <div className="absolute right-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2">
           {images.map((image, index) => (

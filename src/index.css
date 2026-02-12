@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 220 15% 20%;
 
-    --primary: 340 82% 52%;
+    --primary: 120 90% 24%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
@@ -26,7 +26,7 @@ All colors MUST be HSL.
     --muted: 220 14% 96%;
     --muted-foreground: 220 10% 46%;
 
-    --accent: 340 82% 52%;
+    --accent: 120 90% 24%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -34,25 +34,25 @@ All colors MUST be HSL.
 
     --border: 220 14% 90%;
     --input: 220 14% 90%;
-    --ring: 340 82% 52%;
+    --ring: 120 90% 24%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 10% 40%;
-    --sidebar-primary: 340 82% 52%;
+    --sidebar-primary: 120 90% 24%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
     --sidebar-accent-foreground: 220 15% 15%;
     --sidebar-border: 220 14% 92%;
-    --sidebar-ring: 340 82% 52%;
+    --sidebar-ring: 120 90% 24%;
 
     /* Custom ECAP tokens */
     --overlay: 220 20% 10%;
     --overlay-foreground: 0 0% 100%;
     --input-icon: 220 10% 60%;
 
-    --chart-1: 340 82% 52%;
+    --chart-1: 120 90% 24%;
     --chart-2: 217 91% 60%;
     --chart-3: 142 71% 45%;
     --chart-4: 47 95% 50%;
@@ -69,7 +69,7 @@ All colors MUST be HSL.
     --popover: 220 20% 14%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 340 82% 52%;
+    --primary: 120 90% 34%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 20% 18%;
@@ -78,7 +78,7 @@ All colors MUST be HSL.
     --muted: 220 20% 18%;
     --muted-foreground: 220 10% 65%;
 
-    --accent: 340 82% 52%;
+    --accent: 120 90% 34%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 30%;
@@ -86,27 +86,28 @@ All colors MUST be HSL.
 
     --border: 220 20% 22%;
     --input: 220 20% 22%;
-    --ring: 340 82% 52%;
+    --ring: 120 90% 34%;
 
     --sidebar-background: 220 20% 10%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 340 82% 52%;
+    --sidebar-primary: 120 90% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 20% 18%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 220 20% 22%;
-    --sidebar-ring: 340 82% 52%;
+    --sidebar-ring: 120 90% 34%;
 
     --overlay: 220 20% 10%;
     --overlay-foreground: 0 0% 100%;
     --input-icon: 220 10% 60%;
 
-    --chart-1: 340 82% 52%;
+    --chart-1: 120 90% 34%;
     --chart-2: 217 91% 65%;
     --chart-3: 142 71% 55%;
     --chart-4: 47 95% 65%;
     --chart-5: 262 83% 70%;
   }
+
 }
 
 @layer base {

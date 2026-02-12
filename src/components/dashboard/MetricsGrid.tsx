@@ -54,7 +54,7 @@ const MetricCard = ({
   };
 
   return (
-    <GlowCard className={colorClass?.borderAccent}>
+    <GlowCard hoverable className={colorClass?.borderAccent}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -146,9 +146,9 @@ const MetricsGrid = () => {
       variant: "default" as const,
       isLoading: totalVcasQuery.isLoading,
       colorClass: {
-        iconBg: "bg-rose-50",
-        iconText: "text-rose-600",
-        borderAccent: "border-l-4 border-l-rose-500",
+        iconBg: "bg-emerald-50",
+        iconText: "text-emerald-600",
+        borderAccent: "border-l-4 border-l-emerald-500",
       },
     },
     {
