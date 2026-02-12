@@ -2,14 +2,13 @@ import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 
-type GlowCardProps = {
+type GlowCardProps = React.HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
-  className?: string;
   wrapperClassName?: string;
   hoverable?: boolean;
 };
 
-const GlowCard = ({ children, className, wrapperClassName, hoverable = false }: GlowCardProps) => {
+const GlowCard = ({ children, className, wrapperClassName, hoverable = false, ...props }: GlowCardProps) => {
   return (
     <div className={cn("group relative", wrapperClassName)}>
       <div className={cn(
@@ -22,6 +21,7 @@ const GlowCard = ({ children, className, wrapperClassName, hoverable = false }: 
           hoverable && "group-hover:-translate-y-0.5 group-hover:scale-[1.02]",
           className,
         )}
+        {...props}
       >
 
 

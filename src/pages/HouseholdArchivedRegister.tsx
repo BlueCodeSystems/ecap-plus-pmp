@@ -37,6 +37,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_DISTRICT, getHouseholdArchivedRegister } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
 
 
 const ITEMS_PER_PAGE = 50;
@@ -268,21 +269,27 @@ const HouseholdArchivedRegister = () => {
               <h3 className="text-sm font-semibold text-slate-700">Filter by Sub Population</h3>
               <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
                 {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-                  <div key={key} className="flex flex-col items-start gap-1">
-                    <span className="text-[10px] text-slate-500 font-medium truncate w-full">{label}</span>
-                    <Select
-                      value={subPopulationFilters[key]}
-                      onValueChange={(val) => handleFilterChange(key, val)}
-                    >
-                      <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                        <SelectItem value="no">No</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div key={key} className="flex flex-col items-start gap-1 pb-2">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider truncate w-full mb-1">{label}</span>
+                    <div className="flex flex-col w-full gap-1">
+                      {["all", "yes", "no"].map((option) => {
+                        const isActive = subPopulationFilters[key] === option;
+                        return (
+                          <div
+                            key={option}
+                            onClick={() => handleFilterChange(key, option)}
+                            className={cn(
+                              "w-full px-2 py-1.5 text-[10px] uppercase tracking-wide font-medium text-center rounded-md cursor-pointer transition-all duration-200 border",
+                              isActive
+                                ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                                : "bg-white text-slate-600 border-slate-100 hover:bg-slate-50 hover:border-slate-200"
+                            )}
+                          >
+                            {option}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
