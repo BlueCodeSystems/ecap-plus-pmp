@@ -1,4 +1,4 @@
-import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap } from "lucide-react";
+import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap, CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -109,6 +109,17 @@ const DashboardHeader = ({
         </div>
 
         <div className="flex w-full items-center justify-end gap-2 sm:ml-0 sm:w-auto md:ml-auto">
+          {/* Help & Support */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden sm:inline-flex relative transition-transform duration-300 hover:-translate-y-0.5 text-slate-500 hover:text-primary"
+            onClick={() => navigate("/support")}
+            title="Support Center"
+          >
+            <CircleHelp className="h-5 w-5" />
+          </Button>
+
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

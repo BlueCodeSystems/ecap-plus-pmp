@@ -23,8 +23,11 @@ import {
   Flag,
   Archive,
   UserCog,
-  UserCircle2
+  UserCircle2,
+  Book,
+  HelpCircle
 } from "lucide-react";
+import { quickHelpLinks, faqs } from "@/data/supportData";
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home, category: "Navigation" },
@@ -169,6 +172,41 @@ export function GlobalSearch() {
               })}
             </CommandGroup>
           )}
+
+          <CommandSeparator />
+
+          <CommandGroup heading="Help & Documentation">
+            {quickHelpLinks.map((item) => (
+              <CommandItem
+                key={item.title}
+                onSelect={() => runCommand(() => navigate("/support-center"))}
+                className="flex items-center gap-3 px-4 py-3"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
+                  <Book className="h-4 w-4 text-indigo-600" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-slate-900">{item.title}</span>
+                  <span className="text-[10px] text-slate-500">Quick Guide • {item.time}</span>
+                </div>
+              </CommandItem>
+            ))}
+            {faqs.map((faq) => (
+              <CommandItem
+                key={faq.question}
+                onSelect={() => runCommand(() => navigate("/support-center"))}
+                className="flex items-center gap-3 px-4 py-3"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+                  <HelpCircle className="h-4 w-4 text-amber-600" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-slate-900">{faq.question}</span>
+                  <span className="text-[10px] text-slate-500">FAQ</span>
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
         </CommandList>
       </CommandDialog>
     </>

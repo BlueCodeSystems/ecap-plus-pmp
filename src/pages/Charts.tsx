@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 import { Button } from "@/components/ui/button";
 import { Info } from "lucide-react";
 
@@ -14,15 +14,7 @@ const Charts = () => {
       />
 
       <div className="space-y-6">
-        <Alert className="bg-blue-50 border-blue-200">
-          <Info className="h-4 w-4 text-blue-600" />
-          <AlertTitle className="text-blue-800">Notice</AlertTitle>
-          <AlertDescription className="text-blue-700">
-            Some features, such as filtering and interaction with charts, depend on
-            your permissions and may not be filtered based on user or province
-            location. Contact admin or support for access.
-          </AlertDescription>
-        </Alert>
+
 
         <div className="rounded-lg border border-slate-200 bg-white overflow-hidden shadow-sm min-h-[500px] flex flex-col relative">
           {/* 
