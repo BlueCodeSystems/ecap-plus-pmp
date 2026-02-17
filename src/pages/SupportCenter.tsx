@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon } from "lucide-react";
+import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,13 @@ import { VoiceRecorder } from "@/components/chat/VoiceRecorder";
 import { FileAttachment } from "@/components/chat/FileAttachment";
 import { EmojiPicker } from "@/components/chat/EmojiPicker";
 import { ProfilePictureModal } from "@/components/chat/ProfilePictureModal";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const SupportCenter = () => {
   const { user } = useAuth();
@@ -28,6 +35,7 @@ const SupportCenter = () => {
   const [showFileAttachment, setShowFileAttachment] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalUserId, setProfileModalUserId] = useState<string | null>(null);
+  const [selectedPriority, setSelectedPriority] = useState<string>("Normal");
   const scrollRef = useRef<HTMLDivElement>(null);
   const sendSoundRef = useRef<HTMLAudioElement>(null);
   const receiveSoundRef = useRef<HTMLAudioElement>(null);
@@ -50,11 +58,12 @@ const SupportCenter = () => {
 
   // Send message mutation
   const sendMutation = useMutation({
-    mutationFn: async ({ recipientId, msg, fileId }: { recipientId: string; msg: string; fileId?: string }) => {
-      return sendChatMessage(recipientId, msg, "Normal", fileId);
+    mutationFn: async ({ recipientId, msg, fileId, priority }: { recipientId: string; msg: string; fileId?: string; priority?: string }) => {
+      return sendChatMessage(recipientId, msg, priority || "Normal", fileId);
     },
     onSuccess: () => {
       setMessage("");
+      setSelectedPriority("Normal");
       queryClient.invalidateQueries({ queryKey: ["chat-messages"] });
       // Play send sound
       if (sendSoundRef.current) {
@@ -214,7 +223,7 @@ const SupportCenter = () => {
 
   const handleSendMessage = () => {
     if (!selectedUserId || !message.trim()) return;
-    sendMutation.mutate({ recipientId: selectedUserId, msg: message });
+    sendMutation.mutate({ recipientId: selectedUserId, msg: message, priority: selectedPriority });
   };
 
   const handleVoiceRecording = async (audioBlob: Blob) => {
@@ -222,7 +231,7 @@ const SupportCenter = () => {
     try {
       const file = new File([audioBlob], `voice-${Date.now()}.webm`, { type: "audio/webm" });
       const uploaded = await uploadFile(file);
-      sendMutation.mutate({ recipientId: selectedUserId, msg: "🎤 Voice message", fileId: uploaded.id });
+      sendMutation.mutate({ recipientId: selectedUserId, msg: "🎤 Voice message", fileId: uploaded.id, priority: selectedPriority });
       setShowVoiceRecorder(false);
     } catch (error) {
       toast.error("Failed to send voice message");
@@ -234,7 +243,7 @@ const SupportCenter = () => {
     try {
       const uploaded = await uploadFile(file);
       const msg = file.type.startsWith("image/") ? "📷 Image" : `📎 ${file.name}`;
-      sendMutation.mutate({ recipientId: selectedUserId, msg, fileId: uploaded.id });
+      sendMutation.mutate({ recipientId: selectedUserId, msg, fileId: uploaded.id, priority: selectedPriority });
       setShowFileAttachment(false);
     } catch (error) {
       toast.error("Failed to send file");
@@ -290,7 +299,23 @@ const SupportCenter = () => {
       }
     }
 
-    return <p className="whitespace-pre-wrap break-words">{msg.message}</p>;
+    return (
+      <div className="space-y-1">
+        {msg.subject && msg.subject !== "Normal" && (
+          <Badge
+            variant="outline"
+            className={`text-[9px] h-4 uppercase font-black mb-1 ${msg.subject === "Critical"
+              ? "border-red-500 text-red-600 bg-red-50"
+              : "border-amber-500 text-amber-600 bg-amber-50"
+              }`}
+          >
+            {msg.subject === "Critical" && <AlertTriangle className="h-2 w-2 mr-1" />}
+            {msg.subject}
+          </Badge>
+        )}
+        <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+      </div>
+    );
   };
 
   return (
@@ -451,6 +476,17 @@ const SupportCenter = () => {
                     onCancel={() => setShowFileAttachment(false)}
                   />
                   <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                  <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                    <SelectTrigger className={`w-[110px] h-9 text-xs font-bold border-slate-200 ${selectedPriority === "Critical" ? "text-red-500 bg-red-50 border-red-200" : selectedPriority === "Urgent" ? "text-amber-500 bg-amber-50 border-amber-200" : "text-slate-500"
+                      }`}>
+                      <SelectValue placeholder="Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Normal" className="text-xs">Normal</SelectItem>
+                      <SelectItem value="Urgent" className="text-xs text-amber-600 font-bold">Urgent</SelectItem>
+                      <SelectItem value="Critical" className="text-xs text-red-600 font-bold">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Input
                     placeholder="Type a message..."
                     value={message}
