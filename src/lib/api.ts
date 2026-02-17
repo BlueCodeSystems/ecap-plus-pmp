@@ -112,8 +112,20 @@ const getListValue = (data: unknown): Array<Record<string, unknown>> => {
     return [];
   }
 
+  console.log("[API Debug] getListValue input:", data);
   const record = data as Record<string, unknown>;
-  const candidates = [record.data, record.results, record.records];
+  const candidates = [
+    record.data,
+    record.results,
+    record.records,
+    record.referrals,
+    record.referral,
+    record.caregiver_referrals,
+    record.caregiver_referral,
+    record.services,
+    record.caseplans,
+    record.members
+  ];
 
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) {
@@ -230,6 +242,11 @@ export const getChildrenByDistrict = async (district: string) => {
   return getListValue(data);
 };
 
+export const getVcaProfileById = async (uniqueId: string) => {
+  const data = await dqaGet(`/child/vca-profile/${encodeURIComponent(uniqueId)}`);
+  return data; // Individual object, not a list
+};
+
 export const getChildrenArchivedRegister = async (
   district: string,
   params?: { reason?: string }
@@ -314,8 +331,13 @@ export const getCaregiverCasePlansByHousehold = async (hhId: string) => {
   return getListValue(data);
 };
 
-export const getHouseholdReferralsById = async (hhId: string) => {
-  const data = await dqaGet(`/household/all-referrals/${encodeURIComponent(hhId)}`);
+export const getHouseholdReferralsById = async (household_id: string) => {
+  const data = await dqaGet(`/household/caregiver-referrals/${encodeURIComponent(household_id)}`);
+  return getListValue(data);
+};
+
+export const getVcaReferralsById = async (vcaId: string) => {
+  const data = await dqaGet(`/child/vca-referrals/${encodeURIComponent(vcaId)}`);
   return getListValue(data);
 };
 

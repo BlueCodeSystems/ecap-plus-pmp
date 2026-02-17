@@ -427,7 +427,7 @@ const VcaRegister = () => {
                             size="sm"
                             variant="outline"
                             className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs"
-                            onClick={() => navigate(`/profile/vca-profile/${encodeURIComponent(String(id))}`)}
+                            onClick={() => navigate(`/profile/vca-details`, { state: { id: String(id) } })}
                           >
                             View
                           </Button>

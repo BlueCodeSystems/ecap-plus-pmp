@@ -172,7 +172,7 @@ const CaregiverServices = () => {
                   const record = service as Record<string, unknown>;
                   const hhId = String(pickValue(record, ["household_id", "householdId", "hh_id", "unique_id", "id"]));
                   return (
-                    <TableRow key={`${index}-${String(record.id ?? "service")}`} className="cursor-pointer hover:bg-slate-50" onClick={() => hhId !== "N/A" && navigate(`/profile/household-profile/${encodeURIComponent(hhId)}`)}>
+                    <TableRow key={`${index}-${String(record.id ?? "service")}`} className="cursor-pointer hover:bg-slate-50" onClick={() => hhId !== "N/A" && navigate(`/profile/household-details`, { state: { id: hhId } })}>
                       <TableCell className="font-medium align-top hidden sm:table-cell">
                         <span className="text-xs">
                           {hhId}

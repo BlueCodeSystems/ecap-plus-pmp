@@ -22,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ConfirmDialog from "@/components/dashboard/ConfirmDialog";
+import { useAuth } from "@/context/AuthContext";
 
 const Users = () => {
   const queryClient = useQueryClient();
@@ -82,8 +83,49 @@ const Users = () => {
     },
   });
 
+  const { user: currentUser } = useAuth();
+
   const filteredUsers = useMemo(() => {
     return (usersQuery.data ?? []).filter((user: DirectusUser) => {
+      // Visibility Logic
+      if (currentUser) {
+        // Resolve current user's role name
+        let myRoleName = "User";
+        if (typeof currentUser.role === "string") {
+          myRoleName = rolesById.get(currentUser.role) || "User";
+        } else if (currentUser.role?.name) {
+          myRoleName = currentUser.role.name;
+        }
+
+        // Get target user's role name
+        let targetRoleName = "User";
+        if (typeof user.role === "string") {
+          targetRoleName = rolesById.get(user.role) || "User";
+        } else if (user.role?.name) {
+          targetRoleName = user.role.name;
+        }
+
+        const isMyRoleSupport = myRoleName.toLowerCase().includes("support"); // ECAP+ Support or ECAP II Support
+        const isTargetAdmin = targetRoleName === "Administrator"; // Directus Admin
+        const isTargetEcapII = targetRoleName.toLowerCase().includes("ecap ii") || targetRoleName.toLowerCase().includes("ecapii");
+
+        // Universal Rule: Standard Users & Support cannot see Directus Admins
+        if (myRoleName !== "Administrator" && isTargetAdmin) return false;
+
+        // Rule 1: ECAP+ Users (Standard)
+        // Can NOT see ECAP II Support
+        // (Directus Admin already hidden above)
+        if (!isMyRoleSupport && myRoleName !== "Administrator") {
+          if (isTargetEcapII) return false;
+        }
+
+        // Rule 2: Support Users (ECAP+ Support)
+        // Can see everyone (implied by skipping the above block if isMyRoleSupport)
+
+        // Rule 3: Directus Admin
+        // Can see everyone (implied by skipping if myRoleName === "Administrator")
+      }
+
       const statusMatch = activeTab === "active"
         ? user.status === "active" || !user.status
         : user.status === "suspended";
@@ -97,7 +139,7 @@ const Users = () => {
         user.email.toLowerCase().includes(searchLower)
       );
     });
-  }, [usersQuery.data, searchQuery, activeTab]);
+  }, [usersQuery.data, searchQuery, activeTab, currentUser, rolesById]);
 
   const activeCount = (usersQuery.data ?? []).filter(u => u.status === "active" || !u.status).length;
   const trashCount = (usersQuery.data ?? []).filter(u => u.status === "suspended").length;
@@ -136,7 +178,7 @@ const Users = () => {
               Active Users
             </TabsTrigger>
             <TabsTrigger value="trash" className="px-6 data-[state=active]:bg-white data-[state=active]:text-slate-900">
-              Recycle Bin
+              Archived
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -168,21 +210,20 @@ const Users = () => {
                 <tr>
                   <th className="py-3 px-6 font-semibold border-r border-slate-200">User Details</th>
                   <th className="py-3 px-6 font-semibold border-r border-slate-200">Role & Permissions</th>
-                  <th className="py-3 px-6 font-semibold border-r border-slate-200">Status</th>
                   <th className="py-3 px-6 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/50">
                 {usersQuery.isLoading && (
                   <tr>
-                    <td className="p-0" colSpan={4}>
-                      <TableSkeleton rows={5} columns={4} />
+                    <td className="p-0" colSpan={3}>
+                      <TableSkeleton rows={5} columns={3} />
                     </td>
                   </tr>
                 )}
                 {!usersQuery.isLoading && filteredUsers.length === 0 && (
                   <tr>
-                    <td className="py-12 text-center text-slate-500" colSpan={4}>
+                    <td className="py-12 text-center text-slate-500" colSpan={3}>
                       <div className="flex flex-col items-center justify-center gap-2">
                         <UserX className="h-8 w-8 text-slate-300" />
                         <p className="text-slate-500 font-medium">
@@ -213,14 +254,6 @@ const Users = () => {
                             : user.role?.name ?? "No Role"}
                         </Badge>
                       </div>
-                    </td>
-                    <td className="py-4 px-6 border-r border-slate-200">
-                      <Badge className={cn(
-                        "capitalize shadow-none",
-                        (user.status === "active" || !user.status) ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-amber-50 text-amber-700 border-amber-100"
-                      )}>
-                        {user.status ?? "active"}
-                      </Badge>
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
