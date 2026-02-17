@@ -165,7 +165,7 @@ const App = () => (
               }
             />
             <Route
-              path="/profile/household-profile/:id"
+              path="/profile/household-details"
               element={
                 <ProtectedRoute>
                   <HouseholdProfile />
@@ -173,7 +173,7 @@ const App = () => (
               }
             />
             <Route
-              path="/profile/vca-profile/:id"
+              path="/profile/vca-details"
               element={
                 <ProtectedRoute>
                   <VcaProfile />

@@ -26,7 +26,7 @@ const Profile = () => {
     <DashboardLayout subtitle="Profile">
       <PageIntro
         eyebrow="Profile"
-        title="Keep your ECAP + identity ready for field work."
+        title="Keep your ECAP+ identity ready for field work."
         description="Update account details, verify access, and see how your role connects to program delivery."
         actions={<Badge className="bg-emerald-100 text-emerald-700">Directus Account</Badge>}
       />

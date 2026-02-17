@@ -322,7 +322,7 @@ const VcaArchivedRegister = () => {
       <PageIntro
         eyebrow="Register"
         title="VCA Archived Register"
-        description="Reference closed or graduated VCAs while keeping current registers focused."
+        description=""
         actions={
           <Button variant="outline" className="border-slate-200" onClick={exportToCSV}>
             Export to CSV
@@ -498,7 +498,7 @@ const VcaArchivedRegister = () => {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs border-slate-200"
-                          onClick={() => navigate(`/profile/vca-profile/${encodeURIComponent(String(id))}`)}
+                          onClick={() => navigate(`/profile/vca-details`, { state: { id: String(id) } })}
                         >
                           View
                         </Button>

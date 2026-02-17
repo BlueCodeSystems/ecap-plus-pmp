@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getHouseholdsByDistrict, getHouseholdArchivedRegister, DEFAULT_DISTRICT, getCaregiverServicesByHousehold, getCaregiverReferralsByMonth, getFlaggedRecords, getChildrenByDistrict, getCaregiverCasePlansByDistrict, getCaregiverCasePlansByHousehold, getHouseholdReferralsById, getHouseholdMembers } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -26,9 +26,31 @@ const subPopulationFilterLabels: Record<string, string> = {
   abym: "ABYM",
 };
 
+const safeParseDate = (dateStr: any) => {
+  if (!dateStr) return 0;
+  const str = String(dateStr);
+  const dmY = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmY) {
+    return new Date(parseInt(dmY[3]), parseInt(dmY[2]) - 1, parseInt(dmY[1])).getTime();
+  }
+  const parsed = Date.parse(str);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 const HouseholdProfile = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Retrieve ID from location state or sessionStorage fallback
+  const id = useMemo(() => {
+    const stateId = location.state?.id;
+    if (stateId) {
+      sessionStorage.setItem('ecap_last_household_id', stateId);
+      return stateId;
+    }
+    return sessionStorage.getItem('ecap_last_household_id');
+  }, [location.state?.id]);
+
   const { user } = useAuth();
   const district = user?.location ?? DEFAULT_DISTRICT;
 
@@ -37,6 +59,8 @@ const HouseholdProfile = () => {
     queryFn: () => getHouseholdsByDistrict(district ?? ""),
     enabled: Boolean(district),
   });
+
+  console.log("all housegolds:", households)
 
   const { data: archivedHouseholds, isLoading: isLoadingArchived } = useQuery({
     queryKey: ["households", "archived", "district", district],
@@ -56,11 +80,7 @@ const HouseholdProfile = () => {
     enabled: Boolean(id),
   });
 
-  const { data: householdReferrals = [], isLoading: isLoadingReferrals } = useQuery({
-    queryKey: ["caregiver-referrals", "household", id],
-    queryFn: () => getHouseholdReferralsById(id ?? ""),
-    enabled: Boolean(id),
-  });
+
 
   const { data: vcas } = useQuery({
     queryKey: ["vcas", "district", district],
@@ -96,20 +116,33 @@ const HouseholdProfile = () => {
 
   const householdServices = useMemo(() => {
     if (!allServices || !id) return [];
-    return allServices.filter((s: any) => {
-      const hhId = id.toLowerCase();
-      // Try to match household ID in service record
+    const hhId = String(household?.household_id || id).toLowerCase();
+    const filtered = allServices.filter((s: any) => {
       return String(s.household_id || s.householdId || s.hh_id || "").toLowerCase() === hhId;
     });
-  }, [allServices, id]);
+
+    return filtered.sort((a: any, b: any) => {
+      const dateA = safeParseDate(a.service_date || a.visit_date || a.date);
+      const dateB = safeParseDate(b.service_date || b.visit_date || b.date);
+      return dateB - dateA;
+    });
+  }, [allServices, id, household?.household_id]);
+
+  const sortedCasePlans = useMemo(() => {
+    return [...householdCasePlans].sort((a: any, b: any) => {
+      const dateA = safeParseDate(a.case_plan_date || a.date_of_caseplan || a.date);
+      const dateB = safeParseDate(b.case_plan_date || b.date_of_caseplan || b.date);
+      return dateB - dateA;
+    });
+  }, [householdCasePlans]);
 
   const householdFlags = useMemo(() => {
     if (!flaggedRecords || !id) return [];
+    const hhId = String(household?.household_id || id).toLowerCase();
     return (flaggedRecords || []).filter((f: any) => {
-      const hhId = id.toLowerCase();
       return String(f.household_id || f.hh_id || "").toLowerCase() === hhId;
     });
-  }, [flaggedRecords, id]);
+  }, [flaggedRecords, id, household?.household_id]);
 
   const householdVcas = useMemo(() => {
     if (!vcas || !id) return [];
@@ -118,6 +151,37 @@ const HouseholdProfile = () => {
       return String(v.household_code || v.household_id || "").toLowerCase() === hhId;
     });
   }, [vcas, id]);
+
+  const { data: allReferrals = [], isLoading: isLoadingReferrals } = useQuery({
+    queryKey: ["caregiver-referrals", "district", district],
+    queryFn: () => getCaregiverReferralsByMonth(district ?? ""),
+    enabled: Boolean(district),
+  });
+
+  const sortedReferrals = useMemo(() => {
+    console.log("[Referrals Debug] All Referrals count:", allReferrals.length);
+    if (allReferrals.length > 0) {
+      console.log("[Referrals Debug] Sample Referral Item:", allReferrals[0]);
+      console.log("[Referrals Debug] Sample Referral Keys:", Object.keys(allReferrals[0]));
+    }
+    console.log("[Referrals Debug] Current Profile ID:", id);
+    console.log("[Referrals Debug] Household Data ID:", household?.household_id);
+
+    const hhId = String(household?.household_id || id).toLowerCase();
+    const filtered = allReferrals.filter((r: any) => {
+      // Log matching attempt for first 5 items
+      const rId = String(r.household_id || r.householdId || r.hh_id || r.household_code || r.unique_id || r.id || "").toLowerCase();
+      return rId === hhId;
+    });
+
+    console.log("[Referrals Debug] Filtered Referrals for", hhId, ":", filtered);
+
+    return [...filtered].sort((a: any, b: any) => {
+      const dateA = safeParseDate(a.service_date || a.visit_date || a.date || a.referral_date);
+      const dateB = safeParseDate(b.service_date || b.visit_date || b.date || b.referral_date);
+      return dateB - dateA;
+    });
+  }, [allReferrals, id, household?.household_id]);
 
   if (isLoadingActive || isLoadingArchived) {
     return (
@@ -145,6 +209,9 @@ const HouseholdProfile = () => {
 
   const caregiverName = String(household.caregiver_name || household.name || "N/A");
   const isArchived = Boolean(household.de_registration_date);
+
+  // Pick the latest service date dynamically from the sorted services list
+  const lastServiceDate = householdServices[0]?.service_date || household.last_service_date || "N/A";
 
   return (
     <DashboardLayout subtitle={`Household: ${id}`}>
@@ -210,6 +277,10 @@ const HouseholdProfile = () => {
                   <HeartPulse className="h-4 w-4 text-slate-600" />
                 </div>
                 <div>
+                  <p className="text-xs text-slate-500">Ward</p>
+                  <p className="text-sm font-medium text-slate-900">{String(household.ward || "N/A")}</p>
+                </div>
+                <div>
                   <p className="text-xs text-slate-500">Primary Facility</p>
                   <p className="text-sm font-medium text-slate-900">{String(household.facility || "N/A")}</p>
                 </div>
@@ -225,7 +296,7 @@ const HouseholdProfile = () => {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Last Service Date</p>
-                  <p className="text-sm font-medium text-slate-900">{String(household.last_service_date || "N/A")}</p>
+                  <p className="text-sm font-medium text-slate-900">{String(lastServiceDate)}</p>
                 </div>
               </div>
             </CardContent>
@@ -235,12 +306,12 @@ const HouseholdProfile = () => {
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-slate-100 p-2">
-                  <ShieldCheck className="h-4 w-4 text-slate-600" />
+                  <Calendar className="h-4 w-4 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Screening Status</p>
+                  <p className="text-xs text-slate-500">Last Visitation</p>
                   <p className="text-sm font-medium text-slate-900">
-                    {household.screened === "1" || household.screened === true ? "Verified" : "Pending"}
+                    {String(lastServiceDate)}
                   </p>
                 </div>
               </div>
@@ -285,11 +356,11 @@ const HouseholdProfile = () => {
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   <InfoItem label="Caregiver Name" value={caregiverName} icon={<User className="h-3.5 w-3.5" />} />
                   <InfoItem label="Caregiver Sex" value={String(household.caregiver_sex || household.sex || household.gender || "N/A")} />
-                  <InfoItem label="Date of Birth" value={String(household.caregiver_birth_date || household.dob || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Date of Birth" value={String(household.caregiver_birthdate || household.caregiver_birth_date || household.dob || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
                   <InfoItem label="HIV Status" value={String(household.caregiver_hiv_status || household.hiv_status || "N/A")} icon={<Activity className="h-3.5 w-3.5" />} />
                   <InfoItem label="Marital Status" value={String(household.marital_status || "N/A")} />
-                  <InfoItem label="Relation to VCAs" value={String(household.caregiver_relation || "N/A")} />
-                  <InfoItem label="Phone Number" value={String(household.phone_number || household.contact || "N/A")} />
+                  <InfoItem label="Relation" value={String(household.caregiver_relation || household.relation || "N/A")} />
+                  <InfoItem label="Phone Number" value="Anonymous" />
                 </CardContent>
               </Card>
 
@@ -302,10 +373,10 @@ const HouseholdProfile = () => {
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="sm:col-span-2 lg:col-span-1">
-                    <InfoItem label="Home Address" value={String(household.home_address || household.homeaddress || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Home Address" value={String(household.homeaddress || household.home_address || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
                   </div>
-                  <InfoItem label="Family Source of Income" value={String(household.family_source_of_income || household.source_of_income || "N/A")} />
-                  <InfoItem label="Monthly Expenses" value={String(household.monthly_expenses || "N/A")} />
+                  <InfoItem label="Family Source of Income" value={String(household.fam_source_income || household.family_source_of_income || household.source_of_income || "N/A")} />
+                  <InfoItem label="Monthly Expenses" value={String(household.monthlyexpenses || household.monthly_expenses || "N/A")} />
                   <InfoItem label="Number of Beds" value={String(household.beds || household.number_of_beds || "N/A")} />
                   <InfoItem label="Malaria ITNs" value={String(household.malaria_itns || household.itns || "N/A")} />
                   <InfoItem label="Sanitary Facilities" value={String(household.sanitary_facilities || "N/A")} />
@@ -342,7 +413,7 @@ const HouseholdProfile = () => {
                     <InfoItem label="Date Enrolled" value={String(household.date_enrolled || household.enrollment_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
                     <InfoItem label="Date Screened" value={String(household.screening_date || household.date_screened || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
                     <InfoItem label="Provider ID" value={String(household.provider_id || "N/A")} />
-                    <InfoItem label="Case Status" value={String(household.status || "Active")} />
+                    <InfoItem label="Case Status" value={String(household.case_status || household.status || "Active")} />
                   </CardContent>
                 </Card>
               </div>
@@ -420,7 +491,7 @@ const HouseholdProfile = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right pr-6">
-                            <Button onClick={() => navigate(`/profile/vca-profile/${encodeURIComponent(String(m.uid || m.vca_id || m.unique_id))}`)} size="sm" className="h-8 text-xs font-bold bg-primary text-white hover:bg-primary/90">View Profile</Button>
+                            <Button onClick={() => navigate(`/profile/vca-details`, { state: { id: String(m.uid || m.vca_id || m.unique_id) } })} size="sm" className="h-8 text-xs font-bold bg-primary text-white hover:bg-primary/90">View Profile</Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -436,7 +507,7 @@ const HouseholdProfile = () => {
           <TabsContent value="history">
             <Card className="border-slate-200">
               <CardHeader>
-                <CardTitle className="text-xl font-bold">Caregiver Caseplans</CardTitle>
+                <CardTitle className="text-xl font-bold">CAREGIVER CASEPLANS</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoadingCasePlans ? (
@@ -453,7 +524,7 @@ const HouseholdProfile = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {householdCasePlans.map((plan: any, idx) => (
+                        {sortedCasePlans.map((plan: any, idx) => (
                           <CasePlanRow key={idx} plan={plan} servicesSource={householdServices} />
                         ))}
                       </TableBody>
@@ -468,12 +539,12 @@ const HouseholdProfile = () => {
 
           <TabsContent value="audit">
             <Card className="overflow-hidden border-slate-200">
-              <div className="bg-slate-900 p-6 flex items-center justify-between border-b border-slate-800">
-                <h3 className="text-lg font-bold text-white">Household Referrals</h3>
-                <Button variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white text-xs font-bold">Export</Button>
+              <div className="bg-white p-6 flex items-center justify-between border-b border-slate-100">
+                <h3 className="text-xl font-bold text-slate-900">HOUSEHOLD REFERRALS</h3>
+                <Button variant="outline" size="sm" className="text-xs font-bold" onClick={() => {/* logic moved if needed, currently just button */ }}>Export</Button>
               </div>
               <ScrollArea className="h-[500px]">
-                <ActivityTable data={householdReferrals} isLoading={isLoadingReferrals} type="referral" emptyMessage="No referral tracking found" />
+                <ActivityTable data={sortedReferrals} isLoading={isLoadingReferrals} type="referral" emptyMessage="No referral tracking found" />
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>
             </Card>
@@ -630,7 +701,7 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
           <TableCell colSpan={4} className="p-4 pt-0 overflow-hidden" style={{ width: 0, minWidth: '100%' }}>
             <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col w-full">
               <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <h4 className="text-lg font-bold uppercase tracking-wider text-slate-700">Service Details</h4>
+                <h4 className="text-lg font-bold uppercase tracking-wider text-slate-700">Vulnerabilities</h4>
                 {isFallback && <span className="text-sm text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 shadow-sm">Showing all household services </span>}
               </div>
 
@@ -649,7 +720,7 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
                       <TableHeader>
                         <TableRow className="hover:bg-transparent bg-slate-50/50">
                           <TableHead className="text-sm font-bold h-12 text-slate-900">Service Date</TableHead>
-                          <TableHead className="text-sm font-bold h-12 text-slate-900">HIV Pos</TableHead>
+                          <TableHead className="text-sm font-bold h-12 text-slate-900">HIV status</TableHead>
                           <TableHead className="text-sm font-bold h-12 text-slate-900">Viral Load</TableHead>
                           <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Health Services</TableHead>
                           <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">HIV Services</TableHead>
@@ -713,10 +784,10 @@ const ActivityTable = ({ data, isLoading, type, emptyMessage }: { data: any[], i
         {data.map((item, idx) => (
           <TableRow key={idx}>
             <TableCell className="pl-6 font-bold text-slate-900">
-              {String(item.service || item.service_name || item.form_name || item.referral_type || "N/A")}
+              {String(item.service || item.service_name || item.form_name || item.referral || item.referral_type || item.referral_name || "N/A")}
             </TableCell>
             <TableCell className="text-sm">
-              {String(item.service_date || item.visit_date || item.date || "N/A")}
+              {String(item.service_date || item.visit_date || item.date || item.referral_date || item.date_created || item.created_at || "N/A")}
             </TableCell>
             <TableCell className="pr-6">
               <Badge variant="outline" className="text-[10px] uppercase font-bold text-emerald-600">

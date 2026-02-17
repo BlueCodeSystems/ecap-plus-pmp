@@ -8,6 +8,13 @@ const WelcomeBanner = () => {
   const navigate = useNavigate();
   const firstName = user?.first_name || "there";
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-700 via-green-700 to-teal-700 p-6 sm:p-8 text-white shadow-lg">
       {/* Decorative elements */}
@@ -17,6 +24,17 @@ const WelcomeBanner = () => {
 
       <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <div className="mb-1 flex overflow-hidden text-xs font-bold uppercase tracking-wider text-emerald-100/80">
+            {getGreeting().split("").map((char, index) => (
+              <span
+                key={index}
+                className="animate-bounce-in-up opacity-0 inline-block"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                {char === " " ? "\u00A0" : char}
+              </span>
+            ))}
+          </div>
           <h1 className="text-2xl font-bold sm:text-3xl">
             Welcome back, {firstName}
           </h1>

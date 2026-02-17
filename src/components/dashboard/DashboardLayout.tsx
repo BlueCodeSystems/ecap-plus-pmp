@@ -19,6 +19,7 @@ import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import GlowHeader from "@/components/aceternity/GlowHeader";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
+import { AiAssistant } from "@/components/dashboard/AiAssistant";
 
 type DashboardLayoutProps = {
   title?: string;
@@ -44,6 +45,7 @@ const mobileMenuItems = [
 const DashboardLayout = ({ title, subtitle, children }: DashboardLayoutProps) => {
   return (
     <SidebarProvider>
+      <AiAssistant />
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
 
