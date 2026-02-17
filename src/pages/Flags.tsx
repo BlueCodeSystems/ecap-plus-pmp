@@ -96,7 +96,7 @@ const Flags = () => {
   };
 
   const handleRowClick = (householdId: string) => {
-    navigate(`/profile/household-profile/${encodeURIComponent(householdId)}`);
+    navigate(`/profile/household-details`, { state: { id: householdId } });
   };
 
   const getStatusColor = (status: string) => {

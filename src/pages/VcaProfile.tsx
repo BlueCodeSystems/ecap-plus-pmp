@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getChildrenByDistrict, getChildrenArchivedRegister, DEFAULT_DISTRICT, getVcaServicesByDistrict, getVcaReferralsByMonth, getVcaCasePlansById, getFlaggedRecords, getVcaServicesByChildId } from "@/lib/api";
 import { useMemo, useState, useRef, useEffect } from "react";
@@ -66,9 +66,31 @@ const calculateAge = (birthdate: any): number => {
   return age;
 };
 
+const safeParseDate = (dateStr: any) => {
+  if (!dateStr) return 0;
+  const str = String(dateStr);
+  const dmY = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmY) {
+    return new Date(parseInt(dmY[3]), parseInt(dmY[2]) - 1, parseInt(dmY[1])).getTime();
+  }
+  const parsed = Date.parse(str);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 const VcaProfile = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Retrieve ID from location state or sessionStorage fallback
+  const id = useMemo(() => {
+    const stateId = location.state?.id;
+    if (stateId) {
+      sessionStorage.setItem('ecap_last_vca_id', stateId);
+      return stateId;
+    }
+    return sessionStorage.getItem('ecap_last_vca_id');
+  }, [location.state?.id]);
+
   const { user } = useAuth();
   const district = user?.location ?? DEFAULT_DISTRICT;
 
@@ -102,6 +124,23 @@ const VcaProfile = () => {
     enabled: Boolean(id),
   });
 
+  const sortedCasePlans = useMemo(() => {
+    return [...vcaCasePlans].sort((a: any, b: any) => {
+      const dateA = safeParseDate(a.case_plan_date || a.date_of_caseplan || a.date);
+      const dateB = safeParseDate(b.case_plan_date || b.date_of_caseplan || b.date);
+      return dateB - dateA;
+    });
+  }, [vcaCasePlans]);
+
+  const sortedVcaServices = useMemo(() => {
+    if (!vcaServices) return [];
+    return [...vcaServices].sort((a: any, b: any) => {
+      const dateA = safeParseDate(a.service_date || a.visit_date || a.date);
+      const dateB = safeParseDate(b.service_date || b.visit_date || b.date);
+      return dateB - dateA;
+    });
+  }, [vcaServices]);
+
   const { data: flaggedRecords } = useQuery({
     queryKey: ["flagged-records"],
     queryFn: () => getFlaggedRecords(),
@@ -132,10 +171,15 @@ const VcaProfile = () => {
 
   const vcaReferrals = useMemo(() => {
     if (!allReferrals || !id) return [];
-    return allReferrals.filter((r: any) => {
+    const filtered = allReferrals.filter((r: any) => {
       const vId = id.toLowerCase();
       const rId = String(r.vca_id || r.vcaid || r.child_id || r.unique_id || r.id || "").toLowerCase();
       return rId === vId;
+    });
+    return filtered.sort((a: any, b: any) => {
+      const dateA = safeParseDate(a.service_date || a.visit_date || a.date);
+      const dateB = safeParseDate(b.service_date || b.visit_date || b.date);
+      return dateB - dateA;
     });
   }, [allReferrals, id]);
 
@@ -174,6 +218,11 @@ const VcaProfile = () => {
   const fullName = `${vca.firstname || vca.name || ""} ${vca.lastname || ""}`.trim() || "N/A";
   const age = calculateAge(vca.birthdate);
   const isArchived = Boolean(vca.de_registration_date || vca.reason);
+  const gender = String(vca.vca_gender || vca.gender || "").toLowerCase();
+  const isMale = gender === "male" || gender === "m";
+
+  // Pick the latest service date dynamically from the sorted services list
+  const lastServiceDate = sortedVcaServices[0]?.service_date || vca.last_service_date || "N/A";
 
   return (
     <DashboardLayout subtitle={`VCA: ${id}`}>
@@ -181,7 +230,12 @@ const VcaProfile = () => {
         {/* Header Section */}
         <div className="relative overflow-hidden rounded-2xl shadow-lg">
           {/* Gradient top section */}
-          <div className="relative bg-gradient-to-r from-rose-600 via-pink-600 to-fuchsia-600 p-6 lg:p-8">
+          <div className={cn(
+            "relative p-6 lg:p-8 transition-colors duration-500",
+            isMale
+              ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600"
+              : "bg-gradient-to-r from-rose-600 via-pink-600 to-fuchsia-600"
+          )}>
             <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.05)_50%,transparent_100%)] bg-[length:200px_100%]" />
@@ -244,7 +298,7 @@ const VcaProfile = () => {
                   <p className="text-xs text-slate-500">Household Code</p>
                   <p
                     className="cursor-pointer text-sm font-medium text-slate-900 hover:text-primary hover:underline"
-                    onClick={() => vca.household_code && navigate(`/profile/household-profile/${encodeURIComponent(String(vca.household_code))}`)}
+                    onClick={() => vca.household_code && navigate(`/profile/household-details`, { state: { id: String(vca.household_code) } })}
                   >
                     {String(vca.household_code || "N/A")}
                   </p>
@@ -260,7 +314,7 @@ const VcaProfile = () => {
                   <HeartPulse className="h-4 w-4 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">DQA Facility</p>
+                  <p className="text-xs text-slate-500">Facility</p>
                   <p className="text-sm font-medium text-slate-900">{String(vca.facility || "N/A")}</p>
                 </div>
               </div>
@@ -275,7 +329,7 @@ const VcaProfile = () => {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Last Service Date</p>
-                  <p className="text-sm font-medium text-slate-900">{String(vca.last_service_date || "N/A")}</p>
+                  <p className="text-sm font-medium text-slate-900">{String(lastServiceDate)}</p>
                 </div>
               </div>
             </CardContent>
@@ -303,7 +357,7 @@ const VcaProfile = () => {
               </TabsTrigger>
             </TabsList>
             <div className="hidden text-xs font-bold text-slate-400 md:block">
-              VCA Tracking ID: <span className="text-slate-900">{id}</span>
+              VCA ID: <span className="text-slate-900">{id}</span>
             </div>
           </div>
 
@@ -409,8 +463,8 @@ const VcaProfile = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {vcaCasePlans.map((plan: any, idx: number) => (
-                        <CasePlanRow key={idx} plan={plan} servicesSource={vcaServices} />
+                      {sortedCasePlans.map((plan: any, idx: number) => (
+                        <CasePlanRow key={idx} plan={plan} servicesSource={sortedVcaServices} />
                       ))}
                     </TableBody>
                   </Table>
@@ -423,9 +477,9 @@ const VcaProfile = () => {
 
           <TabsContent value="audit">
             <Card className="overflow-hidden border-slate-200">
-              <div className="bg-slate-900 p-6 flex items-center justify-between border-b border-slate-800">
-                <h3 className="text-lg font-bold text-white">VCA Referrals</h3>
-                <Button variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white text-xs font-bold">Export</Button>
+              <div className="bg-white p-6 flex items-center justify-between border-b border-slate-100">
+                <h3 className="text-xl font-bold text-slate-900">VCA Referrals</h3>
+                <Button variant="outline" size="sm" className="text-xs font-bold">Export</Button>
               </div>
               <ScrollArea className="h-[500px]">
                 <ActivityTable data={vcaReferrals} isLoading={isLoadingReferrals} type="referral" emptyMessage="No referral tracking for this VCA." />
@@ -436,8 +490,14 @@ const VcaProfile = () => {
 
           <TabsContent value="flags">
             <Card className="overflow-hidden border-slate-200">
-              <div className="bg-red-900/10 p-6 flex items-center justify-between border-b border-red-100">
-                <h3 className="text-lg font-bold text-red-900">Flagged Record Forms</h3>
+              <div className={cn(
+                "p-6 flex items-center justify-between border-b",
+                isMale ? "bg-blue-900/10 border-blue-100" : "bg-red-900/10 border-red-100"
+              )}>
+                <h3 className={cn(
+                  "text-lg font-bold",
+                  isMale ? "text-blue-900" : "text-red-900"
+                )}>Flagged Record Forms</h3>
               </div>
               <CardContent className="p-0">
                 {vcaFlags.length > 0 ? (
@@ -624,7 +684,7 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
           <TableCell colSpan={4} className="p-4 pt-0 overflow-hidden" style={{ width: 0, minWidth: '100%' }}>
             <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col w-full">
               <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <h4 className="text-lg font-bold uppercase tracking-wider text-slate-700">Service Details</h4>
+                <h4 className="text-lg font-bold uppercase tracking-wider text-slate-700">Vulnerabilities</h4>
                 {isFallback && <span className="text-sm text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 shadow-sm">Showing all VCA services</span>}
               </div>
               {linkedServices.length > 0 ? (

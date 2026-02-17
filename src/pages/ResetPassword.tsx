@@ -72,7 +72,7 @@ const ResetPassword = () => {
               This password reset link is invalid or has expired.
             </p>
             <Link to="/forgot-password">
-              <Button className="bg-amber-300 text-slate-900 hover:bg-amber-200">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
                 Request a new link
               </Button>
             </Link>
@@ -90,7 +90,7 @@ const ResetPassword = () => {
             <div className="max-w-md w-full">
               <img
                 src="/ecap-logo.png"
-                alt="ECAP + logo"
+                alt="ECAP+ logo"
                 className="w-auto"
               />
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
@@ -111,7 +111,7 @@ const ResetPassword = () => {
                     placeholder="New password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-amber-300/80"
+                    className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-primary/30"
                     required
                   />
                 </div>
@@ -123,14 +123,14 @@ const ResetPassword = () => {
                     placeholder="Confirm new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-amber-300/80"
+                    className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-primary/30"
                     required
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  className="h-12 w-full bg-amber-300 text-slate-900 transition-transform duration-300 hover:-translate-y-0.5 hover:bg-amber-200"
+                  className="h-12 w-full bg-primary text-primary-foreground transition-transform duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
                   disabled={isLoading}
                 >
                   {isLoading ? "Resetting..." : "Reset password"}
@@ -147,7 +147,7 @@ const ResetPassword = () => {
             />
             <div className="absolute bottom-10 left-10 right-10 text-white">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/70">
-                ECAP + Platform
+                ECAP+ Platform
               </p>
               <h2 className="mt-3 text-2xl font-semibold">
                 Track progress across communities with confidence.

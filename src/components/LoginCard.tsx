@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,32 @@ const LoginCard = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { login, isLoading } = useAuth();
+  const [knownUsers] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("ecap.known_users") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const isReturningUser = useMemo(() => {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) return knownUsers.length > 0;
+    return knownUsers.includes(trimmedEmail);
+  }, [email, knownUsers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     setError(null);
     e.preventDefault();
     login(email, password)
-      .then(() => navigate("/dashboard"))
+      .then(() => {
+        const trimmedEmail = email.trim().toLowerCase();
+        const updatedUsers = Array.from(new Set([...knownUsers, trimmedEmail]));
+        localStorage.setItem("ecap.known_users", JSON.stringify(updatedUsers));
+        localStorage.setItem("ecap.returning_user", "true"); // Keep legacy flag for compatibility
+        navigate("/dashboard");
+      })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Login failed");
       });
@@ -32,8 +52,10 @@ const LoginCard = () => {
           alt="ECAP +logo"
           className="w-auto max-h-24"
         />
-        <Title className="mt-2">ECAP + Program Management Platform</Title>
-        <h1 className="mt-2 text-3xl font-semibold text-slate-900">Welcome back</h1>
+        <Title className="mt-2">ECAP+ Program Management Platform</Title>
+        <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+          {isReturningUser ? "Welcome back" : "Welcome"}
+        </h1>
         <p className="mt-2 text-sm text-slate-600">
           Sign in to continue data reporting and monitoring.
         </p>
@@ -90,7 +112,7 @@ const LoginCard = () => {
               Signing in <LoadingDots />
             </span>
           ) : (
-            "Enter Dashboard"
+            "Sign in"
           )}
         </Button>
       </form>

@@ -20,18 +20,30 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const resetUrl = `${window.location.origin}/reset-password`;
+      const emailToRequest = email.trim().toLowerCase();
+      if (!emailToRequest) {
+        toast.error("Please enter a valid email address.");
+        setIsLoading(false);
+        return;
+      }
+
+      const resetUrlBase = import.meta.env.VITE_RESET_PASSWORD_URL || window.location.origin;
+      const resetUrl = `${resetUrlBase}/reset-password`;
+
       const response = await fetch(`${DIRECTUS_URL}/auth/password/request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, reset_url: resetUrl }),
+        body: JSON.stringify({ email: emailToRequest, reset_url: resetUrl }),
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.errors?.[0]?.message ?? "Request failed");
+        console.error("Directus Password Request Error Details:", JSON.stringify(data, null, 2));
+        const firstError = data?.errors?.[0];
+        const errorMessage = firstError?.message || firstError?.extensions?.code || "Request failed";
+        throw new Error(errorMessage);
       }
 
       toast.success("Check your inbox. We sent a password reset link if the email exists.");
@@ -51,11 +63,11 @@ const ForgotPassword = () => {
             <div className="max-w-md w-full">
               <img
                 src="/ecap-logo.png"
-                alt="ECAP + logo"
+                alt="ECAP+ logo"
                 className="w-auto"
               />
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-                ECAP +
+                ECAP+
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-slate-900">
                 Forgot your password?
@@ -72,14 +84,14 @@ const ForgotPassword = () => {
                     placeholder="Email address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-amber-300/80"
+                    className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-primary/30"
                     required
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  className="h-12 w-full bg-amber-300 text-slate-900 transition-transform duration-300 hover:-translate-y-0.5 hover:bg-amber-200"
+                  className="h-12 w-full bg-primary text-primary-foreground transition-transform duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
                   disabled={isLoading}
                 >
                   {isLoading ? "Sending..." : "Send reset link"}
@@ -97,16 +109,15 @@ const ForgotPassword = () => {
           <aside className="relative min-h-[320px] md:min-h-0">
             <RightImageSlider
               images={[
-                { src: "/pexels-uniqueerique-6572780.jpg", alt: "Program fieldwork photo" },
-                { src: "/pexels-uniqueerique-6572781.jpg", alt: "Community program photo" },
-                { src: "/splash1.jpg", alt: " school lunch break" },
-                { src: "/splash2.jpg", alt: "two kids smiling" },
-                { src: "/splash3.jpg", alt: "community member" }
+
+                { src: "/pic-1.jpg", alt: " school lunch break" },
+                { src: "/pic-2.jpg", alt: "two kids smiling" },
+                { src: "/pic-3.jpg", alt: "community member" }
               ]}
             />
             <div className="absolute bottom-10 left-10 right-10 text-white">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/70">
-                ECAP + Platform
+                ECAP+ Platform
               </p>
               <h2 className="mt-3 text-2xl font-semibold">
                 Track progress across communities with confidence.

@@ -21,6 +21,10 @@ import { markNotificationRead, clearAllNotifications } from "@/lib/directus";
 import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import { useRef, useEffect, useState, useMemo } from "react";
+
+// Simple notification sound (Beep)
+const BEEP_SOUND = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"; // Placeholder beep
 
 type DashboardHeaderProps = {
   title?: string;
@@ -35,33 +39,54 @@ const DashboardHeader = ({
   const queryClient = useQueryClient();
   const district = user?.location ?? "";
 
-  // Real Notifications Logic (similar to RecentActivity)
-  // Directus Notifications
   const { data: directusNotifications } = useQuery({
-    queryKey: ["directus-notifications"],
+    queryKey: ["directus-notifications", user?.id],
     queryFn: async () => {
       const { getNotifications } = await import("@/lib/directus");
-      return getNotifications();
+      return getNotifications(user?.id); // Pass user.id for security
     },
-    staleTime: 1000 * 60 * 2,
-    refetchInterval: 1000 * 60 * 5,
+    staleTime: 1000 * 30, // 30 seconds
+    refetchInterval: 1000 * 30, // Poll every 30 seconds for performance & responsiveness
+    enabled: !!user?.id,
   });
 
-  const notifications = (directusNotifications ?? []).map((n: any) => {
-    const isExtract = n.collection === "weekly_extracts";
-    return {
-      id: n.id,
-      title: n.subject,
-      description: n.message,
-      date: new Date(n.timestamp),
-      icon: isExtract
-        ? <DatabaseZap className="h-4 w-4 text-violet-600" />
-        : <Bell className="h-4 w-4 text-primary" />,
-      link: isExtract ? "/weekly-extracts" : undefined,
-    };
-  });
+  const [prevUnreadCount, setPrevUnreadCount] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const notifications = useMemo(() => {
+    return (directusNotifications ?? [])
+      .filter((n: any) => n.recipient === user?.id) // Extra safety check for confidentiality
+      .map((n: any) => {
+        const isExtract = n.collection === "weekly_extracts";
+        return {
+          id: n.id,
+          title: n.subject,
+          description: n.message,
+          date: new Date(n.timestamp),
+          icon: isExtract
+            ? <DatabaseZap className="h-4 w-4 text-violet-600" />
+            : <Bell className="h-4 w-4 text-primary" />,
+          link: isExtract
+            ? "/weekly-extracts"
+            : (n.collection === "support_chat" || n.collection === "support_chat_outbox") && n.sender
+              ? `/support?userId=${n.sender}`
+              : undefined,
+        };
+      });
+  }, [directusNotifications, user?.id]);
 
   const unreadCount = notifications.length;
+
+  // Sound Logic
+  useEffect(() => {
+    if (unreadCount > prevUnreadCount) {
+      // Play sound
+      if (audioRef.current) {
+        audioRef.current.play().catch(e => console.warn("Audio play failed:", e));
+      }
+    }
+    setPrevUnreadCount(unreadCount);
+  }, [unreadCount, prevUnreadCount]);
 
   const handleDismiss = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -77,8 +102,9 @@ const DashboardHeader = ({
   const handleClearAll = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user?.id) return;
     try {
-      await clearAllNotifications();
+      await clearAllNotifications(user.id);
       queryClient.invalidateQueries({ queryKey: ["directus-notifications"] });
     } catch (error) {
       console.error("Failed to clear notifications:", error);
@@ -189,12 +215,7 @@ const DashboardHeader = ({
                   variant="ghost"
                   className="w-full text-[10px] h-8 font-bold uppercase tracking-widest text-primary"
                   onClick={() => {
-                    const element = document.getElementById("recent-activity-section");
-                    if (element) {
-                      element.scrollIntoView({ behavior: "smooth" });
-                    } else {
-                      navigate("/dashboard#recent-activity-section");
-                    }
+                    navigate("/support");
                   }}
                 >
                   View All Activity
@@ -239,6 +260,7 @@ const DashboardHeader = ({
           </DropdownMenu>
         </div>
       </div>
+      <audio ref={audioRef} src="/notification.wav" preload="auto" />
     </div>
   );
 };

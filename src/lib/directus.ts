@@ -27,14 +27,21 @@ const directusRequest = async (
     throw new Error("Not authenticated.");
   }
   const baseUrl = requireDirectusUrl().replace(/\/$/, "");
-  const response = await fetch(`${baseUrl}${path}`, {
 
+  // Don't set Content-Type for FormData (let browser set it with boundary)
+  const isFormData = options.body instanceof FormData;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers ?? {}),
+  };
+
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(`${baseUrl}${path}`, {
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(options.headers ?? {}),
-    },
+    headers,
   });
 
   const data = await safeJson(response);
@@ -53,6 +60,10 @@ export type DirectusUser = {
   last_name?: string;
   role?: string | { id: string; name?: string };
   status?: string;
+  description?: string;
+  title?: string;
+  location?: string;
+  avatar?: string; // File ID for profile picture
 };
 
 export type DirectusRole = {
@@ -60,13 +71,21 @@ export type DirectusRole = {
   name: string;
 };
 
+
 export const listUsers = async (status?: string) => {
   const params = new URLSearchParams({
-    fields: "id,email,first_name,last_name,role,status",
-    limit: "100",
+    fields: "id,email,first_name,last_name,role.id,role.name,status,description,title,location",
+    limit: "-1", // Fetch all users for chat list
   });
   if (DIRECTUS_USER_ROLE) {
-    params.set("filter[role][_eq]", DIRECTUS_USER_ROLE);
+    // If we filter by role ID, we might miss Support users if they have a different role ID. 
+    // Usually DIRECTUS_USER_ROLE is the "ECAP+ User" role.
+    // If we want ALL users (including support), we might need to remove this filter 
+    // or ensure we are fetching multiple roles.
+    // For now, let's assume we want to fetch all users to handle the cross-role chat logic
+    // But strict security might prevent listing all. 
+    // Let's rely on the user's permissions.
+    // params.set("filter[role][_eq]", DIRECTUS_USER_ROLE); 
   }
   if (status) {
     params.set("filter[status][_eq]", status);
@@ -77,10 +96,99 @@ export const listUsers = async (status?: string) => {
 
 export const getUser = async (id: string) => {
   const data = await directusRequest(
-    `/users/${encodeURIComponent(id)}?fields=id,email,first_name,last_name,role,status`,
+    `/users/${encodeURIComponent(id)}?fields=id,email,first_name,last_name,role.id,role.name,status,description,title,location`,
   );
   return data?.data;
 };
+
+// ... existing listRoles, createUser, updateUser, deleteUser ...
+
+export type ChatMessage = Notification & {
+  sender_user?: DirectusUser; // We will populate this manually if needed
+};
+
+
+// Chat Messages using Directus Notifications
+export const getChatMessages = async (userId: string) => {
+  if (!userId) return [];
+
+  const params = new URLSearchParams({
+    "sort": "timestamp",
+    "limit": "500",
+    "fields": "id,status,timestamp,sender,recipient,subject,message,collection,item",
+    "filter[recipient][_eq]": userId,
+    "filter[collection][_in]": "support_chat,support_chat_outbox",
+  });
+
+  const data = await directusRequest(`/notifications?${params.toString()}`);
+  return data?.data ?? [];
+};
+
+export const sendChatMessage = async (recipientId: string, message: string, priority: string = "Normal", fileId?: string) => {
+  // Get current user ID first
+  const me = await directusRequest("/users/me?fields=id");
+  const senderId = me?.data?.id;
+
+  if (!senderId) {
+    throw new Error("Could not determine sender ID");
+  }
+
+  // Send to recipient - CRITICAL: set sender field explicitly
+  const payload: any = {
+    recipient: recipientId,
+    sender: senderId, // ✅ Explicitly set sender
+    subject: priority,
+    message: message,
+    collection: "support_chat",
+    item: fileId || null,
+  };
+
+  const sent = await createNotification(payload);
+
+  // Create outbox copy for sender
+  try {
+    await createNotification({
+      recipient: senderId,
+      sender: senderId, // ✅ Also set sender for outbox
+      subject: priority,
+      message: fileId ? `${message}|||FILE:${fileId}` : message,
+      collection: "support_chat_outbox",
+      item: recipientId, // ALWAYS store partner ID for conversation filtering
+    });
+  } catch (e) {
+    console.warn("Failed to save outbox message", e);
+  }
+
+  return sent;
+};
+
+// File Upload to Directus
+export const uploadFile = async (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const data = await directusRequest("/files", {
+    method: "POST",
+    body: formData,
+  });
+
+  return data?.data;
+};
+
+// Update User Avatar
+export const updateUserAvatar = async (userId: string, fileId: string) => {
+  const data = await directusRequest(`/users/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ avatar: fileId }),
+  });
+  return data?.data;
+};
+
+// Get file URL
+export const getFileUrl = (fileId: string) => {
+  return `${requireDirectusUrl()}/assets/${fileId}`;
+};
+
 
 export const listRoles = async () => {
   const data = await directusRequest("/roles?fields=id,name&limit=100");
@@ -94,6 +202,9 @@ export const createUser = async (payload: {
   role?: string;
   status?: string;
   password?: string;
+  description?: string;
+  title?: string;
+  location?: string;
 }) => {
   const data = await directusRequest("/users", {
     method: "POST",
@@ -111,6 +222,9 @@ export const updateUser = async (
     role?: string;
     status?: string;
     password?: string;
+    description?: string;
+    title?: string;
+    location?: string;
   }>,
 ) => {
   const data = await directusRequest(`/users/${id}`, {
@@ -139,11 +253,21 @@ export type Notification = {
   item: string | null;
 };
 
-export const getNotifications = async () => {
-  const data = await directusRequest(
-    "/notifications?filter[status][_eq]=inbox&sort=-timestamp&limit=20"
-  );
-  return data?.data ?? [];
+export const getNotifications = async (userId?: string) => {
+  if (!userId) {
+    // SECURITY: Return empty if no userId is provided to prevent accidental data leakage
+    return [];
+  }
+  const params = new URLSearchParams({
+    "filter[status][_eq]": "inbox",
+    "filter[recipient][_eq]": userId, // SECURITY: Strictly filter by recipient
+    "sort": "-timestamp",
+    "limit": "20",
+    "fields": "id,subject,message,timestamp,collection,sender,recipient,item",
+  });
+
+  const data = await directusRequest(`/notifications?${params.toString()}`);
+  return (data?.data ?? []).filter((n: any) => n.recipient === userId); // Secondary check
 };
 
 export const markNotificationRead = async (id: string) => {
@@ -156,6 +280,7 @@ export const markNotificationRead = async (id: string) => {
 
 export const createNotification = async (payload: {
   recipient: string;
+  sender?: string; // ✅ Added sender field
   subject: string;
   message?: string;
   collection?: string;
@@ -185,8 +310,9 @@ export const sendMail = async (payload: {
 };
 
 
-export const clearAllNotifications = async () => {
-  const notifications = await getNotifications();
+export const clearAllNotifications = async (userId: string) => {
+  if (!userId) return 0;
+  const notifications = await getNotifications(userId);
   await Promise.allSettled(
     notifications.map((n: Notification) => markNotificationRead(n.id))
   );

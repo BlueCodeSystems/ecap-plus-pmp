@@ -236,7 +236,7 @@ const RecentActivity = () => {
                     onClick={() => {
                       if (item.type === "flag" || item.type === "caregiver-service") {
                         if (item.linkId && item.linkId !== "N/A") {
-                          navigate(`/profile/household-profile/${encodeURIComponent(item.linkId)}`);
+                          navigate(`/profile/household-details`, { state: { id: item.linkId } });
                         }
                       } else {
                         navigate(config.route);

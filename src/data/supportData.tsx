@@ -83,10 +83,10 @@ export const quickHelpLinks = [
 
 export const fullManual = {
   title: "Full System Manual",
-  description: "Access the complete ECAP + PMP documentation.",
+  description: "Access the complete ECAP+ PMP documentation.",
   content: (
     <div className="space-y-6 text-sm text-slate-600">
-      <p>The Full System Manual is a comprehensive document covering all aspects of the ECAP + PMP system.</p>
+      <p>The Full System Manual is a comprehensive document covering all aspects of the ECAP+ PMP system.</p>
 
       <div className="space-y-2">
         <h4 className="font-semibold text-slate-900">Table of Contents</h4>

@@ -142,6 +142,63 @@ const Districts = () => {
 
 
 
+
+  const [exportingDistrict, setExportingDistrict] = useState<string | null>(null);
+
+  const handleExportDistrictDetails = async (districtName: string) => {
+    try {
+      setExportingDistrict(districtName);
+      toast.info(`Preparing detailed export for ${districtName}...`);
+
+      const households = await getHouseholdsByDistrict(districtName);
+
+      if (!households || households.length === 0) {
+        toast.error(`No household data found for ${districtName}`);
+        setExportingDistrict(null);
+        return;
+      }
+
+      // Define headers for the detailed CSV
+      const headers = [
+        "Household ID",
+        "Caregiver Name",
+        "District",
+        "Ward",
+        "Community",
+        "Date Enrolled",
+        "Case Status",
+        "Vulnerability Status",
+        "Total Members",
+        "Last Service Date"
+      ];
+
+      // Map data to rows
+      const rows = households.map((h: any) => [
+        String(h.household_id || h.householdId || h.hh_id || ""),
+        String(h.caregiver_name || h.name || ""),
+        String(h.district || ""),
+        String(h.ward || ""),
+        String(h.community || h.village || ""),
+        String(h.date_enrolled || h.enrollment_date || ""),
+        String(h.case_status || h.status || "Active"),
+        String(h.vulnerability_status || ""),
+        String(h.total_members || h.members_count || "0"),
+        String(h.last_service_date || "")
+      ]);
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `${districtName}_detailed_report_${dateStr}.csv`;
+
+      downloadCsv(headers, rows, filename);
+      toast.success(`${districtName} detailed report exported successfully`);
+    } catch (error) {
+      console.error("Detailed export error:", error);
+      toast.error(`Failed to export data for ${districtName}`);
+    } finally {
+      setExportingDistrict(null);
+    }
+  };
+
   return (
     <DashboardLayout subtitle="Districts">
       {/* ... (Keep PageIntro and KPI Cards same as before) ... */}
@@ -259,14 +316,30 @@ const Districts = () => {
                       <TableCell className="hidden sm:table-cell">{formatCount(data.households)}</TableCell>
                       <TableCell className="hidden sm:table-cell">{formatCount(data.vcas)}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5 ml-auto"
-                          onClick={() => navigate(`/households?district=${encodeURIComponent(data.district)}`)}
-                        >
-                          Explore <ChevronRight className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
+                            onClick={() => handleExportDistrictDetails(data.district)}
+                            disabled={exportingDistrict === data.district}
+                            title="Export Detailed Report"
+                          >
+                            {exportingDistrict === data.district ? (
+                              <LoadingDots className="text-emerald-500 scale-50" />
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5"
+                            onClick={() => navigate(`/households?district=${encodeURIComponent(data.district)}`)}
+                          >
+                            Explore <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

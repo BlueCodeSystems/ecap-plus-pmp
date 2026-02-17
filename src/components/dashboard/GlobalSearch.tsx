@@ -131,7 +131,7 @@ export function GlobalSearch() {
                 return (
                   <CommandItem
                     key={`vca-${id}`}
-                    onSelect={() => runCommand(() => navigate(`/profile/vca-profile/${encodeURIComponent(id)}`))}
+                    onSelect={() => runCommand(() => navigate(`/profile/vca-details`, { state: { id } }))}
                     className="flex items-center gap-3 px-4 py-3"
                   >
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
@@ -157,7 +157,7 @@ export function GlobalSearch() {
                 return (
                   <CommandItem
                     key={`hh-${id}`}
-                    onSelect={() => runCommand(() => navigate(`/profile/household-profile/${encodeURIComponent(id)}`))}
+                    onSelect={() => runCommand(() => navigate(`/profile/household-details`, { state: { id } }))}
                     className="flex items-center gap-3 px-4 py-3"
                   >
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
