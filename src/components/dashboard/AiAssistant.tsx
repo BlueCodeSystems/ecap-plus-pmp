@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { getAiResponse, Message } from "@/lib/ai-service";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 
 const SUGGESTIONS = [
   { label: "VCA Registration", icon: User, query: "Show me the steps to register a new VCA child in the system." },
@@ -40,6 +41,77 @@ export const AiAssistant = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { user } = useAuth();
+  const { updateColor, resetTheme } = useTheme();
+
+  // Draggable State
+  const [position, setPosition] = useState(() => {
+    const saved = localStorage.getItem("ai_assistant_pos");
+    return saved ? JSON.parse(saved) : {
+      x: window.innerWidth - 380,
+      y: window.innerHeight - 80
+    };
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  const ALLOWED_TARGETS = [
+    "banner", "sidebar", "header", "background", "button", "card", "text", "theme"
+  ];
+
+  const handleStartDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    // Allow dragging from the toggle button or the card header
+    if (!target.closest('.drag-handle') && !target.closest('.toggle-button')) return;
+
+    setIsDragging(true);
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    setDragOffset({
+      x: clientX - position.x,
+      y: clientY - position.y
+    });
+
+    // Prevent text selection while dragging
+    if ('preventDefault' in e) e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      if (!isDragging) return;
+
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+      const newPos = {
+        x: Math.max(0, Math.min(window.innerWidth - 50, clientX - dragOffset.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 50, clientY - dragOffset.y))
+      };
+
+      setPosition(newPos);
+    };
+
+    const handleEnd = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        localStorage.setItem("ai_assistant_pos", JSON.stringify(position));
+      }
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleEnd);
+      window.addEventListener('touchmove', handleMove);
+      window.addEventListener('touchend', handleEnd);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDragging, dragOffset, position]);
 
   const userName = user?.first_name || "there";
 
@@ -66,7 +138,30 @@ export const AiAssistant = () => {
       const currentPage = document.title.split("-")[0].trim() || "Dashboard";
       const response = await getAiResponse([...messages, userMessage], currentPage);
 
-      const assistantMessage: Message = { role: "assistant", content: response };
+      // Process potential JSON commands
+      let cleanContent = response;
+      const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
+
+      if (jsonMatch) {
+        try {
+          const command = JSON.parse(jsonMatch[1]);
+          if (command.action === "change_color" && ALLOWED_TARGETS.includes(command.target)) {
+            // Apply the color change
+            updateColor(command.target as any, command.value);
+            // Clean up the response text to hide the JSON block from the user
+            cleanContent = response.replace(/```json\n[\s\S]*?\n```/, "").trim();
+            if (!cleanContent) {
+              cleanContent = `I've updated the ${command.target} color to ${command.value} for you!`;
+            }
+          } else if (command.action && command.action !== "change_color") {
+            cleanContent = "I am only restricted to color changes.";
+          }
+        } catch (e) {
+          console.error("Failed to parse AI command", e);
+        }
+      }
+
+      const assistantMessage: Message = { role: "assistant", content: cleanContent };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       const errorMessage: Message = {
@@ -102,16 +197,28 @@ export const AiAssistant = () => {
   }, [messages]);
 
   return (
-    <div className="fixed bottom-[100px] sm:bottom-8 right-4 sm:right-6 z-[60] flex flex-col items-end gap-4 font-sans">
+    <div
+      className="fixed z-[60] flex flex-col items-end gap-4 font-sans touch-none"
+      style={{
+        left: position.x,
+        top: position.y,
+        transition: isDragging ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        position: 'fixed'
+      }}
+      onMouseDown={handleStartDrag}
+      onTouchStart={handleStartDrag}
+    >
       {/* Chat Window */}
       {isOpen && (
         <Card className={cn(
-          "w-[calc(100vw-32px)] sm:w-[380px] border-slate-200 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 animate-in slide-in-from-bottom-5 overflow-hidden ring-1 ring-slate-200/50 pb-2",
-          isMinimized ? "h-14" : "h-[480px] sm:h-[600px]"
+          "absolute right-0 w-[calc(100vw-32px)] sm:w-[380px] border-slate-200 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 animate-in slide-in-from-bottom-5 overflow-hidden ring-1 ring-slate-200/50 pb-2",
+          isMinimized ? "h-14" : "h-[480px] sm:h-[600px]",
+          // Open downwards if button is in the top 40% of the screen
+          position.y < window.innerHeight * 0.4 ? "top-full mt-4" : "bottom-full mb-4"
         )}>
           {/* Refined Header: Slimmer & Less Saturated */}
           <CardHeader className={cn(
-            "flex flex-row items-center justify-between px-4 py-3 transition-all duration-500",
+            "flex flex-row items-center justify-between px-4 py-3 transition-all duration-500 drag-handle cursor-move select-none",
             "bg-slate-50 border-b border-slate-100 text-slate-900"
           )}>
             <div className="flex items-center gap-2.5">
@@ -241,6 +348,20 @@ export const AiAssistant = () => {
                         <Trash2 className="h-3 w-3" /> Reset Session
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={resetTheme}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1.5 font-bold uppercase tracking-widest transition-colors w-fit"
+                    >
+                      Reset Colors
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1.5 font-bold uppercase tracking-widest transition-colors w-fit ml-2"
+                    >
+                      <X className="h-3 w-3" /> Close Chat
+                    </button>
                     <span className="text-[10px] text-slate-300 font-medium uppercase tracking-[0.2em] ml-auto"></span>
                   </div>
 
@@ -276,8 +397,9 @@ export const AiAssistant = () => {
       {/* Floating Toggle Button: Professional Glow */}
       {!isOpen && (
         <Button
-          onClick={() => setIsOpen(true)}
-          className="group relative h-14 w-14 rounded-full bg-white p-0 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 border border-slate-200"
+          onDoubleClick={() => setIsOpen(true)}
+          title="Double-click to open. Click & hold to drag."
+          className="group relative h-14 w-14 rounded-full bg-white p-0 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 border border-slate-200 toggle-button cursor-move select-none"
         >
           <div className="relative flex h-full w-full items-center justify-center rounded-full bg-slate-50 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

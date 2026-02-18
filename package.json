@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "setup:weekly-flow": "node --env-file=.env scripts/setup-weekly-extract-flow.mjs"
+    "setup:weekly-flow": "node --env-file=.env scripts/setup-weekly-extract-flow.mjs",
+    "setup:calendar": "node --env-file=.env scripts/setup-calendar-collection.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

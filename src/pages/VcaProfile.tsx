@@ -367,7 +367,7 @@ const VcaProfile = () => {
                 <Card className="h-full border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Baby className="h-5 w-5 text-slate-600" /> Profile Demographics
+                      <Baby className="h-5 w-5 text-slate-600" /> PROFILE DEMOGRAPHICS
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-6 sm:grid-cols-2">
@@ -388,7 +388,7 @@ const VcaProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                      <ClipboardCheck className="h-5 w-5 text-slate-600" /> Priority Markers
+                      <ClipboardCheck className="h-5 w-5 text-slate-600" /> PRIORITY MARKERS
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col gap-3">
@@ -419,7 +419,7 @@ const VcaProfile = () => {
           <TabsContent value="indicators">
             <Card className="border-slate-200">
               <CardHeader>
-                <CardTitle className="text-xl font-bold">Performance Indicators</CardTitle>
+                <CardTitle className="text-xl font-bold">PERFORMANCE INDICATORS</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -447,7 +447,7 @@ const VcaProfile = () => {
           <TabsContent value="history">
             <Card className="border-slate-200">
               <CardHeader>
-                <CardTitle className="text-xl font-bold">VCA Caseplans</CardTitle>
+                <CardTitle className="text-xl font-bold">CASEPLANS</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoadingCasePlans ? (
@@ -478,7 +478,7 @@ const VcaProfile = () => {
           <TabsContent value="audit">
             <Card className="overflow-hidden border-slate-200">
               <div className="bg-white p-6 flex items-center justify-between border-b border-slate-100">
-                <h3 className="text-xl font-bold text-slate-900">VCA Referrals</h3>
+                <h3 className="text-xl font-bold text-slate-900">REFERRALS</h3>
                 <Button variant="outline" size="sm" className="text-xs font-bold">Export</Button>
               </div>
               <ScrollArea className="h-[500px]">
@@ -497,7 +497,7 @@ const VcaProfile = () => {
                 <h3 className={cn(
                   "text-lg font-bold",
                   isMale ? "text-blue-900" : "text-red-900"
-                )}>Flagged Record Forms</h3>
+                )}>FLAGGED RECORD FORMS</h3>
               </div>
               <CardContent className="p-0">
                 {vcaFlags.length > 0 ? (

@@ -11,6 +11,7 @@ import {
   UserCog,
   HeartPulse,
   CircleHelp,
+  Calendar,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -36,6 +37,7 @@ const sections = [
     label: "Overview",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: Home },
+      { title: "Calendar", url: "/calendar", icon: Calendar },
       { title: "Districts", url: "/districts", icon: MapPin },
       { title: "Charts", url: "/charts", icon: BarChart3 },
     ],
@@ -98,7 +100,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" style={{ backgroundColor: 'var(--sidebar-background)' } as any}>
       {/* Logo */}
       <SidebarHeader className="px-5 py-5">
         <div className={cn("flex items-center", collapsed && "justify-center")}>

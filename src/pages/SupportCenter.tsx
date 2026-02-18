@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle } from "lucide-react";
+import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle, MoreVertical, Plus, ArrowRight, Loader2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,8 @@ import { VoiceRecorder } from "@/components/chat/VoiceRecorder";
 import { FileAttachment } from "@/components/chat/FileAttachment";
 import { EmojiPicker } from "@/components/chat/EmojiPicker";
 import { ProfilePictureModal } from "@/components/chat/ProfilePictureModal";
+import { CallOverlay } from "@/components/chat/CallOverlay";
+import { useWebRTC } from "@/hooks/useWebRTC";
 import {
   Select,
   SelectContent,
@@ -58,8 +61,8 @@ const SupportCenter = () => {
 
   // Send message mutation
   const sendMutation = useMutation({
-    mutationFn: async ({ recipientId, msg, fileId, priority }: { recipientId: string; msg: string; fileId?: string; priority?: string }) => {
-      return sendChatMessage(recipientId, msg, priority || "Normal", fileId);
+    mutationFn: async ({ recipientId, msg, fileId, priority, senderId }: { recipientId: string; msg: string; fileId?: string; priority?: string; senderId?: string }) => {
+      return sendChatMessage(recipientId, msg, priority || "Normal", fileId, senderId);
     },
     onSuccess: () => {
       setMessage("");
@@ -191,39 +194,38 @@ const SupportCenter = () => {
     prevMessageCountRef.current = inboxMessages.length;
   }, [allMessages]);
 
-  // Jitsi calling - open in new window instead of iframe to avoid CSP issues
+  // Auto-scroll to bottom on new messages or conversation change
+  useEffect(() => {
+    if (scrollRef.current) {
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTo({
+          top: viewport.scrollHeight,
+          behavior: "smooth"
+        });
+      }
+    }
+  }, [selectedMessages, selectedUserId]);
+
+  // WebRTC calling
+  const {
+    state: callState,
+    localStream,
+    remoteStream,
+    partnerId: callPartnerId,
+    startCall: initiateWebRTC,
+    acceptCall,
+    endCall
+  } = useWebRTC(user?.id);
+
   const startCall = (type: "audio" | "video") => {
     if (!selectedUserId || !selectedUser) return;
-
-    const roomName = `ECAP_PLUS_${[user?.id, selectedUserId].sort().join("_")}`;
-    const displayName = encodeURIComponent(`${user?.first_name} ${user?.last_name}`);
-
-    // Build Jitsi URL with configuration
-    const jitsiUrl = new URL(`https://meet.jit.si/${roomName}`);
-    jitsiUrl.searchParams.set("displayName", displayName);
-
-    if (type === "audio") {
-      jitsiUrl.hash = "#config.startWithVideoMuted=true";
-    }
-
-    // Open in new window
-    const width = 1200;
-    const height = 800;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-
-    window.open(
-      jitsiUrl.toString(),
-      `jitsi_call_${roomName}`,
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
-
-    toast.success(`${type === "video" ? "Video" : "Voice"} call started in new window`);
+    initiateWebRTC(selectedUserId, type);
   };
 
   const handleSendMessage = () => {
-    if (!selectedUserId || !message.trim()) return;
-    sendMutation.mutate({ recipientId: selectedUserId, msg: message, priority: selectedPriority });
+    if (!selectedUserId || !message.trim() || sendMutation.isPending) return;
+    sendMutation.mutate({ recipientId: selectedUserId, msg: message, priority: selectedPriority, senderId: user?.id });
   };
 
   const handleVoiceRecording = async (audioBlob: Blob) => {
@@ -300,29 +302,32 @@ const SupportCenter = () => {
     }
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-1.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
         {msg.subject && msg.subject !== "Normal" && (
           <Badge
             variant="outline"
-            className={`text-[9px] h-4 uppercase font-black mb-1 ${msg.subject === "Critical"
-              ? "border-red-500 text-red-600 bg-red-50"
-              : "border-amber-500 text-amber-600 bg-amber-50"
+            className={`text-[9px] h-4 uppercase font-bold mb-1 px-1.5 border-none shadow-sm ${msg.subject === "Critical"
+              ? "bg-red-500/10 text-red-600 backdrop-blur-sm"
+              : "bg-amber-500/10 text-amber-600 backdrop-blur-sm"
               }`}
           >
             {msg.subject === "Critical" && <AlertTriangle className="h-2 w-2 mr-1" />}
             {msg.subject}
           </Badge>
         )}
-        <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+        <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.message}</p>
       </div>
     );
   };
 
   return (
     <DashboardLayout title="Support Center">
-      <div className="flex h-[calc(100vh-8rem)] bg-white rounded-lg border overflow-hidden">
+      <div className="flex h-[calc(100vh-8rem)] bg-white rounded-lg border overflow-hidden relative">
         {/* Conversations Sidebar */}
-        <div className="w-80 border-r flex flex-col">
+        <div className={cn(
+          "w-full sm:w-80 border-r flex flex-col transition-all duration-300",
+          selectedUserId ? "hidden sm:flex" : "flex"
+        )}>
           <div className="p-4 border-b space-y-3">
             <h2 className="font-bold text-lg">Messages</h2>
             <div className="relative">
@@ -344,9 +349,12 @@ const SupportCenter = () => {
                 <button
                   key={conv.partnerId}
                   onClick={() => setSelectedUserId(conv.partnerId)}
-                  className={`w-full p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors border-b ${selectedUserId === conv.partnerId ? "bg-slate-100" : ""
+                  className={`w-full p-4 flex items-start gap-3 hover:bg-slate-50 transition-all duration-300 border-b relative group ${selectedUserId === conv.partnerId ? "bg-slate-100/50" : ""
                     }`}
                 >
+                  {selectedUserId === conv.partnerId && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[2px_0_10px_rgba(16,185,129,0.5)]" />
+                  )}
                   <Avatar
                     className="h-12 w-12 cursor-pointer"
                     onClick={(e) => {
@@ -371,11 +379,13 @@ const SupportCenter = () => {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-500 truncate">
+                    <p className={`text-xs truncate ${conv.unread ? "text-emerald-600 font-bold" : "text-slate-500"}`}>
                       {conv.lastMessage || "Start a conversation..."}
                     </p>
                   </div>
-                  {conv.unread && <div className="h-2 w-2 bg-primary rounded-full shrink-0 mt-2" />}
+                  {conv.unread && (
+                    <div className="h-2 w-2 bg-emerald-500 rounded-full shrink-0 mt-2 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
+                  )}
                 </button>
               );
             })}
@@ -386,8 +396,16 @@ const SupportCenter = () => {
         {selectedUserId && selectedUser ? (
           <div className="flex-1 flex flex-col">
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center justify-between">
+            <div className="p-4 border-b flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
               <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="sm:hidden -ml-2"
+                  onClick={() => setSelectedUserId(null)}
+                >
+                  <ArrowRight className="h-4 w-4 rotate-180" />
+                </Button>
                 <Avatar
                   className="h-10 w-10 cursor-pointer"
                   onClick={() => {
@@ -424,12 +442,31 @@ const SupportCenter = () => {
                 >
                   <Video className="h-4 w-4" />
                 </Button>
+                <div className="w-px h-8 bg-slate-200 mx-1" />
+                <Button size="icon" variant="ghost">
+                  <MoreVertical className="h-4 w-4 text-slate-400" />
+                </Button>
               </div>
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-              <div className="space-y-4">
+            <ScrollArea
+              className="flex-1 p-4 relative"
+              ref={scrollRef}
+              style={{
+                backgroundImage: `radial-gradient(circle at 2px 2px, rgba(148, 163, 184, 0.05) 1px, transparent 0)`,
+                backgroundSize: '24px 24px',
+                backgroundColor: '#f8fafc'
+              }}
+            >
+              {/* Branded Pattern Overlay */}
+              <div className="absolute inset-0 pointer-events-none opacity-[0.03] select-none flex flex-wrap gap-12 p-8 overflow-hidden items-center justify-center content-center rotate-[-15deg] scale-125">
+                {Array.from({ length: 120 }).map((_, i) => (
+                  <span key={i} className="text-xl font-black whitespace-nowrap tracking-tighter italic">ECAP +</span>
+                ))}
+              </div>
+
+              <div className="space-y-6 relative z-10">
                 {selectedMessages.map((msg: any) => {
                   const isOutbox = msg.collection === "support_chat_outbox";
                   const isMine = isOutbox;
@@ -437,13 +474,13 @@ const SupportCenter = () => {
                   return (
                     <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMine
-                          ? "bg-primary text-primary-foreground rounded-br-sm"
-                          : "bg-slate-100 text-slate-900 rounded-bl-sm"
+                        className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm transition-all hover:shadow-md ${isMine
+                          ? "bg-slate-900 border border-slate-800 text-white rounded-br-none"
+                          : "bg-white/70 border border-white/50 backdrop-blur-md text-slate-900 rounded-bl-none"
                           }`}
                       >
                         {renderMessageContent(msg)}
-                        <p className="text-[10px] mt-1 opacity-60">
+                        <p className={`text-[9px] mt-1.5 font-bold uppercase tracking-wider opacity-40 ${isMine ? "text-right" : "text-left"}`}>
                           {format(new Date(msg.timestamp), "HH:mm")}
                         </p>
                       </div>
@@ -454,7 +491,7 @@ const SupportCenter = () => {
             </ScrollArea>
 
             {/* Input Area */}
-            <div className="p-4 border-t">
+            <div className="p-5 border-t bg-white/50 backdrop-blur-xl">
               {showVoiceRecorder ? (
                 <VoiceRecorder
                   onRecordingComplete={handleVoiceRecording}
@@ -477,32 +514,43 @@ const SupportCenter = () => {
                   />
                   <EmojiPicker onEmojiSelect={handleEmojiSelect} />
                   <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-                    <SelectTrigger className={`w-[110px] h-9 text-xs font-bold border-slate-200 ${selectedPriority === "Critical" ? "text-red-500 bg-red-50 border-red-200" : selectedPriority === "Urgent" ? "text-amber-500 bg-amber-50 border-amber-200" : "text-slate-500"
+                    <SelectTrigger className={`w-[110px] h-10 text-[10px] font-black uppercase tracking-tighter border-none shadow-none rounded-xl transition-all ${selectedPriority === "Critical" ? "bg-red-500 text-white" : selectedPriority === "Urgent" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-500"
                       }`}>
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Normal" className="text-xs">Normal</SelectItem>
-                      <SelectItem value="Urgent" className="text-xs text-amber-600 font-bold">Urgent</SelectItem>
-                      <SelectItem value="Critical" className="text-xs text-red-600 font-bold">Critical</SelectItem>
+                    <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                      <SelectItem value="Normal" className="text-[10px] font-bold uppercase tracking-widest">Normal</SelectItem>
+                      <SelectItem value="Urgent" className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Urgent</SelectItem>
+                      <SelectItem value="Critical" className="text-[10px] font-bold uppercase tracking-widest text-red-600">Critical</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input
-                    placeholder="Type a message..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                    className="flex-1"
-                  />
-                  <Button onClick={handleSendMessage} disabled={!message.trim()}>
-                    <Send className="h-4 w-4" />
-                  </Button>
+                  <div className="flex-1 bg-white border border-slate-200 rounded-2xl flex items-center shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all px-3">
+                    <Input
+                      placeholder="Type a premium message..."
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                      className="border-none shadow-none focus-visible:ring-0 px-0 h-11 text-sm bg-transparent"
+                    />
+                    <Button
+                      size="icon"
+                      onClick={handleSendMessage}
+                      disabled={!message.trim() || sendMutation.isPending}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] w-8 h-8 shrink-0"
+                    >
+                      {sendMutation.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Send className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-400">
+          <div className="hidden sm:flex flex-1 items-center justify-center text-slate-400">
             <div className="text-center">
               <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-20" />
               <p className="text-lg font-medium">Select a conversation to start messaging</p>
@@ -535,6 +583,17 @@ const SupportCenter = () => {
       <audio ref={receiveSoundRef} preload="auto">
         <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE" type="audio/wav" />
       </audio>
+
+      {/* Call Overlay */}
+      <CallOverlay
+        state={callState}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        partner={users.find(u => u.id === callPartnerId)}
+        onAccept={acceptCall}
+        onDecline={endCall}
+        onEnd={endCall}
+      />
     </DashboardLayout>
   );
 };

@@ -32,8 +32,14 @@ const directusRequest = async (
   const isFormData = options.body instanceof FormData;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
-    ...(options.headers ?? {}),
   };
+
+  if (options.headers) {
+    const customHeaders = new Headers(options.headers);
+    customHeaders.forEach((value, key) => {
+      headers[key] = value;
+    });
+  }
 
   if (!isFormData) {
     headers["Content-Type"] = "application/json";
@@ -124,19 +130,23 @@ export const getChatMessages = async (userId: string) => {
   return data?.data ?? [];
 };
 
-export const sendChatMessage = async (recipientId: string, message: string, priority: string = "Normal", fileId?: string) => {
-  // Get current user ID first
-  const me = await directusRequest("/users/me?fields=id");
-  const senderId = me?.data?.id;
+export const sendChatMessage = async (recipientId: string, message: string, priority: string = "Normal", fileId?: string, senderId?: string) => {
+  let currentSenderId = senderId;
 
-  if (!senderId) {
+  // Get current user ID if not provided
+  if (!currentSenderId) {
+    const me = await directusRequest("/users/me?fields=id");
+    currentSenderId = me?.data?.id;
+  }
+
+  if (!currentSenderId) {
     throw new Error("Could not determine sender ID");
   }
 
   // Send to recipient - CRITICAL: set sender field explicitly
   const payload: any = {
     recipient: recipientId,
-    sender: senderId, // ✅ Explicitly set sender
+    sender: currentSenderId, // ✅ Explicitly set sender
     subject: priority,
     message: message,
     collection: "support_chat",
@@ -148,8 +158,8 @@ export const sendChatMessage = async (recipientId: string, message: string, prio
   // Create outbox copy for sender
   try {
     await createNotification({
-      recipient: senderId,
-      sender: senderId, // ✅ Also set sender for outbox
+      recipient: currentSenderId,
+      sender: currentSenderId, // ✅ Also set sender for outbox
       subject: priority,
       message: fileId ? `${message}|||FILE:${fileId}` : message,
       collection: "support_chat_outbox",
@@ -293,6 +303,32 @@ export const createNotification = async (payload: {
   return data?.data;
 };
 
+// WebRTC Signaling
+export const sendCallSignal = async (recipientId: string, senderId: string, signalData: any) => {
+  return createNotification({
+    recipient: recipientId,
+    sender: senderId,
+    subject: "WEBRTC_SIGNAL",
+    message: JSON.stringify(signalData),
+    collection: "support_call_signal",
+  });
+};
+
+export const getCallSignals = async (userId: string) => {
+  const params = new URLSearchParams({
+    "filter[status][_eq]": "inbox",
+    "filter[recipient][_eq]": userId,
+    "filter[subject][_eq]": "WEBRTC_SIGNAL",
+    "filter[collection][_eq]": "support_call_signal",
+    "sort": "timestamp",
+    "fields": "id,sender,recipient,message,timestamp",
+  });
+
+  const data = await directusRequest(`/notifications?${params.toString()}`);
+  return data?.data ?? [];
+};
+
+
 /**
  * Sends an email via the Directus /mail endpoint.
  */
@@ -334,8 +370,8 @@ export const triggerWeeklyFlow = async () => {
     });
 
     return {
-      sent: "Initiated",
-      emailsSent: "Initiated",
+      sent: "Queued",
+      emailsSent: "Queued",
       matched: "Server-side",
       subject: "Weekly Extracts"
     };
@@ -378,5 +414,48 @@ export const notifyAllUsers = async (subject: string, message: string) => {
   const emailsSent = emailResults.filter((r) => r.status === "fulfilled").length;
 
   return { sent, emailsSent, total: users.length };
+};
+
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  category: "Meeting" | "Field Visit" | "Deadline" | "Personal";
+  user_id: string;
+  status: "scheduled" | "cancelled" | "completed";
+};
+
+export const getCalendarEvents = async (userId: string) => {
+  const params = new URLSearchParams({
+    "filter[user_id][_eq]": userId,
+    "fields": "id,title,description,start_time,end_time,category,user_id,status",
+    "sort": "start_time",
+  });
+  const data = await directusRequest(`/items/calendar_events?${params.toString()}`);
+  return data?.data ?? [];
+};
+
+export const createCalendarEvent = async (payload: Partial<CalendarEvent>) => {
+  const data = await directusRequest("/items/calendar_events", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return data?.data;
+};
+
+export const updateCalendarEvent = async (id: string, payload: Partial<CalendarEvent>) => {
+  const data = await directusRequest(`/items/calendar_events/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  return data?.data;
+};
+
+export const deleteCalendarEvent = async (id: string) => {
+  await directusRequest(`/items/calendar_events/${id}`, {
+    method: "DELETE",
+  });
 };
 

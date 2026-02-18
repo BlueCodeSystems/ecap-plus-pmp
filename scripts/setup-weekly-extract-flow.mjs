@@ -84,18 +84,24 @@ module.exports = async function (data) {
 
   var distributionList = ${listJson};
 
-  // Look up which emails are Directus users
-  var usersRes = await fetch(
-    directusUrl + "/users?filter[status][_eq]=active&fields[]=id,email&limit=-1",
-    { headers: headers }
-  );
-  if (!usersRes.ok) throw new Error("Failed to read users");
-  var allUsers = ((await usersRes.json()).data) || [];
-  var listEmails = {};
-  distributionList.forEach(function(e) { listEmails[e.toLowerCase()] = true; });
-  var matched = allUsers.filter(function(u) {
-    return u.email && listEmails[u.email.toLowerCase()];
-  });
+  // Look up which emails are Directus users (optional, don't fail if this fails)
+  var matched = [];
+  try {
+    var usersRes = await fetch(
+      directusUrl + "/users?filter[status][_eq]=active&fields[]=id,email&limit=-1",
+      { headers: headers }
+    );
+    if (usersRes.ok) {
+      var allUsers = ((await usersRes.json()).data) || [];
+      var listEmails = {};
+      distributionList.forEach(function (e) { listEmails[e.toLowerCase()] = true; });
+      matched = allUsers.filter(function (u) {
+        return u.email && listEmails[u.email.toLowerCase()];
+      });
+    }
+  } catch (e) {
+    // Continue even if user lookup fails - email is more important
+  }
 
   // Build date: "10th February, 2026"
   var now = new Date();

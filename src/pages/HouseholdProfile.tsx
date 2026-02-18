@@ -350,7 +350,7 @@ const HouseholdProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <User className="h-5 w-5 text-slate-600" /> Caregiver Personal Information
+                    <User className="h-5 w-5 text-slate-600" /> CAREGIVER PERSONAL INFORMATION
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -368,7 +368,7 @@ const HouseholdProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <Home className="h-5 w-5 text-slate-600" /> Household Information
+                    <Home className="h-5 w-5 text-slate-600" /> HOUSEHOLD INFORMATION
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -388,7 +388,7 @@ const HouseholdProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <MapPin className="h-5 w-5 text-slate-600" /> Location & Facility
+                      <MapPin className="h-5 w-5 text-slate-600" /> LOCATION & FACILITY
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -404,7 +404,7 @@ const HouseholdProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Briefcase className="h-5 w-5 text-slate-600" /> Caseworker & System
+                      <Briefcase className="h-5 w-5 text-slate-600" /> CASEWORKER & SYSTEM
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -422,7 +422,7 @@ const HouseholdProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                    <ShieldCheck className="h-5 w-5 text-slate-600" /> Eligibility Markers
+                    <ShieldCheck className="h-5 w-5 text-slate-600" /> ELIGIBILITY MARKERS
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -452,7 +452,7 @@ const HouseholdProfile = () => {
           <TabsContent value="family">
             <Card className="overflow-hidden border-slate-200">
               <CardHeader className="bg-slate-50/50">
-                <CardTitle className="text-xl font-bold">Family Members</CardTitle>
+                <CardTitle className="text-xl font-bold">FAMILY MEMBERS</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {isLoadingMembers ? (
@@ -553,7 +553,7 @@ const HouseholdProfile = () => {
           <TabsContent value="flags">
             <Card className="overflow-hidden border-slate-200">
               <div className="bg-red-900/10 p-6 flex items-center justify-between border-b border-red-100">
-                <h3 className="text-lg font-bold text-red-900">Flagged Record Forms</h3>
+                <h3 className="text-lg font-bold text-red-900">FLAGGED RECORD FORMS</h3>
                 <Button
                   size="sm"
                   variant="destructive"

@@ -14,12 +14,14 @@ import {
   UserCircle2,
   UserCog,
   Users,
+  Calendar,
 } from "lucide-react";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import GlowHeader from "@/components/aceternity/GlowHeader";
 import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 import { AiAssistant } from "@/components/dashboard/AiAssistant";
+import { useCalendarNotifications } from "@/hooks/useCalendarNotifications";
 
 type DashboardLayoutProps = {
   title?: string;
@@ -29,6 +31,7 @@ type DashboardLayoutProps = {
 
 const mobileMenuItems = [
   { title: "Home", url: "/dashboard", icon: Home },
+  { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Districts", url: "/districts", icon: MapPin },
   { title: "Household Register", url: "/households", icon: Home },
   { title: "VCA Register", url: "/vcas", icon: Users },
@@ -43,6 +46,7 @@ const mobileMenuItems = [
 ];
 
 const DashboardLayout = ({ title, subtitle, children }: DashboardLayoutProps) => {
+  useCalendarNotifications();
   return (
     <SidebarProvider>
       <AiAssistant />

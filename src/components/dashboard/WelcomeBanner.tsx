@@ -16,7 +16,10 @@ const WelcomeBanner = () => {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-700 via-green-700 to-teal-700 p-6 sm:p-8 text-white shadow-lg">
+    <div
+      className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-700 via-green-700 to-teal-700 p-6 sm:p-8 text-white shadow-lg"
+      style={{ background: 'var(--banner-color, linear-gradient(to right, var(--tw-gradient-from), var(--tw-gradient-to)))' } as any}
+    >
       {/* Decorative elements */}
       <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
       <div className="pointer-events-none absolute -bottom-8 -left-8 h-48 w-48 rounded-full bg-white/10 blur-2xl" />

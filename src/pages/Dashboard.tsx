@@ -4,6 +4,7 @@ import DataQualityChart from "@/components/dashboard/DataQualityChart";
 import ProvincialBreakdown from "@/components/dashboard/ProvincialBreakdown";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
+import CalendarWidget from "@/components/dashboard/CalendarWidget";
 
 const Dashboard = () => {
   return (
@@ -16,7 +17,10 @@ const Dashboard = () => {
         <DataQualityChart />
       </div>
 
-      <RecentActivity />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RecentActivity />
+        <CalendarWidget />
+      </div>
     </DashboardLayout>
   );
 };

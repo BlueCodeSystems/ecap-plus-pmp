@@ -1,4 +1,4 @@
-import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap, CircleHelp } from "lucide-react";
+import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap, CircleHelp, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -144,6 +144,16 @@ const DashboardHeader = ({
             title="Support Center"
           >
             <CircleHelp className="h-5 w-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden sm:inline-flex relative transition-transform duration-300 hover:-translate-y-0.5 text-slate-500 hover:text-primary"
+            onClick={() => navigate("/calendar")}
+            title="Event Calendar"
+          >
+            <Calendar className="h-5 w-5" />
           </Button>
 
           {/* Notifications */}
