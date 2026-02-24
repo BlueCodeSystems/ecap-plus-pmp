@@ -8,6 +8,8 @@ const WelcomeBanner = () => {
   const navigate = useNavigate();
   const firstName = user?.first_name || "there";
 
+  const isFirstLogin = sessionStorage.getItem("ecap.first_login") === "true";
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -39,7 +41,7 @@ const WelcomeBanner = () => {
             ))}
           </div>
           <h1 className="text-2xl font-bold sm:text-3xl">
-            Welcome back, {firstName}
+            {isFirstLogin ? `Welcome, ${firstName}` : `Welcome back, ${firstName}`}
           </h1>
           <p className="mt-1 text-sm text-white/80 max-w-lg">
             Monitor screening coverage, validate data quality, and coordinate fieldwork — all in one place.

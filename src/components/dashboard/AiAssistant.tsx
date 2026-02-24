@@ -33,8 +33,12 @@ const SUGGESTIONS = [
 ];
 
 export const AiAssistant = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => localStorage.getItem("ai_assistant_open") === "true");
   const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("ai_assistant_open", String(isOpen));
+  }, [isOpen]);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,76 +47,11 @@ export const AiAssistant = () => {
   const { user } = useAuth();
   const { updateColor, resetTheme } = useTheme();
 
-  // Draggable State
-  const [position, setPosition] = useState(() => {
-    const saved = localStorage.getItem("ai_assistant_pos");
-    return saved ? JSON.parse(saved) : {
-      x: window.innerWidth - 380,
-      y: window.innerHeight - 80
-    };
-  });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
   const ALLOWED_TARGETS = [
     "banner", "sidebar", "header", "background", "button", "card", "text", "theme"
   ];
 
-  const handleStartDrag = (e: React.MouseEvent | React.TouchEvent) => {
-    const target = e.target as HTMLElement;
-    // Allow dragging from the toggle button or the card header
-    if (!target.closest('.drag-handle') && !target.closest('.toggle-button')) return;
-
-    setIsDragging(true);
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    setDragOffset({
-      x: clientX - position.x,
-      y: clientY - position.y
-    });
-
-    // Prevent text selection while dragging
-    if ('preventDefault' in e) e.preventDefault();
-  };
-
-  useEffect(() => {
-    const handleMove = (e: MouseEvent | TouchEvent) => {
-      if (!isDragging) return;
-
-      const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-      const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-
-      const newPos = {
-        x: Math.max(0, Math.min(window.innerWidth - 50, clientX - dragOffset.x)),
-        y: Math.max(0, Math.min(window.innerHeight - 50, clientY - dragOffset.y))
-      };
-
-      setPosition(newPos);
-    };
-
-    const handleEnd = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        localStorage.setItem("ai_assistant_pos", JSON.stringify(position));
-      }
-    };
-
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMove);
-      window.addEventListener('mouseup', handleEnd);
-      window.addEventListener('touchmove', handleMove);
-      window.addEventListener('touchend', handleEnd);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleEnd);
-      window.removeEventListener('touchmove', handleMove);
-      window.removeEventListener('touchend', handleEnd);
-    };
-  }, [isDragging, dragOffset, position]);
-
+  // No longer draggable, fixed to bottom-right
   const userName = user?.first_name || "there";
 
   // Scroll to bottom on new message
@@ -198,27 +137,18 @@ export const AiAssistant = () => {
 
   return (
     <div
-      className="fixed z-[60] flex flex-col items-end gap-4 font-sans touch-none"
-      style={{
-        left: position.x,
-        top: position.y,
-        transition: isDragging ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        position: 'fixed'
-      }}
-      onMouseDown={handleStartDrag}
-      onTouchStart={handleStartDrag}
+      className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-4 font-sans"
     >
       {/* Chat Window */}
       {isOpen && (
         <Card className={cn(
           "absolute right-0 w-[calc(100vw-32px)] sm:w-[380px] border-slate-200 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 animate-in slide-in-from-bottom-5 overflow-hidden ring-1 ring-slate-200/50 pb-2",
           isMinimized ? "h-14" : "h-[480px] sm:h-[600px]",
-          // Open downwards if button is in the top 40% of the screen
-          position.y < window.innerHeight * 0.4 ? "top-full mt-4" : "bottom-full mb-4"
+          "bottom-full mb-4"
         )}>
           {/* Refined Header: Slimmer & Less Saturated */}
           <CardHeader className={cn(
-            "flex flex-row items-center justify-between px-4 py-3 transition-all duration-500 drag-handle cursor-move select-none",
+            "flex flex-row items-center justify-between px-4 py-3 transition-all duration-500 select-none",
             "bg-slate-50 border-b border-slate-100 text-slate-900"
           )}>
             <div className="flex items-center gap-2.5">
@@ -397,15 +327,17 @@ export const AiAssistant = () => {
       {/* Floating Toggle Button: Professional Glow */}
       {!isOpen && (
         <Button
-          onDoubleClick={() => setIsOpen(true)}
-          title="Double-click to open. Click & hold to drag."
-          className="group relative h-14 w-14 rounded-full bg-white p-0 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 border border-slate-200 toggle-button cursor-move select-none"
+          onClick={() => setIsOpen(true)}
+          title="Open AI Assistant"
+          className="group relative h-14 w-14 rounded-full bg-white p-0 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 border border-slate-200 select-none"
         >
           <div className="relative flex h-full w-full items-center justify-center rounded-full bg-slate-50 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative">
               <Bot className="h-6 w-6 text-slate-700 transition-colors group-hover:text-emerald-700" />
-              <div className="absolute -right-2 -top-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 animate-in zoom-in duration-300 shadow-sm ring-2 ring-white" />
+              <div className="absolute -right-2 -top-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 animate-in zoom-in duration-300 shadow-sm ring-2 ring-white">
+                <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+              </div>
             </div>
           </div>
         </Button>

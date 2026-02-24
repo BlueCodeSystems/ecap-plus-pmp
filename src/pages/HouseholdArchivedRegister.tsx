@@ -35,21 +35,40 @@ import {
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { DEFAULT_DISTRICT, getHouseholdArchivedRegister } from "@/lib/api";
+import { toTitleCase } from "@/lib/utils";
+import { DEFAULT_DISTRICT, getHouseholdArchivedRegister, getHouseholdsByDistrict } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
 
 
 const ITEMS_PER_PAGE = 50;
 
 const subPopulationFilterLabels = {
-  calhiv: "CALHIV",
-  hei: "HEI",
-  cwlhiv: "CWLHIV",
-  agyw: "AGYW",
-  csv: "C/SV",
-  cfsw: "CFSW",
-  abym: "ABYM",
+  calhiv: 'C/ALHIV',
+  hei: 'HEI',
+  cwlhiv: 'C/WLHIV',
+  agyw: 'AGYW',
+  csv: 'C/SV',
+  cfsw: 'CFSW',
+  abym: 'ABYM',
+  caahh: 'CAAHH',
+  caichh: 'CAICHH',
+  caich: 'CAICH',
+  calwd: 'CALWD',
+  caifhh: 'CAIFHH',
+  muc: 'MUC',
+  pbfw: 'PBFW'
+};
+
+const filterKeyToDataKey: Record<string, string> = {
+  caahh: 'child_adolescent_in_aged_headed_household',
+  caichh: 'child_adolescent_in_chronically_ill_headed_household',
+  caich: 'child_adolescent_in_child_headed_household',
+  calwd: 'child_adolescent_living_with_disability',
+  caifhh: 'child_adolescent_in_female_headed_household',
+  muc: 'under_5_malnourished',
+  pbfw: 'pbfw'
 };
 
 const graduationOptions = [
@@ -76,7 +95,42 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
 const HouseholdArchivedRegister = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const district = user?.location ?? DEFAULT_DISTRICT;
+  const initialDistrict = user?.location || DEFAULT_DISTRICT;
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
+
+  // SECURITY: Enforce district lock for District Users
+  useEffect(() => {
+    if (user?.description === "District User" && user?.location && selectedDistrict !== user.location) {
+      setSelectedDistrict(user.location);
+    }
+  }, [user, selectedDistrict]);
+
+  // Discover districts — same pattern as Districts Coverage page
+  const hhListQuery = useQuery({
+    queryKey: ["districts-discovery", "All"],
+    queryFn: () => getHouseholdsByDistrict(""),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const discoveredDistrictsMap = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    if (hhListQuery.data) {
+      (hhListQuery.data as any[]).forEach((h: any) => {
+        const raw = h.district;
+        if (raw) {
+          const normalized = toTitleCase(raw.trim());
+          if (!groups.has(normalized)) groups.set(normalized, []);
+          const variants = groups.get(normalized)!;
+          if (!variants.includes(raw)) variants.push(raw);
+        }
+      });
+    }
+    return groups;
+  }, [hhListQuery.data]);
+
+  const districts = useMemo(() => {
+    return Array.from(discoveredDistrictsMap.keys()).sort();
+  }, [discoveredDistrictsMap]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [subPopulationFilters, setSubPopulationFilters] = useState<Record<string, string>>(
@@ -86,23 +140,28 @@ const HouseholdArchivedRegister = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const archivedQuery = useQuery({
-    queryKey: ["households", "archived", district, graduationFilter],
+    queryKey: ["households", "archived", "All", graduationFilter], // Fetch all for local filtering
     queryFn: () =>
-      getHouseholdArchivedRegister(district ?? "", {
+      getHouseholdArchivedRegister("", {
         de_registration_reason: graduationFilter === "all" ? undefined : graduationFilter,
       }),
-    enabled: Boolean(district),
+    staleTime: 1000 * 60 * 10,
   });
 
   const archivedHouseholds = useMemo(() => archivedQuery.data ?? [], [archivedQuery.data]);
 
   const filteredHouseholds = useMemo(() => {
-    return archivedHouseholds.filter((household: any) => {
+    const allArchived = archivedQuery.data ?? [];
+    const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
+
+    return allArchived.filter((household: any) => {
+      const sDist = String(household.district || "");
+      if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return false;
+
       // Global Search
       const lowerCaseQuery = searchQuery.toLowerCase();
       const matchesSearch = searchQuery
         ? (household.household_id?.toLowerCase() || "").includes(lowerCaseQuery) ||
-        (household.caregiver_name?.toLowerCase() || "").includes(lowerCaseQuery) ||
         (household.homeaddress?.toLowerCase() || "").includes(lowerCaseQuery) ||
         (household.ward?.toLowerCase() || "").includes(lowerCaseQuery) ||
         (household.caseworker_name?.toLowerCase() || "").includes(lowerCaseQuery)
@@ -111,7 +170,13 @@ const HouseholdArchivedRegister = () => {
       // Sub-population Filters
       const matchesFilters = Object.entries(subPopulationFilters).every(([key, value]) => {
         if (value === "all") return true;
-        const recordValue = household[key];
+
+        let dataKey = key;
+        if (key in filterKeyToDataKey) {
+          dataKey = filterKeyToDataKey[key];
+        }
+
+        const recordValue = household[dataKey];
         // Check for '1', 'true', '0', 'false' string or boolean values
         return value === "yes"
           ? recordValue === "1" || recordValue === "true" || recordValue === 1 || recordValue === true
@@ -168,7 +233,6 @@ const HouseholdArchivedRegister = () => {
     try {
       const headers = [
         "Household ID",
-        "Caregiver Name",
         "Home Address",
         "Facility",
         "Province",
@@ -181,7 +245,6 @@ const HouseholdArchivedRegister = () => {
 
       const keys = [
         "household_id",
-        "caregiver_name",
         "homeaddress",
         "facility",
         "province",
@@ -198,10 +261,10 @@ const HouseholdArchivedRegister = () => {
           // Helper to get value or try alternate keys for 'reason'
           const getValue = (key: string) => {
             if (key === 'reason') {
-              return pickValue(row, ["reason", "archived_reason", "status", "de_registration_reason"]);
+              return pickValue(row, ["de_registration_reason", "reason", "archived_reason", "case_status", "status"]);
             }
             if (key === 'archived_on') {
-              return pickValue(row, ["archived_on", "archivedOn", "date_archived", "de_registration_date", "updated_at"]);
+              return pickValue(row, ["de_registration_date", "archived_on", "archivedOn", "date_archived", "updated_at"]);
             }
             return row[key] ?? "";
           };
@@ -217,7 +280,7 @@ const HouseholdArchivedRegister = () => {
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `archived_households_${district}.csv`;
+      link.download = `archived_households_${selectedDistrict}.csv`;
       link.click();
     } catch (error) {
       console.error("Error exporting data:", error);
@@ -240,7 +303,7 @@ const HouseholdArchivedRegister = () => {
       <PageIntro
         eyebrow="Register"
         title="Household Archived Register"
-        description="Reference closed or graduated households while keeping current registers focused."
+        description=""
         actions={
           <Button variant="outline" className="border-slate-200" onClick={exportToCSV}>
             Export to CSV
@@ -250,14 +313,33 @@ const HouseholdArchivedRegister = () => {
 
       <GlowCard>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-2">
               <Archive className="h-4 w-4 text-primary" />
               <CardTitle>Archived Households</CardTitle>
             </div>
-            <div className="mt-2 text-sm text-amber-600 font-medium">
-              Note: Only deregistered caregivers are shown.
+            <div className="flex-1" />
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-black uppercase text-slate-400 whitespace-nowrap">District:</span>
+              <Select
+                value={selectedDistrict}
+                onValueChange={setSelectedDistrict}
+                disabled={user?.description === "District User"}
+              >
+                <SelectTrigger className="w-[180px] bg-slate-50 border-none font-bold h-9">
+                  <SelectValue placeholder="Select District" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Districts</SelectItem>
+                  {districts.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+          <div className="mt-2 text-sm text-amber-600 font-medium">
+            Note: Only deregistered caregivers are shown.
           </div>
         </CardHeader>
 
@@ -265,35 +347,12 @@ const HouseholdArchivedRegister = () => {
           {/* Filters Section */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
             {/* Sub-population Filters */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-slate-700">Filter by Sub Population</h3>
-              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
-                {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-                  <div key={key} className="flex flex-col items-start gap-1 pb-2">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider truncate w-full mb-1">{label}</span>
-                    <div className="flex flex-col w-full gap-1">
-                      {["all", "yes", "no"].map((option) => {
-                        const isActive = subPopulationFilters[key] === option;
-                        return (
-                          <div
-                            key={option}
-                            onClick={() => handleFilterChange(key, option)}
-                            className={cn(
-                              "w-full px-2 py-1.5 text-[10px] uppercase tracking-wide font-medium text-center rounded-md cursor-pointer transition-all duration-200 border",
-                              isActive
-                                ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                                : "bg-white text-slate-600 border-slate-100 hover:bg-slate-50 hover:border-slate-200"
-                            )}
-                          >
-                            {option}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <SubPopulationFilter
+              filters={subPopulationFilters}
+              labels={subPopulationFilterLabels}
+              onChange={handleFilterChange}
+              onClear={handleClearFilters}
+            />
 
             {/* Graduation Filter */}
             <div className="space-y-2">
@@ -337,8 +396,7 @@ const HouseholdArchivedRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px] hidden sm:table-cell">ID</TableHead>
-                  <TableHead className="w-[150px]">Caregiver</TableHead>
+                  <TableHead className="w-[120px] hidden sm:table-cell">HH ID</TableHead>
                   <TableHead className="min-w-[200px] hidden sm:table-cell">Household Details</TableHead>
                   <TableHead className="w-[120px] hidden lg:table-cell">Archived On</TableHead>
                   <TableHead className="w-[150px] hidden md:table-cell">Reason</TableHead>
@@ -346,7 +404,7 @@ const HouseholdArchivedRegister = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {!district && (
+                {!selectedDistrict && (
                   <TableRow>
                     <TableCell colSpan={7} className="py-8 text-center text-slate-500">
                       Set `VITE_DEFAULT_DISTRICT` to load archived households.
@@ -372,24 +430,17 @@ const HouseholdArchivedRegister = () => {
                   return (
                     <TableRow key={`${String(id)}-${index}`}>
                       <TableCell className="font-medium align-top hidden sm:table-cell">
-                        <span className="text-xs">{String(id)}</span>
+                        <span className="text-sm font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">{String(id)}</span>
                       </TableCell>
-                      <TableCell className="align-top px-2 sm:px-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2 sm:hidden">
-                            <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 rounded">{String(id)}</span>
-                          </div>
-                          <span className="font-medium text-slate-900 leading-tight">
-                            {String(pickValue(household, ["caregiver_name", "name"]))}
+                      <TableCell className="sm:hidden">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1 rounded w-fit">{String(id)}</span>
+                          <span className="text-[10px] text-slate-500 italic">
+                            Archived: {String(pickValue(household, ["de_registration_date", "archived_on", "archivedOn", "date_archived", "updated_at"]))}
                           </span>
-                          <div className="mt-1 flex flex-col gap-1 sm:hidden">
-                            <span className="text-[10px] text-slate-500 italic">
-                              Archived: {String(pickValue(household, ["archived_on", "archivedOn", "date_archived", "de_registration_date", "updated_at"]))}
-                            </span>
-                            <span className="text-[10px] text-amber-600 font-medium truncate max-w-[140px]">
-                              {String(pickValue(household, ["reason", "archived_reason", "status", "case_status", "de_registration_reason"]))}
-                            </span>
-                          </div>
+                          <span className="text-[10px] text-amber-600 font-medium truncate max-w-[140px]">
+                            {String(pickValue(household, ["de_registration_reason", "reason", "archived_reason", "case_status", "status"]))}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell align-top">
@@ -398,11 +449,11 @@ const HouseholdArchivedRegister = () => {
                         </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell align-top text-xs">
-                        {String(pickValue(household, ["archived_on", "archivedOn", "date_archived", "de_registration_date", "updated_at"]))}
+                        {String(pickValue(household, ["de_registration_date", "archived_on", "archivedOn", "date_archived", "updated_at"]))}
                       </TableCell>
                       <TableCell className="hidden md:table-cell align-top text-xs">
                         <span className="text-amber-700">
-                          {String(pickValue(household, ["reason", "archived_reason", "status", "case_status", "de_registration_reason"]))}
+                          {String(pickValue(household, ["de_registration_reason", "reason", "archived_reason", "case_status", "status"]))}
                         </span>
                       </TableCell>
                       <TableCell className="text-right align-top px-2 sm:px-4">

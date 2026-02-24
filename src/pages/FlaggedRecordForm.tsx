@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createFlaggedRecord } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { notifyUsersOfFlag } from "@/lib/directus";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
@@ -67,6 +68,11 @@ const FlaggedRecordForm = () => {
     mutationFn: createFlaggedRecord,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flagged-records"] });
+
+      // Broadcast notification to all users
+      const verifier = user ? `${user.first_name} ${user.last_name}` : "Unknown Verifier";
+      notifyUsersOfFlag(household_id, verifier, form.getValues("comment"), vca_id);
+
       toast.success("Flagged record created successfully", {
         description: "Your comment has been submitted to the caseworker.",
       });

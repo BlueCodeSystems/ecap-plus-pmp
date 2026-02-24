@@ -1,23 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { getCallSignals, sendCallSignal, markNotificationRead } from "@/lib/directus";
+import Peer, { MediaConnection } from "peerjs";
 
 export type CallState = "idle" | "incoming" | "outgoing" | "connecting" | "active" | "ended";
-
-const CONFIGURATION: RTCConfiguration = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-};
 
 export const useWebRTC = (userId: string | undefined) => {
   const [state, setState] = useState<CallState>("idle");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [partnerId, setPartnerId] = useState<string | null>(null);
-  const pc = useRef<RTCPeerConnection | null>(null);
+
+  const peerRef = useRef<Peer | null>(null);
+  const callRef = useRef<MediaConnection | null>(null);
 
   const cleanup = useCallback(() => {
-    if (pc.current) {
-      pc.current.close();
-      pc.current = null;
+    if (callRef.current) {
+      callRef.current.close();
+      callRef.current = null;
     }
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
@@ -28,24 +26,55 @@ export const useWebRTC = (userId: string | undefined) => {
     setPartnerId(null);
   }, [localStream]);
 
-  const initPeerConnection = useCallback((targetId: string) => {
-    const peer = new RTCPeerConnection(CONFIGURATION);
+  // Initialize PeerJS
+  useEffect(() => {
+    if (!userId) return;
 
-    peer.onicecandidate = (event) => {
-      if (event.candidate && userId) {
-        sendCallSignal(targetId, userId, { type: "candidate", candidate: event.candidate });
-      }
+    const peer = new Peer(userId, {
+      debug: 2
+    });
+
+    peer.on("open", (id) => {
+      console.log("PeerJS: Connected with ID", id);
+    });
+
+    peer.on("call", (incomingCall) => {
+      console.log("PeerJS: Incoming call from", incomingCall.peer);
+      setPartnerId(incomingCall.peer);
+      setState("incoming");
+      callRef.current = incomingCall;
+
+      incomingCall.on("stream", (remoteStream) => {
+        console.log("PeerJS: Received remote stream");
+        setRemoteStream(remoteStream);
+        setState("active");
+      });
+
+      incomingCall.on("close", () => {
+        console.log("PeerJS: Call closed by remote");
+        cleanup();
+      });
+
+      incomingCall.on("error", (err) => {
+        console.error("PeerJS: Call error", err);
+        cleanup();
+      });
+    });
+
+    peer.on("error", (err) => {
+      console.error("PeerJS: Peer error", err);
+    });
+
+    peerRef.current = peer;
+
+    return () => {
+      peer.destroy();
     };
-
-    peer.ontrack = (event) => {
-      setRemoteStream(event.streams[0]);
-    };
-
-    pc.current = peer;
-    return peer;
   }, [userId]);
 
   const startCall = async (targetId: string, type: "audio" | "video") => {
+    if (!peerRef.current) return;
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: type === "video",
@@ -55,86 +84,54 @@ export const useWebRTC = (userId: string | undefined) => {
       setPartnerId(targetId);
       setState("outgoing");
 
-      const peer = initPeerConnection(targetId);
-      stream.getTracks().forEach(track => peer.addTrack(track, stream));
+      const call = peerRef.current.call(targetId, stream);
+      callRef.current = call;
 
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
+      call.on("stream", (remoteStream) => {
+        console.log("PeerJS: Received remote stream (outgoing)");
+        setRemoteStream(remoteStream);
+        setState("active");
+      });
 
-      if (userId) {
-        await sendCallSignal(targetId, userId, { type: "offer", sdp: offer, callType: type });
-      }
+      call.on("close", () => {
+        console.log("PeerJS: Outgoing call closed");
+        cleanup();
+      });
+
+      call.on("error", (err) => {
+        console.error("PeerJS: Outgoing call error", err);
+        cleanup();
+      });
+
     } catch (err) {
-      console.error("Failed to start call:", err);
+      console.error("PeerJS: Failed to start call", err);
       cleanup();
     }
   };
 
   const acceptCall = async () => {
-    if (!partnerId || !userId) return;
+    if (!callRef.current) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
       setLocalStream(stream);
       setState("connecting");
 
-      const peer = pc.current;
-      if (!peer) return;
-
-      stream.getTracks().forEach(track => peer.addTrack(track, stream));
-
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-
-      await sendCallSignal(partnerId, userId, { type: "answer", sdp: answer });
-      setState("active");
+      console.log("PeerJS: Answering call with local stream");
+      callRef.current.answer(stream);
+      // Wait for 'stream' event to set state to active
     } catch (err) {
-      console.error("Failed to accept call:", err);
+      console.error("PeerJS: Failed to accept call", err);
       cleanup();
     }
   };
 
   const endCall = useCallback(async () => {
-    if (partnerId && userId) {
-      await sendCallSignal(partnerId, userId, { type: "end" });
-    }
     cleanup();
-  }, [partnerId, userId, cleanup]);
-
-  // Polling for signals
-  useEffect(() => {
-    if (!userId) return;
-
-    const interval = setInterval(async () => {
-      const signals = await getCallSignals(userId);
-      for (const sig of signals) {
-        const data = JSON.parse(sig.message);
-
-        if (data.type === "offer" && state === "idle") {
-          setPartnerId(sig.sender);
-          setState("incoming");
-          const peer = initPeerConnection(sig.sender);
-          await peer.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        } else if (data.type === "answer" && pc.current) {
-          await pc.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
-          setState("active");
-        } else if (data.type === "candidate" && pc.current) {
-          try {
-            await pc.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-          } catch (e) {
-            console.error("Error adding received ice candidate", e);
-          }
-        } else if (data.type === "end") {
-          cleanup();
-        }
-
-        // Mark signal as processed
-        await markNotificationRead(sig.id);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [userId, state, initPeerConnection, cleanup]);
+  }, [cleanup]);
 
   return {
     state,

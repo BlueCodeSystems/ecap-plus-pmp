@@ -27,7 +27,7 @@ const ForgotPassword = () => {
         return;
       }
 
-      const resetUrlBase = import.meta.env.VITE_RESET_PASSWORD_URL || window.location.origin;
+      const resetUrlBase = (import.meta.env.VITE_RESET_PASSWORD_URL || window.location.origin).replace(/\/$/, "");
       const resetUrl = `${resetUrlBase}/reset-password`;
 
       const response = await fetch(`${DIRECTUS_URL}/auth/password/request`, {
@@ -40,16 +40,26 @@ const ForgotPassword = () => {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        console.error("Directus Password Request Error Details:", JSON.stringify(data, null, 2));
-        const firstError = data?.errors?.[0];
-        const errorMessage = firstError?.message || firstError?.extensions?.code || "Request failed";
-        throw new Error(errorMessage);
+        console.error("Password Request Error:", data);
+
+        // Internal logging for dev
+        if (import.meta.env.DEV) {
+          const firstError = data?.errors?.[0];
+          const errorMessage = firstError?.message || "Request failed";
+          throw new Error(`[DEV-ONLY] ${errorMessage}`);
+        }
+        // In prod, falling through to success message is safer
       }
 
-      toast.success("Check your inbox. We sent a password reset link if the email exists.");
+      toast.success("If an account exists with this email, you will receive a password reset link shortly.");
       setEmail("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to request reset");
+      if (import.meta.env.DEV) {
+        toast.error(error instanceof Error ? error.message : "Unable to request reset");
+      } else {
+        // Prod fallback
+        toast.success("If an account exists with this email, you will receive a password reset link shortly.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -111,7 +121,7 @@ const ForgotPassword = () => {
               images={[
 
                 { src: "/pic-1.jpg", alt: " school lunch break" },
-                { src: "/pic-2.jpg", alt: "two kids smiling" },
+                // { src: "/pic-2.jpg", alt: "two kids smiling" },
                 { src: "/pic-3.jpg", alt: "community member" }
               ]}
             />

@@ -35,9 +35,11 @@ import {
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { DEFAULT_DISTRICT, getChildrenArchivedRegister } from "@/lib/api";
+import { toTitleCase } from "@/lib/utils";
+import { DEFAULT_DISTRICT, getChildrenArchivedRegister, getHouseholdsByDistrict } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
 
 
 const ITEMS_PER_PAGE = 50;
@@ -153,7 +155,42 @@ const calculateAge = (birthdate: string): number => {
 const VcaArchivedRegister = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const district = user?.location ?? DEFAULT_DISTRICT;
+  const initialDistrict = user?.location || DEFAULT_DISTRICT;
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
+
+  // SECURITY: Enforce district lock for District Users
+  useEffect(() => {
+    if (user?.description === "District User" && user?.location && selectedDistrict !== user.location) {
+      setSelectedDistrict(user.location);
+    }
+  }, [user, selectedDistrict]);
+
+  // Discover districts — same pattern as Districts Coverage page
+  const hhListQuery = useQuery({
+    queryKey: ["districts-discovery", "All"],
+    queryFn: () => getHouseholdsByDistrict(""),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const discoveredDistrictsMap = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    if (hhListQuery.data) {
+      (hhListQuery.data as any[]).forEach((h: any) => {
+        const raw = h.district;
+        if (raw) {
+          const normalized = toTitleCase(raw.trim());
+          if (!groups.has(normalized)) groups.set(normalized, []);
+          const variants = groups.get(normalized)!;
+          if (!variants.includes(raw)) variants.push(raw);
+        }
+      });
+    }
+    return groups;
+  }, [hhListQuery.data]);
+
+  const districts = useMemo(() => {
+    return Array.from(discoveredDistrictsMap.keys()).sort();
+  }, [discoveredDistrictsMap]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [subPopulationFilters, setSubPopulationFilters] = useState<Record<string, string>>(
@@ -163,25 +200,29 @@ const VcaArchivedRegister = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const archivedQuery = useQuery({
-    queryKey: ["vcas", "archived", district, graduationFilter],
+    queryKey: ["vcas", "archived", "All", graduationFilter], // Fetch all for local filtering
     queryFn: () =>
-      getChildrenArchivedRegister(district ?? "", {
+      getChildrenArchivedRegister("", {
         reason: graduationFilter === "all" ? undefined : graduationFilter,
       }),
-    enabled: Boolean(district),
+    staleTime: 1000 * 60 * 10,
   });
 
   const archivedVcas = useMemo(() => archivedQuery.data ?? [], [archivedQuery.data]);
 
   const filteredVcas = useMemo(() => {
-    return archivedVcas.filter((vca: any) => {
+    const allArchived = archivedQuery.data ?? [];
+    const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
+
+    return allArchived.filter((vca: any) => {
+      const sDist = String(vca.district || "");
+      if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return false;
+
       // Global Search
       const lowerCaseQuery = searchQuery.toLowerCase();
       const matchesSearch = searchQuery
         ? (vca.vca_id?.toLowerCase() || "").includes(lowerCaseQuery) ||
         (vca.uid?.toLowerCase() || "").includes(lowerCaseQuery) ||
-        (vca.firstname?.toLowerCase() || "").includes(lowerCaseQuery) ||
-        (vca.lastname?.toLowerCase() || "").includes(lowerCaseQuery) ||
         (vca.homeaddress?.toLowerCase() || "").includes(lowerCaseQuery) ||
         (vca.ward?.toLowerCase() || "").includes(lowerCaseQuery)
         : true;
@@ -250,7 +291,6 @@ const VcaArchivedRegister = () => {
     try {
       const headers = [
         "VCA ID",
-        "Full Name",
         "Gender",
         "Age",
         "Home Address",
@@ -264,7 +304,6 @@ const VcaArchivedRegister = () => {
 
       const keys = [
         "uid", // or vca_id
-        "fullname", // processed
         "vca_gender",
         "age", // processed
         "homeaddress",
@@ -282,8 +321,8 @@ const VcaArchivedRegister = () => {
           const getValue = (key: string) => {
             if (key === 'fullname') return `${row.firstname || ''} ${row.lastname || ''}`.trim();
             if (key === 'age') return calculateAge(row.birthdate);
-            if (key === 'reason') return pickValue(row, ["reason", "archived_reason", "status", "de_registration_reason"]);
-            if (key === 'archived_on') return pickValue(row, ["archived_on", "archivedOn", "date_archived", "de_registration_date", "updated_at"]);
+            if (key === 'reason') return pickValue(row, ["de_registration_reason", "reason", "archived_reason", "case_status", "status"]);
+            if (key === 'archived_on') return pickValue(row, ["de_registration_date", "archived_on", "archivedOn", "date_archived", "updated_at"]);
             if (key === 'uid') return pickValue(row, ["uid", "vca_id", "id", "unique_id"]);
             return row[key] ?? "";
           };
@@ -299,7 +338,7 @@ const VcaArchivedRegister = () => {
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `archived_vcas_${district}.csv`;
+      link.download = `archived_vcas_${selectedDistrict}.csv`;
       link.click();
     } catch (error) {
       console.error("Error exporting data:", error);
@@ -332,14 +371,33 @@ const VcaArchivedRegister = () => {
 
       <GlowCard>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-2">
               <Archive className="h-4 w-4 text-primary" />
               <CardTitle>Archived VCAs</CardTitle>
             </div>
-            <div className="mt-2 text-sm text-amber-600 font-medium">
-              Note: Only deregistered VCAs are shown.
+            <div className="flex-1" />
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-black uppercase text-slate-400 whitespace-nowrap">District:</span>
+              <Select
+                value={selectedDistrict}
+                onValueChange={setSelectedDistrict}
+                disabled={user?.description === "District User"}
+              >
+                <SelectTrigger className="w-[180px] bg-slate-50 border-none font-bold h-9">
+                  <SelectValue placeholder="Select District" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Districts</SelectItem>
+                  {districts.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+          <div className="mt-2 text-sm text-amber-600 font-medium">
+            Note: Only deregistered VCAs are shown.
           </div>
         </CardHeader>
 
@@ -347,35 +405,12 @@ const VcaArchivedRegister = () => {
           {/* Filters Section */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
             {/* Sub-population Filters */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-slate-700">Filter by Sub Population</h3>
-              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
-                {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-                  <div key={key} className="flex flex-col items-start gap-1 pb-2">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider truncate w-full mb-1">{label}</span>
-                    <div className="flex flex-col w-full gap-1">
-                      {["all", "yes", "no"].map((option) => {
-                        const isActive = subPopulationFilters[key] === option;
-                        return (
-                          <div
-                            key={option}
-                            onClick={() => handleFilterChange(key, option)}
-                            className={cn(
-                              "w-full px-2 py-1.5 text-[10px] uppercase tracking-wide font-medium text-center rounded-md cursor-pointer transition-all duration-200 border",
-                              isActive
-                                ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                                : "bg-white text-slate-600 border-slate-100 hover:bg-slate-50 hover:border-slate-200"
-                            )}
-                          >
-                            {option}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <SubPopulationFilter
+              filters={subPopulationFilters}
+              labels={subPopulationFilterLabels}
+              onChange={handleFilterChange}
+              onClear={handleClearFilters}
+            />
 
             {/* Graduation Filter */}
             <div className="space-y-2">
@@ -418,8 +453,7 @@ const VcaArchivedRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px] hidden sm:table-cell">ID</TableHead>
-                  <TableHead className="w-[150px]">VCA Name</TableHead>
+                  <TableHead className="w-[120px] hidden sm:table-cell">Unique ID</TableHead>
                   <TableHead className="w-[80px] hidden sm:table-cell">Gender</TableHead>
                   <TableHead className="w-[60px] hidden sm:table-cell">Age</TableHead>
                   <TableHead className="min-w-[200px] hidden lg:table-cell">Household Details</TableHead>
@@ -429,7 +463,7 @@ const VcaArchivedRegister = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {!district && (
+                {!selectedDistrict && (
                   <TableRow>
                     <TableCell colSpan={8} className="py-8 text-center text-slate-500">
                       Set `VITE_DEFAULT_DISTRICT` to load archived VCAs.
@@ -458,22 +492,19 @@ const VcaArchivedRegister = () => {
                   return (
                     <TableRow key={`${String(id)}-${index}`}>
                       <TableCell className="font-medium align-top hidden sm:table-cell">
-                        <span className="text-xs">{String(id)}</span>
+                        <span className="text-sm font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">{String(id)}</span>
                       </TableCell>
-                      <TableCell className="font-medium align-top px-2 sm:px-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2 sm:hidden">
-                            <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 rounded">{String(id)}</span>
-                          </div>
-                          <span className="text-sm leading-tight">{fullName || 'N/A'}</span>
-                          <div className="mt-1 flex gap-2 sm:hidden">
+                      <TableCell className="sm:hidden">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1 rounded w-fit">{String(id)}</span>
+                          <div className="flex gap-2">
                             <span className="text-[10px] bg-slate-50 border border-slate-100 px-1.5 rounded text-slate-600">
                               {vca.vca_gender?.charAt(0) || '?'} • {age}y
                             </span>
                           </div>
                           <div className="mt-1 flex flex-col gap-1 sm:hidden">
                             <span className="text-[10px] text-slate-500 italic">
-                              Archived: {String(pickValue(vca, ["archived_on", "archivedOn", "date_archived", "de_registration_date", "updated_at"]))}
+                              Archived: {String(pickValue(vca, ["de_registration_date", "archived_on", "archivedOn", "date_archived", "updated_at"]))}
                             </span>
                           </div>
                         </div>
@@ -490,7 +521,7 @@ const VcaArchivedRegister = () => {
                       </TableCell>
                       <TableCell className="hidden lg:table-cell align-top text-xs">
                         <span className="text-amber-700">
-                          {String(pickValue(vca, ["reason", "archived_reason", "status", "case_status"]))}
+                          {String(pickValue(vca, ["de_registration_reason", "reason", "archived_reason", "case_status", "status"]))}
                         </span>
                       </TableCell>
                       <TableCell className="text-right align-top px-2 sm:px-4">

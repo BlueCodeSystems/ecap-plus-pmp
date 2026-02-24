@@ -70,6 +70,7 @@ export type DirectusUser = {
   title?: string;
   location?: string;
   avatar?: string; // File ID for profile picture
+  last_access?: string;
 };
 
 export type DirectusRole = {
@@ -80,7 +81,7 @@ export type DirectusRole = {
 
 export const listUsers = async (status?: string) => {
   const params = new URLSearchParams({
-    fields: "id,email,first_name,last_name,role.id,role.name,status,description,title,location",
+    fields: "id,email,first_name,last_name,role.id,role.name,status,avatar,last_access",
     limit: "-1", // Fetch all users for chat list
   });
   if (DIRECTUS_USER_ROLE) {
@@ -102,7 +103,7 @@ export const listUsers = async (status?: string) => {
 
 export const getUser = async (id: string) => {
   const data = await directusRequest(
-    `/users/${encodeURIComponent(id)}?fields=id,email,first_name,last_name,role.id,role.name,status,description,title,location`,
+    `/users/${encodeURIComponent(id)}?fields=id,email,first_name,last_name,role.id,role.name,status,avatar,last_access`,
   );
   return data?.data;
 };
@@ -123,7 +124,7 @@ export const getChatMessages = async (userId: string) => {
     "limit": "500",
     "fields": "id,status,timestamp,sender,recipient,subject,message,collection,item",
     "filter[recipient][_eq]": userId,
-    "filter[collection][_in]": "support_chat,support_chat_outbox",
+    "filter[sender][_nnull]": "true", // Only messages from someone
   });
 
   const data = await directusRequest(`/notifications?${params.toString()}`);
@@ -159,7 +160,7 @@ export const sendChatMessage = async (recipientId: string, message: string, prio
   try {
     await createNotification({
       recipient: currentSenderId,
-      sender: currentSenderId, // ✅ Also set sender for outbox
+      sender: currentSenderId, // Also set sender for outbox
       subject: priority,
       message: fileId ? `${message}|||FILE:${fileId}` : message,
       collection: "support_chat_outbox",
@@ -186,7 +187,7 @@ export const uploadFile = async (file: File) => {
 };
 
 // Update User Avatar
-export const updateUserAvatar = async (userId: string, fileId: string) => {
+export const updateUserAvatar = async (userId: string, fileId: string | null) => {
   const data = await directusRequest(`/users/${userId}`, {
     method: "PATCH",
     body: JSON.stringify({ avatar: fileId }),
@@ -194,9 +195,13 @@ export const updateUserAvatar = async (userId: string, fileId: string) => {
   return data?.data;
 };
 
-// Get file URL
-export const getFileUrl = (fileId: string) => {
-  return `${requireDirectusUrl()}/assets/${fileId}`;
+// Get file URL (includes auth token for private assets)
+export const getFileUrl = (fileId: string | null | undefined) => {
+  if (!fileId) return "";
+  const token = getStoredToken();
+  const baseUrl = requireDirectusUrl().replace(/\/$/, "");
+  const url = `${baseUrl}/assets/${fileId}`;
+  return token ? `${url}?access_token=${token}` : url;
 };
 
 
@@ -290,7 +295,7 @@ export const markNotificationRead = async (id: string) => {
 
 export const createNotification = async (payload: {
   recipient: string;
-  sender?: string; // ✅ Added sender field
+  sender?: string; // Added sender field
   subject: string;
   message?: string;
   collection?: string;
@@ -303,30 +308,6 @@ export const createNotification = async (payload: {
   return data?.data;
 };
 
-// WebRTC Signaling
-export const sendCallSignal = async (recipientId: string, senderId: string, signalData: any) => {
-  return createNotification({
-    recipient: recipientId,
-    sender: senderId,
-    subject: "WEBRTC_SIGNAL",
-    message: JSON.stringify(signalData),
-    collection: "support_call_signal",
-  });
-};
-
-export const getCallSignals = async (userId: string) => {
-  const params = new URLSearchParams({
-    "filter[status][_eq]": "inbox",
-    "filter[recipient][_eq]": userId,
-    "filter[subject][_eq]": "WEBRTC_SIGNAL",
-    "filter[collection][_eq]": "support_call_signal",
-    "sort": "timestamp",
-    "fields": "id,sender,recipient,message,timestamp",
-  });
-
-  const data = await directusRequest(`/notifications?${params.toString()}`);
-  return data?.data ?? [];
-};
 
 
 /**
@@ -414,6 +395,24 @@ export const notifyAllUsers = async (subject: string, message: string) => {
   const emailsSent = emailResults.filter((r) => r.status === "fulfilled").length;
 
   return { sent, emailsSent, total: users.length };
+};
+
+export const notifyUsersOfFlag = async (hhId: string, verifier: string, comment: string, vcaId?: string) => {
+  const users = await listUsers("active");
+  const entityId = vcaId && vcaId !== "Not Available" ? `VCA ${vcaId} (HH ${hhId})` : `Household ${hhId}`;
+  const subject = `Record Flagged: ${entityId}`;
+  const message = `A record for ${entityId} has been flagged by ${verifier}. \n\nComment: ${comment}`;
+
+  return Promise.allSettled(
+    users.map((u: DirectusUser) =>
+      createNotification({
+        recipient: u.id,
+        subject,
+        message,
+        collection: "flagged_forms_ecapplus_pmp",
+      })
+    )
+  );
 };
 
 export type CalendarEvent = {

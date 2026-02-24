@@ -53,8 +53,12 @@ const ResetPassword = () => {
         throw new Error(data?.errors?.[0]?.message ?? "Reset failed");
       }
 
-      toast.success("Password reset successful. You can now sign in.");
-      navigate("/");
+      toast.success("Password reset successful. Redirecting to sign in page...");
+
+      // Delay navigation to allow user to see the success message (matching ohasp logic)
+      setTimeout(() => {
+        navigate("/");
+      }, 3000);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to reset password");
     } finally {

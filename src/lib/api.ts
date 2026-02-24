@@ -112,31 +112,60 @@ const getListValue = (data: unknown): Array<Record<string, unknown>> => {
     return [];
   }
 
-  console.log("[API Debug] getListValue input:", data);
   const record = data as Record<string, unknown>;
-  const candidates = [
-    record.data,
-    record.results,
-    record.records,
-    record.referrals,
-    record.referral,
-    record.caregiver_referrals,
-    record.caregiver_referral,
-    record.services,
-    record.caseplans,
-    record.members
+  const keysToCheck = [
+    "data",
+    "results",
+    "records",
+    "referrals",
+    "referral",
+    "caregiver_referrals",
+    "caregiver_referral",
+    "caregiver_services",
+    "caregiver_services_by_district",
+    "household_services",
+    "services",
+    "caseplans",
+    "members",
+    "vca_services",
+    "vca_services_by_district",
+    "household_services_by_district",
   ];
 
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate as Array<Record<string, unknown>>;
+  // 1. Check direct keys
+  for (const key of keysToCheck) {
+    const val = record[key];
+    if (Array.isArray(val)) {
+      return val as Array<Record<string, unknown>>;
     }
+  }
 
-    if (candidate && typeof candidate === "object") {
-      const nested = (candidate as Record<string, unknown>).data;
-      if (Array.isArray(nested)) {
-        return nested as Array<Record<string, unknown>>;
+  // 2. Check depth-1 nested keys (e.g. { data: { caregiver_services: [...] } })
+  for (const key of keysToCheck) {
+    const val = record[key];
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const nested = val as Record<string, unknown>;
+      for (const nKey of keysToCheck) {
+        if (Array.isArray(nested[nKey])) {
+          return nested[nKey] as Array<Record<string, unknown>>;
+        }
       }
+    }
+  }
+
+  // 3. Fallback: Find the FIRST non-empty array property in the root record
+  for (const key of Object.keys(record)) {
+    const val = record[key];
+    if (Array.isArray(val) && val.length > 0) {
+      return val as Array<Record<string, unknown>>;
+    }
+  }
+
+  // 4. Final attempt: any array even if empty (find any list named anything)
+  for (const key of Object.keys(record)) {
+    const val = record[key];
+    if (Array.isArray(val)) {
+      return val as Array<Record<string, unknown>>;
     }
   }
 
@@ -265,10 +294,22 @@ export const getChildrenArchivedRegister = async (
 };
 
 export const getCaregiverServicesByDistrict = async (district: string) => {
-  const path = district
-    ? `/household/district/caregiver-services/${encodeURIComponent(district)}`
-    : "/household/caregiver-services";
-  const data = await dqaGet(path);
+  // Backend route: /household/caregiver-services-by-district/:district(*)
+  // district(*) means district can contain slashes — always requires a district value
+  const data = await dqaGet(`/household/caregiver-services-by-district/${encodeURIComponent(district)}`);
+  return getListValue(data);
+};
+
+export const getHouseholdServicesByDistrict = async (district: string) => {
+  // Backend route: /household/household-services-by-district/:district(*)
+  const data = await dqaGet(`/household/household-services-by-district/${encodeURIComponent(district)}`);
+  return getListValue(data);
+};
+
+export const getHTSRegisterByDistrict = async (district: string) => {
+  // Backend route: /household/hts-register-by-district/:district(*)
+  const data = await dqaGet(`/household/hts-register-by-district/${encodeURIComponent(district)}`);
+  console.log("[HTS] Raw API response for district:", district, data);
   return getListValue(data);
 };
 
@@ -278,10 +319,9 @@ export const getCaregiverServicesByHousehold = async (hhId: string) => {
 };
 
 export const getVcaServicesByDistrict = async (district: string) => {
-  const path = district
-    ? `/child/district/vcaservices/${encodeURIComponent(district)}`
-    : "/child/vcaservices";
-  const data = await dqaGet(path);
+  // Backend route: /child/vca-services-by-district/:district(*)
+  const data = await dqaGet(`/child/vca-services-by-district/${encodeURIComponent(district)}`);
+  console.log("meeeeeee", data)
   return getListValue(data);
 };
 

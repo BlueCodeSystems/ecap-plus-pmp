@@ -28,9 +28,18 @@ import {
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { DEFAULT_DISTRICT, getChildrenByDistrict } from "@/lib/api";
+import { toTitleCase } from "@/lib/utils";
+import { DEFAULT_DISTRICT, getChildrenByDistrict, getHouseholdsByDistrict } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
 
 
 const ITEMS_PER_PAGE = 50;
@@ -132,16 +141,63 @@ const VcaRegister = () => {
     Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
   );
 
+  // Initial state logic for district security
+  const initialDistrict = (user?.description === "District User" && user?.location)
+    ? user.location
+    : district;
+
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
+
+  // SECURITY: Enforce district lock for District Users
+  useEffect(() => {
+    if (user?.description === "District User" && user?.location && selectedDistrict !== user.location) {
+      setSelectedDistrict(user.location);
+    }
+  }, [user, selectedDistrict]);
+
+  // Discover districts — same pattern as Districts Coverage page
+  const hhListQuery = useQuery({
+    queryKey: ["districts-discovery", "All"],
+    queryFn: () => getHouseholdsByDistrict(""),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const discoveredDistrictsMap = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    if (hhListQuery.data) {
+      (hhListQuery.data as any[]).forEach((h: any) => {
+        const raw = h.district;
+        if (raw) {
+          const normalized = toTitleCase(raw.trim());
+          if (!groups.has(normalized)) groups.set(normalized, []);
+          const variants = groups.get(normalized)!;
+          if (!variants.includes(raw)) variants.push(raw);
+        }
+      });
+    }
+    return groups;
+  }, [hhListQuery.data]);
+
+  const districts = useMemo(() => {
+    return Array.from(discoveredDistrictsMap.keys()).sort();
+  }, [discoveredDistrictsMap]);
+
   const vcasQuery = useQuery({
-    queryKey: ["vcas", "district", district],
-    queryFn: () => getChildrenByDistrict(district ?? ""),
-    enabled: Boolean(district),
+    queryKey: ["vcas", "All"], // Fetch all for local filtering
+    queryFn: () => getChildrenByDistrict(""),
+    staleTime: 1000 * 60 * 10,
   });
 
   const vcas = useMemo(() => vcasQuery.data ?? [], [vcasQuery.data]);
 
   const filteredVcas = useMemo(() => {
-    return vcas.filter((vca: any) => {
+    const allVcas = vcasQuery.data ?? [];
+    const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
+
+    return allVcas.filter((vca: any) => {
+      const sDist = String(vca.district || "");
+      if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return false;
+
       // Global Search
       const lowerCaseQuery = searchQuery.toLowerCase();
       const addressString = [
@@ -154,8 +210,6 @@ const VcaRegister = () => {
 
       const matchesSearch = searchQuery
         ? (vca.uid?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        (vca.firstname?.toLowerCase() || '').includes(lowerCaseQuery) ||
-        (vca.lastname?.toLowerCase() || '').includes(lowerCaseQuery) ||
         addressString.includes(lowerCaseQuery) ||
         (vca.vca_gender?.toLowerCase() || '').includes(lowerCaseQuery)
         : true;
@@ -224,8 +278,6 @@ const VcaRegister = () => {
     try {
       const headers = [
         "Unique ID",
-        "First Name",
-        "Last Name",
         "Gender",
         "Birth Date",
         "Home Address",
@@ -239,8 +291,6 @@ const VcaRegister = () => {
 
       const keys = [
         "uid",
-        "firstname",
-        "lastname",
         "vca_gender",
         "birthdate",
         "homeaddress",
@@ -301,47 +351,43 @@ const VcaRegister = () => {
 
       <GlowCard>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div>
               <CardTitle>VCA Register</CardTitle>
               <div className="mt-2 text-sm text-amber-600 font-medium">
                 Note: Only active VCAs are shown.
               </div>
             </div>
+            <div className="flex-1" />
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-black uppercase text-slate-400 whitespace-nowrap">Filter District:</span>
+              <Select
+                value={selectedDistrict}
+                onValueChange={setSelectedDistrict}
+                disabled={user?.description === "District User"}
+              >
+                <SelectTrigger className="w-[180px] bg-slate-50 border-none font-bold h-9">
+                  <SelectValue placeholder="Select District" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Districts</SelectItem>
+                  {districts.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-6">
           {/* Filters Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-700">Filter by Sub Population</h3>
-            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-3">
-              {Object.entries(subPopulationFilterLabels).map(([key, label]) => (
-                <div key={key} className="flex flex-col items-start gap-1 pb-2">
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider truncate w-full mb-1">{label}</span>
-                  <div className="flex flex-col w-full gap-1">
-                    {["all", "yes", "no"].map((option) => {
-                      const isActive = subPopulationFilters[key] === option;
-                      return (
-                        <div
-                          key={option}
-                          onClick={() => handleFilterChange(key, option)}
-                          className={cn(
-                            "w-full px-2 py-1.5 text-[10px] uppercase tracking-wide font-medium text-center rounded-md cursor-pointer transition-all duration-200 border",
-                            isActive
-                              ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                              : "bg-white text-slate-600 border-slate-100 hover:bg-slate-50 hover:border-slate-200"
-                          )}
-                        >
-                          {option}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <SubPopulationFilter
+            filters={subPopulationFilters}
+            labels={subPopulationFilterLabels}
+            onChange={handleFilterChange}
+            onClear={handleClearFilters}
+          />
 
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-t pt-4">
             <div className="relative w-full md:w-72">
@@ -362,8 +408,7 @@ const VcaRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px] hidden sm:table-cell">ID</TableHead>
-                  <TableHead className="w-[180px]">VCA Name</TableHead>
+                  <TableHead className="w-[120px] hidden sm:table-cell">Unique ID</TableHead>
                   <TableHead className="w-[80px] hidden sm:table-cell">Gender</TableHead>
                   <TableHead className="w-[60px] hidden sm:table-cell">Age</TableHead>
                   <TableHead className="min-w-[200px] hidden lg:table-cell">Household Details</TableHead>
@@ -389,26 +434,19 @@ const VcaRegister = () => {
                     return (
                       <TableRow key={`${id}-${index}`}>
                         <TableCell className="font-medium align-top hidden sm:table-cell">
-                          <span className="text-[10px] sm:text-xs">{String(id)}</span>
+                          <span className="text-sm font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">{String(id)}</span>
                         </TableCell>
-                        <TableCell className="align-top px-2 sm:px-4">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2 sm:hidden">
-                              <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1 rounded">{String(id)}</span>
-                            </div>
-                            <span className="font-medium text-slate-900 leading-tight truncate max-w-[150px] sm:max-w-none">
-                              {String(pickValue(vca, ["firstname", "name"]))} {String(pickValue(vca, ["lastname"]))}
-                            </span>
-                            <div className="mt-1 flex gap-2 sm:hidden">
+                        <TableCell className="sm:hidden">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1 rounded w-fit">{String(id)}</span>
+                            <div className="flex gap-2">
                               <span className="text-[10px] bg-slate-50 border border-slate-100 px-1.5 rounded text-slate-600">
                                 {String(pickValue(vca, ["vca_gender", "gender"]))?.charAt(0)} • {calculateAge(vca.birthdate)}y
                               </span>
                             </div>
-                            <div className="mt-1 flex flex-col sm:hidden lg:hidden">
-                              <span className="text-[10px] text-slate-500 italic truncate max-w-[140px]">
-                                {vca.facility || "No Facility"}
-                              </span>
-                            </div>
+                            <span className="text-[10px] text-slate-500 italic truncate max-w-[140px]">
+                              {vca.facility || "No Facility"}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell align-top">

@@ -25,7 +25,8 @@ import {
   UserCog,
   UserCircle2,
   Book,
-  HelpCircle
+  HelpCircle,
+  Briefcase,
 } from "lucide-react";
 import { quickHelpLinks, faqs } from "@/data/supportData";
 
@@ -35,7 +36,8 @@ const navigationItems = [
   { title: "Household Register", url: "/households", icon: Home, category: "Navigation" },
   { title: "VCA Register", url: "/vcas", icon: Users, category: "Navigation" },
   { title: "VCA Services", url: "/vca-services", icon: ClipboardList, category: "Navigation" },
-  { title: "Caregiver Services", url: "/household-services", icon: HeartPulse, category: "Navigation" },
+  { title: "Caregiver Services", url: "/caregiver-services", icon: HeartPulse, category: "Navigation" },
+  { title: "Caseworker Services", url: "/caseworker-services", icon: Briefcase, category: "Navigation" },
   { title: "Flags", url: "/flags", icon: Flag, category: "Navigation" },
   { title: "Household Archived", url: "/households/archived", icon: Archive, category: "Navigation" },
   { title: "VCA Archived", url: "/vcas/archived", icon: Archive, category: "Navigation" },
@@ -96,9 +98,6 @@ export function GlobalSearch() {
         <Search className="mr-2 h-4 w-4 text-slate-400" />
         <span className="hidden lg:inline-flex">Search households, VCAs...</span>
         <span className="inline-flex lg:hidden">Search...</span>
-        <kbd className="pointer-events-none absolute right-2 top-2 hidden h-5 select-none items-center gap-1 rounded border bg-slate-50 px-1.5 font-mono text-[10px] font-medium text-slate-400 opacity-100 sm:flex">
-          <span className="text-xs">⌘</span>K
-        </kbd>
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>

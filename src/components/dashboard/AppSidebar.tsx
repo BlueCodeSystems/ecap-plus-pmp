@@ -1,3 +1,4 @@
+import { useMemo, useEffect } from "react";
 import {
   Archive,
   BarChart3,
@@ -12,6 +13,7 @@ import {
   HeartPulse,
   CircleHelp,
   Calendar,
+  Briefcase,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -31,6 +33,8 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getFileUrl } from "@/lib/directus";
 
 const sections = [
   {
@@ -47,6 +51,8 @@ const sections = [
     items: [
       { title: "Households", url: "/households", icon: Home },
       { title: "VCAs", url: "/vcas", icon: Users },
+      { title: "HTS Register", url: "/registers/hts", icon: Users },
+      { title: "PMTCT", url: "/registers/pmtct", icon: HeartPulse },
     ],
   },
   {
@@ -59,8 +65,10 @@ const sections = [
   {
     label: "Services",
     items: [
+      { title: "Household Services", url: "/household-services", icon: Home },
       { title: "VCA Services", url: "/vca-services", icon: ClipboardList },
-      { title: "Caregiver Services", url: "/household-services", icon: HeartPulse },
+      { title: "Caregiver Services", url: "/caregiver-services", icon: HeartPulse },
+      { title: "Caseworker Services", url: "/caseworker-services", icon: Briefcase },
       { title: "Flags", url: "/flags", icon: Flag },
     ],
   },
@@ -92,6 +100,36 @@ export function AppSidebar() {
   const { logout, user } = useAuth();
   const currentPath = location.pathname;
 
+  const filteredSections = useMemo(() => {
+    if (!user) return [];
+
+    const roleName = (typeof user.role === "string" ? user.role : user.role?.name || "").toLowerCase();
+    const isAdmin = roleName === "administrator";
+    const isSupport = user.description === "Support User" || roleName.includes("support");
+    const isDistrictUser = user.description === "District User";
+    const isProvincialUser = user.description === "Provincial User";
+
+    return sections.map(section => {
+      const filteredItems = section.items.filter(item => {
+        // Caseworker Services: Restricted for District Users
+        if (item.url === "/caseworker-services" && isDistrictUser) return false;
+
+        // Districts page: Restricted for District Users (per security intent)
+        if (item.url === "/districts" && isDistrictUser) return false;
+
+        // Admin: Only for Admins and Support
+        if (section.label === "Admin" && !isAdmin && !isSupport) return false;
+
+        // Data Pipeline: Only for Admins and Support
+        if (section.label === "Data Pipeline" && !isAdmin && !isSupport) return false;
+
+        return true;
+      });
+
+      return { ...section, items: filteredItems };
+    }).filter(section => section.items.length > 0);
+  }, [user]);
+
   const isActive = (path: string) => currentPath === path;
 
   const handleLogout = () => {
@@ -112,7 +150,7 @@ export function AppSidebar() {
 
       {/* Navigation */}
       <SidebarContent className="px-3">
-        {sections.map((section) => (
+        {filteredSections.map((section) => (
           <SidebarGroup key={section.label} className="pb-2 pt-3">
             <SidebarGroupLabel className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
               {section.label}
@@ -164,9 +202,12 @@ export function AppSidebar() {
             )}
             onClick={() => navigate("/profile")}
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold uppercase">
-              {user.first_name?.[0] ?? user.email[0]}
-            </div>
+            <Avatar className="h-8 w-8 shrink-0 rounded-full">
+              <AvatarImage src={user.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
+              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold uppercase rounded-full">
+                {user.first_name?.[0] ?? user.email[0]}
+              </AvatarFallback>
+            </Avatar>
             {!collapsed && (
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-[13px] font-semibold text-slate-800 truncate leading-tight">
