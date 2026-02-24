@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getChildrenByDistrict, getChildrenArchivedRegister, DEFAULT_DISTRICT, getVcaServicesByDistrict, getVcaReferralsByMonth, getVcaCasePlansById, getFlaggedRecords, getVcaServicesByChildId } from "@/lib/api";
+import { getChildrenByDistrict, getChildrenArchivedRegister, DEFAULT_DISTRICT, getVcaServicesByDistrict, getVcaReferralsById, getVcaCasePlansById, getFlaggedRecords, getVcaServicesByChildId } from "@/lib/api";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -92,18 +92,20 @@ const VcaProfile = () => {
   }, [location.state?.id]);
 
   const { user } = useAuth();
-  const district = user?.location ?? DEFAULT_DISTRICT;
+  const isDistrictUser = user?.description === "District User";
+  // Admins and Provincial Users have global view access at the profile level
+  const district = isDistrictUser ? (user?.location || "None") : "";
 
   const { data: vcas, isLoading: isLoadingActive } = useQuery({
     queryKey: ["vcas", "district", district],
-    queryFn: () => getChildrenByDistrict(district ?? ""),
-    enabled: Boolean(district),
+    queryFn: () => getChildrenByDistrict(district),
+    enabled: true,
   });
 
   const { data: archivedVcas, isLoading: isLoadingArchived } = useQuery({
     queryKey: ["vcas", "archived", "district", district],
-    queryFn: () => getChildrenArchivedRegister(district ?? ""),
-    enabled: Boolean(district),
+    queryFn: () => getChildrenArchivedRegister(district),
+    enabled: true,
   });
 
   const { data: vcaServices, isLoading: isLoadingVcaServices } = useQuery({
@@ -112,10 +114,10 @@ const VcaProfile = () => {
     enabled: Boolean(id),
   });
 
-  const { data: allReferrals, isLoading: isLoadingReferrals } = useQuery({
-    queryKey: ["vca-referrals", "district", district],
-    queryFn: () => getVcaReferralsByMonth(district ?? ""),
-    enabled: Boolean(district),
+  const { data: vcaReferrals = [], isLoading: isLoadingReferrals } = useQuery({
+    queryKey: ["vca-referrals", id],
+    queryFn: () => getVcaReferralsById(id ?? ""),
+    enabled: Boolean(id),
   });
 
   const { data: vcaCasePlans = [], isLoading: isLoadingCasePlans } = useQuery({
@@ -169,19 +171,13 @@ const VcaProfile = () => {
 
 
 
-  const vcaReferrals = useMemo(() => {
-    if (!allReferrals || !id) return [];
-    const filtered = allReferrals.filter((r: any) => {
-      const vId = id.toLowerCase();
-      const rId = String(r.vca_id || r.vcaid || r.child_id || r.unique_id || r.id || "").toLowerCase();
-      return rId === vId;
-    });
-    return filtered.sort((a: any, b: any) => {
-      const dateA = safeParseDate(a.service_date || a.visit_date || a.date);
-      const dateB = safeParseDate(b.service_date || b.visit_date || b.date);
+  const sortedReferrals = useMemo(() => {
+    return [...vcaReferrals].sort((a: any, b: any) => {
+      const dateA = safeParseDate(a.service_date || a.visit_date || a.date || a.referral_date);
+      const dateB = safeParseDate(b.service_date || b.visit_date || b.date || b.referral_date);
       return dateB - dateA;
     });
-  }, [allReferrals, id]);
+  }, [vcaReferrals]);
 
   const vcaFlags = useMemo(() => {
     if (!flaggedRecords || !id) return [];
@@ -256,7 +252,7 @@ const VcaProfile = () => {
                   )}
                 </div>
                 <h1 className="text-3xl font-bold text-white lg:text-4xl">
-                  {fullName}
+                  VCA {id}
                 </h1>
               </div>
               <Button
@@ -295,12 +291,15 @@ const VcaProfile = () => {
                   <Link2 className="h-4 w-4 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Household Code</p>
+                  <p className="text-xs text-slate-500">Household ID</p>
                   <p
                     className="cursor-pointer text-sm font-medium text-slate-900 hover:text-primary hover:underline"
-                    onClick={() => vca.household_code && navigate(`/profile/household-details`, { state: { id: String(vca.household_code) } })}
+                    onClick={() => {
+                      const hhId = vca.household_id || vca.household_code || vca.householdid || vca.hh_id;
+                      if (hhId) navigate(`/profile/household-details`, { state: { id: String(hhId) } });
+                    }}
                   >
-                    {String(vca.household_code || "N/A")}
+                    {String(vca.household_id || vca.household_code || vca.householdid || vca.hh_id || "N/A")}
                   </p>
                 </div>
               </div>
@@ -343,9 +342,6 @@ const VcaProfile = () => {
               <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Summary
               </TabsTrigger>
-              <TabsTrigger value="indicators" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Indicators
-              </TabsTrigger>
               <TabsTrigger value="history" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Caseplans
               </TabsTrigger>
@@ -367,11 +363,11 @@ const VcaProfile = () => {
                 <Card className="h-full border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Baby className="h-5 w-5 text-slate-600" /> Profile Demographics
+                      <Baby className="h-5 w-5 text-slate-600" /> PROFILE DEMOGRAPHICS
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-6 sm:grid-cols-2">
-                    <InfoItem label="Full Legal Name" value={fullName} icon={<User className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Full Legal Name" value="Anonymous" icon={<User className="h-3.5 w-3.5" />} />
                     <InfoItem label="Date of Birth" value={String(vca.birthdate || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
                     <InfoItem label="Gender Identity" value={String(vca.vca_gender || vca.gender || "N/A")} />
                     <InfoItem label="Age at Assessment" value={`${age} Years`} />
@@ -388,26 +384,29 @@ const VcaProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                      <ClipboardCheck className="h-5 w-5 text-slate-600" /> Priority Markers
+                      <ClipboardCheck className="h-5 w-5 text-slate-600" /> SUB POPULATIONS
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex flex-col gap-3">
+                  <CardContent className="flex flex-wrap gap-2">
                     {Object.entries(vca).some(([key, value]) => (value === "1" || value === "true" || value === 1 || value === true)) ? (
                       Object.entries(vca).map(([key, value]) => {
                         if ((value === "1" || value === "true" || value === 1 || value === true) && subPopulationFilterLabels[key]) {
                           return (
-                            <div key={key} className="flex items-center justify-between rounded-xl bg-slate-50 p-4 border border-slate-100">
-                              <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{subPopulationFilterLabels[key]}</span>
-                              <Badge className="bg-emerald-500/10 text-emerald-600 border-0 px-3 font-bold">YES</Badge>
-                            </div>
+                            <Badge
+                              key={key}
+                              variant="outline"
+                              className="bg-emerald-50 text-emerald-700 border-emerald-100 px-3 py-1 font-black text-[10px] uppercase tracking-wider"
+                            >
+                              {subPopulationFilterLabels[key]}
+                            </Badge>
                           );
                         }
                         return null;
                       })
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-6 text-center text-slate-400">
+                      <div className="w-full flex flex-col items-center justify-center py-6 text-center text-slate-400">
                         <ClipboardCheck className="h-8 w-8 opacity-10 mb-2" />
-                        <p className="text-xs font-bold uppercase tracking-widest">No Priority Markers</p>
+                        <p className="text-xs font-bold uppercase tracking-widest">No Sub Populations</p>
                       </div>
                     )}
                   </CardContent>
@@ -416,38 +415,10 @@ const VcaProfile = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="indicators">
-            <Card className="border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold">Performance Indicators</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {Object.entries(vca)
-                    .filter(([key, val]) => (val === "1" || val === "true" || val === 1 || val === true) && !subPopulationFilterLabels[key])
-                    .map(([key, _]) => (
-                      <div key={key} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-6">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">{key.replace(/_/g, " ")}</p>
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                          <p className="text-sm font-black text-slate-900 capitalize">Met Requirement</p>
-                        </div>
-                      </div>
-                    ))}
-                  {Object.entries(vca).filter(([key, val]) => (val === "1" || val === "true" || val === 1 || val === true)).length === 0 && (
-                    <div className="col-span-full">
-                      <EmptyState icon={<Activity className="h-7 w-7" />} title="No Indicators Mapped" description="No performance indicators have been recorded for this VCA." />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="history">
             <Card className="border-slate-200">
               <CardHeader>
-                <CardTitle className="text-xl font-bold">VCA Caseplans</CardTitle>
+                <CardTitle className="text-xl font-bold">CASEPLANS</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoadingCasePlans ? (
@@ -478,11 +449,11 @@ const VcaProfile = () => {
           <TabsContent value="audit">
             <Card className="overflow-hidden border-slate-200">
               <div className="bg-white p-6 flex items-center justify-between border-b border-slate-100">
-                <h3 className="text-xl font-bold text-slate-900">VCA Referrals</h3>
+                <h3 className="text-xl font-bold text-slate-900">REFERRALS</h3>
                 <Button variant="outline" size="sm" className="text-xs font-bold">Export</Button>
               </div>
               <ScrollArea className="h-[500px]">
-                <ActivityTable data={vcaReferrals} isLoading={isLoadingReferrals} type="referral" emptyMessage="No referral tracking for this VCA." />
+                <ActivityTable data={sortedReferrals} isLoading={isLoadingReferrals} type="referral" emptyMessage="No referral tracking for this VCA." />
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>
             </Card>
@@ -497,7 +468,7 @@ const VcaProfile = () => {
                 <h3 className={cn(
                   "text-lg font-bold",
                   isMale ? "text-blue-900" : "text-red-900"
-                )}>Flagged Record Forms</h3>
+                )}>FLAGGED RECORD FORMS</h3>
               </div>
               <CardContent className="p-0">
                 {vcaFlags.length > 0 ? (

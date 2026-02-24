@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { getAiResponse, Message } from "@/lib/ai-service";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 
 const SUGGESTIONS = [
   { label: "VCA Registration", icon: User, query: "Show me the steps to register a new VCA child in the system." },
@@ -32,15 +33,25 @@ const SUGGESTIONS = [
 ];
 
 export const AiAssistant = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => localStorage.getItem("ai_assistant_open") === "true");
   const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("ai_assistant_open", String(isOpen));
+  }, [isOpen]);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { user } = useAuth();
+  const { updateColor, resetTheme } = useTheme();
 
+  const ALLOWED_TARGETS = [
+    "banner", "sidebar", "header", "background", "button", "card", "text", "theme"
+  ];
+
+  // No longer draggable, fixed to bottom-right
   const userName = user?.first_name || "there";
 
   // Scroll to bottom on new message
@@ -66,7 +77,30 @@ export const AiAssistant = () => {
       const currentPage = document.title.split("-")[0].trim() || "Dashboard";
       const response = await getAiResponse([...messages, userMessage], currentPage);
 
-      const assistantMessage: Message = { role: "assistant", content: response };
+      // Process potential JSON commands
+      let cleanContent = response;
+      const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
+
+      if (jsonMatch) {
+        try {
+          const command = JSON.parse(jsonMatch[1]);
+          if (command.action === "change_color" && ALLOWED_TARGETS.includes(command.target)) {
+            // Apply the color change
+            updateColor(command.target as any, command.value);
+            // Clean up the response text to hide the JSON block from the user
+            cleanContent = response.replace(/```json\n[\s\S]*?\n```/, "").trim();
+            if (!cleanContent) {
+              cleanContent = `I've updated the ${command.target} color to ${command.value} for you!`;
+            }
+          } else if (command.action && command.action !== "change_color") {
+            cleanContent = "I am only restricted to color changes.";
+          }
+        } catch (e) {
+          console.error("Failed to parse AI command", e);
+        }
+      }
+
+      const assistantMessage: Message = { role: "assistant", content: cleanContent };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       const errorMessage: Message = {
@@ -102,16 +136,19 @@ export const AiAssistant = () => {
   }, [messages]);
 
   return (
-    <div className="fixed bottom-[100px] sm:bottom-8 right-4 sm:right-6 z-[60] flex flex-col items-end gap-4 font-sans">
+    <div
+      className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-4 font-sans"
+    >
       {/* Chat Window */}
       {isOpen && (
         <Card className={cn(
-          "w-[calc(100vw-32px)] sm:w-[380px] border-slate-200 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 animate-in slide-in-from-bottom-5 overflow-hidden ring-1 ring-slate-200/50 pb-2",
-          isMinimized ? "h-14" : "h-[480px] sm:h-[600px]"
+          "absolute right-0 w-[calc(100vw-32px)] sm:w-[380px] border-slate-200 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 animate-in slide-in-from-bottom-5 overflow-hidden ring-1 ring-slate-200/50 pb-2",
+          isMinimized ? "h-14" : "h-[480px] sm:h-[600px]",
+          "bottom-full mb-4"
         )}>
           {/* Refined Header: Slimmer & Less Saturated */}
           <CardHeader className={cn(
-            "flex flex-row items-center justify-between px-4 py-3 transition-all duration-500",
+            "flex flex-row items-center justify-between px-4 py-3 transition-all duration-500 select-none",
             "bg-slate-50 border-b border-slate-100 text-slate-900"
           )}>
             <div className="flex items-center gap-2.5">
@@ -241,6 +278,20 @@ export const AiAssistant = () => {
                         <Trash2 className="h-3 w-3" /> Reset Session
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={resetTheme}
+                      className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1.5 font-bold uppercase tracking-widest transition-colors w-fit"
+                    >
+                      Reset Colors
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1.5 font-bold uppercase tracking-widest transition-colors w-fit ml-2"
+                    >
+                      <X className="h-3 w-3" /> Close Chat
+                    </button>
                     <span className="text-[10px] text-slate-300 font-medium uppercase tracking-[0.2em] ml-auto"></span>
                   </div>
 
@@ -277,13 +328,16 @@ export const AiAssistant = () => {
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="group relative h-14 w-14 rounded-full bg-white p-0 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 border border-slate-200"
+          title="Open AI Assistant"
+          className="group relative h-14 w-14 rounded-full bg-white p-0 shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 border border-slate-200 select-none"
         >
           <div className="relative flex h-full w-full items-center justify-center rounded-full bg-slate-50 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative">
               <Bot className="h-6 w-6 text-slate-700 transition-colors group-hover:text-emerald-700" />
-              <div className="absolute -right-2 -top-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 animate-in zoom-in duration-300 shadow-sm ring-2 ring-white" />
+              <div className="absolute -right-2 -top-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 animate-in zoom-in duration-300 shadow-sm ring-2 ring-white">
+                <div className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+              </div>
             </div>
           </div>
         </Button>

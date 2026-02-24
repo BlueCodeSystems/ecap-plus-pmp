@@ -57,6 +57,11 @@ All colors MUST be HSL.
     --chart-3: 142 71% 45%;
     --chart-4: 47 95% 50%;
     --chart-5: 262 83% 58%;
+
+    /* Dynamic UI Variables */
+    --banner-color: hsl(var(--primary));
+    --header-color: hsl(var(--background));
+    --button-color: hsl(var(--primary));
   }
 
   .dark {

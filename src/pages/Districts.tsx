@@ -27,7 +27,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { cn, toTitleCase } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 import { downloadCsv } from "@/lib/exportUtils";
 import { toast } from "sonner";
@@ -62,34 +62,57 @@ const Districts = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  const discoveredDistricts = useMemo(() => {
-    if (!householdsListQuery.data) return [];
-    const districts = new Set<string>();
+  const discoveredDistrictsMap = useMemo(() => {
+    if (!householdsListQuery.data) return new Map<string, string[]>();
+
+    const groups = new Map<string, string[]>();
     householdsListQuery.data.forEach((household: any) => {
-      if (household.district) {
-        districts.add(household.district);
+      const raw = household.district;
+      if (raw) {
+        const normalized = toTitleCase(raw.trim());
+        if (!groups.has(normalized)) {
+          groups.set(normalized, []);
+        }
+        const variants = groups.get(normalized)!;
+        if (!variants.includes(raw)) {
+          variants.push(raw);
+        }
       }
     });
-    return Array.from(districts).sort();
+    return groups;
   }, [householdsListQuery.data]);
 
-  const targetDistricts = discoveredDistricts.length > 0
-    ? discoveredDistricts
-    : dashboardDistrict !== "All" ? [dashboardDistrict] : [];
+  const targetDistrictsNormalized = useMemo(() => {
+    const sorted = Array.from(discoveredDistrictsMap.keys()).sort();
+    if (sorted.length > 0) return sorted;
+    if (dashboardDistrict !== "All") return [dashboardDistrict];
+    return [];
+  }, [discoveredDistrictsMap, dashboardDistrict]);
 
   // --- District Stats Queries ---
   const districtQueries = useQueries({
-    queries: targetDistricts.map((districtName) => ({
-      queryKey: ["district-stats", districtName],
+    queries: targetDistrictsNormalized.map((normalizedName) => ({
+      queryKey: ["district-stats-v2", normalizedName, discoveredDistrictsMap.get(normalizedName)],
       queryFn: async () => {
-        const [households, vcas] = await Promise.all([
-          getTotalHouseholdsCount(districtName),
-          getTotalVcasCount(districtName),
-        ]);
+        const variants = discoveredDistrictsMap.get(normalizedName) || [normalizedName];
+
+        // Fetch for all variants and sum them up
+        const results = await Promise.all(variants.map(async (v) => {
+          const [households, vcas] = await Promise.all([
+            getTotalHouseholdsCount(v),
+            getTotalVcasCount(v),
+          ]);
+          return { households: Number(households) || 0, vcas: Number(vcas) || 0 };
+        }));
+
+        const totalHouseholds = results.reduce((sum, r) => sum + r.households, 0);
+        const totalVcas = results.reduce((sum, r) => sum + r.vcas, 0);
+
         return {
-          district: districtName,
-          households,
-          vcas,
+          district: normalizedName,
+          households: totalHouseholds,
+          vcas: totalVcas,
+          variants, // Keep track for debugging or detailed exports
         };
       },
       staleTime: 1000 * 60 * 5,
@@ -105,8 +128,12 @@ const Districts = () => {
     householdsListQuery.isFetching ||
     districtQueries.some(q => q.isFetching);
 
-  const areDistrictsLoading = districtQueries.some((q) => q.isLoading) || isDiscoveryLoading || isSyncing;
-  const districtData = districtQueries.map((q) => q.data).filter(Boolean);
+  const areDistrictsLoading = districtQueries.some((q) => q.isLoading) || isDiscoveryLoading;
+  const districtData = districtQueries
+    .map((q) => q.data)
+    .filter(Boolean)
+    // Extra guard to ensure final list is unique by name just in case
+    .filter((v, i, a) => a.findIndex(t => t?.district === v?.district) === i);
 
   const formatCount = (value: unknown) => {
     if (value === null || value === undefined) return "0";
@@ -150,7 +177,15 @@ const Districts = () => {
       setExportingDistrict(districtName);
       toast.info(`Preparing detailed export for ${districtName}...`);
 
-      const households = await getHouseholdsByDistrict(districtName);
+      const normalizedData = districtData.find(d => d?.district === districtName);
+      const variants = normalizedData?.variants || [districtName];
+
+      // Fetch households for all variants
+      const allHouseholdsResults = await Promise.all(
+        variants.map(v => getHouseholdsByDistrict(v))
+      );
+
+      const households = allHouseholdsResults.flat();
 
       if (!households || households.length === 0) {
         toast.error(`No household data found for ${districtName}`);

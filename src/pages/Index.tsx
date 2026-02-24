@@ -15,7 +15,7 @@ const Index = () => {
             <RightImageSlider
               images={[
                 { src: "/pic-1.jpg", alt: "Program fieldwork photo" },
-                { src: "/pic-2.jpg", alt: "Community program photo" },
+
                 { src: "/pic-3.jpg", alt: "Community program photo" },
                 { src: "/pic-4.jpg", alt: "children getting medicine" }
               ]}

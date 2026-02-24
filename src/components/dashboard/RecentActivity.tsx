@@ -5,9 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, HeartPulse, Flag, ArrowRight } from "lucide-react";
+import { Users, HeartPulse, Flag, ArrowRight, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import TableSkeleton from "@/components/ui/TableSkeleton";
+import { Input } from "@/components/ui/input";
 import {
   DEFAULT_DISTRICT,
   getVcaServicesByDistrict,
@@ -89,59 +90,18 @@ const typeConfig = {
 const FEED_LIMIT = 15;
 
 const RecentActivity = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const district = user?.location || DEFAULT_DISTRICT;
-  const [activeTab, setActiveTab] = useState<string>("all");
-
-  const vcaQuery = useQuery({
-    queryKey: ["recent-vca-services", district],
-    queryFn: () => getVcaServicesByDistrict(district ?? ""),
-    enabled: Boolean(district),
-  });
-
-  const caregiverQuery = useQuery({
-    queryKey: ["recent-caregiver-services", district],
-    queryFn: () => getCaregiverServicesByDistrict(district ?? ""),
-    enabled: Boolean(district),
-  });
+  const [searchQuery, setSearchQuery] = useState("");
 
   const flagsQuery = useQuery({
     queryKey: ["recent-flags"],
     queryFn: getFlaggedRecords,
   });
 
-  const isLoading = vcaQuery.isLoading || caregiverQuery.isLoading || flagsQuery.isLoading;
+  const isLoading = flagsQuery.isLoading;
 
   const feed = useMemo(() => {
     const items: FeedItem[] = [];
-
-    // VCA services
-    for (const raw of vcaQuery.data ?? []) {
-      const record = raw as Record<string, unknown>;
-      items.push({
-        type: "vca-service",
-        id: pickValue(record, ["vca_id", "vcaid", "child_id", "unique_id", "id"]),
-        title: pickValue(record, ["service", "service_name", "serviceName", "form_name"]),
-        subtitle: `VCA ${pickValue(record, ["vca_id", "vcaid", "child_id", "unique_id", "id"])}`,
-        date: pickValue(record, ["service_date", "visit_date", "created_at", "date"]),
-        status: pickValue(record, ["status", "state", "outcome"]),
-      });
-    }
-
-    // Caregiver services
-    for (const raw of caregiverQuery.data ?? []) {
-      const record = raw as Record<string, unknown>;
-      items.push({
-        type: "caregiver-service",
-        id: pickValue(record, ["household_id", "householdId", "hh_id", "unique_id", "id"]),
-        title: pickValue(record, ["service", "service_name", "serviceName", "form_name"]),
-        subtitle: `HH ${pickValue(record, ["household_id", "householdId", "hh_id", "unique_id", "id"])}`,
-        date: pickValue(record, ["service_date", "visit_date", "created_at", "date"]),
-        status: pickValue(record, ["status", "state", "outcome"]),
-        linkId: pickValue(record, ["household_id", "householdId", "hh_id"]),
-      });
-    }
 
     // Flags
     for (const raw of flagsQuery.data ?? []) {
@@ -160,111 +120,95 @@ const RecentActivity = () => {
     // Sort by date descending
     items.sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
 
-    return items.slice(0, FEED_LIMIT);
-  }, [vcaQuery.data, caregiverQuery.data, flagsQuery.data]);
+    return items;
+  }, [flagsQuery.data]);
 
-  const filtered = activeTab === "all" ? feed : feed.filter((item) => item.type === activeTab);
-
-  const totalCounts = useMemo(() => ({
-    "vca-service": (vcaQuery.data ?? []).length,
-    "caregiver-service": (caregiverQuery.data ?? []).length,
-    flag: (flagsQuery.data ?? []).length,
-  }), [vcaQuery.data, caregiverQuery.data, flagsQuery.data]);
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return feed.slice(0, FEED_LIMIT);
+    const q = searchQuery.toLowerCase();
+    return feed.filter(item =>
+      item.id.toLowerCase().includes(q) ||
+      item.title.toLowerCase().includes(q) ||
+      item.subtitle.toLowerCase().includes(q)
+    ).slice(0, FEED_LIMIT);
+  }, [feed, searchQuery]);
 
   return (
     <GlowCard>
-      <CardHeader className="pb-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <CardHeader className="pb-3 border-b border-slate-50">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Recent Updates</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Latest services and flagged records across your district
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                <Flag className="h-4 w-4" />
+              </div>
+              <CardTitle className="text-lg font-black">Flagged Records</CardTitle>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground font-medium">
+              Review records requiring clinical or administrative attention
             </p>
           </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
-              {totalCounts["vca-service"]} VCA
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              {totalCounts["caregiver-service"]} Caregiver
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
-              {totalCounts.flag} Flags
-            </span>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Filter flags..."
+              className="pl-9 h-9 bg-slate-50 border-none text-xs font-bold focus-visible:ring-amber-500/20"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="mt-3 flex gap-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${activeTab === tab.key
-                ? "bg-primary/10 text-primary"
-                : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                }`}
-            >
-              {tab.label}
-            </button>
-          ))}
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="pt-4">
         {isLoading ? (
-          <TableSkeleton rows={5} columns={3} />
+          <TableSkeleton rows={5} columns={2} />
         ) : filtered.length === 0 ? (
-          <div className="flex h-[280px] flex-col items-center justify-center text-sm text-slate-400">
-            <Flag className="mb-2 h-8 w-8 opacity-40" />
-            No recent updates found.
+          <div className="flex h-[380px] flex-col items-center justify-center text-sm text-slate-400">
+            <div className="p-6 rounded-full bg-slate-50 border border-slate-100 mb-4 opacity-40">
+              <Flag className="h-10 w-10" />
+            </div>
+            <p className="font-black text-slate-500">No flags requiring attention</p>
+            <p className="text-xs mt-1">Excellent! All records are clean.</p>
           </div>
         ) : (
-          <ScrollArea className="h-[380px] pr-2">
-            <div className="space-y-1">
+          <ScrollArea className="h-[420px] pr-2">
+            <div className="space-y-2">
               {filtered.map((item, i) => {
-                const config = typeConfig[item.type];
+                const config = typeConfig.flag;
                 const Icon = config.icon;
 
                 return (
                   <div
-                    key={`${item.type}-${item.id}-${i}`}
-                    className="group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-slate-50 cursor-pointer"
+                    key={`${item.id}-${i}`}
+                    className="group flex items-start gap-4 rounded-xl p-4 transition-all hover:bg-slate-50 border border-transparent hover:border-slate-100 cursor-pointer active:scale-[0.98]"
                     onClick={() => {
-                      if (item.type === "flag" || item.type === "caregiver-service") {
-                        if (item.linkId && item.linkId !== "N/A") {
-                          navigate(`/profile/household-details`, { state: { id: item.linkId } });
-                        }
-                      } else {
-                        navigate(config.route);
-                      }
+                      navigate(`/flags`);
                     }}
                   >
-                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${config.bg}`}>
-                      <Icon className={`h-4 w-4 ${config.color}`} />
+                    <div className="shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform shadow-sm">
+                      <Icon className="h-5 w-5" />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-slate-800 leading-tight truncate">
+                      <div className="flex items-start justify-between gap-4">
+                        <p className="text-[13px] font-black text-slate-900 leading-tight">
                           {item.title}
                         </p>
-                        <span className="shrink-0 text-[10px] text-slate-400">
+                        <span className="shrink-0 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                           {formatDate(item.date)}
                         </span>
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-500 truncate">{item.subtitle}</p>
-                      {item.status !== "N/A" && (
-                        <Badge className={`mt-1 text-[10px] px-1.5 py-0 h-4 font-normal border-0 ${config.badge}`}>
-                          {item.status}
+                      <p className="mt-1 text-xs font-bold text-slate-500 truncate">{item.subtitle}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge className="text-[9px] font-black px-2 py-0.5 h-auto bg-amber-50 text-amber-700 border-amber-100 uppercase tracking-widest">
+                          {item.status || "Pending review"}
                         </Badge>
-                      )}
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                          View details <ArrowRight className="h-3 w-3" />
+                        </div>
+                      </div>
                     </div>
-
-                    <ArrowRight className="mt-2 h-3.5 w-3.5 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
                   </div>
                 );
               })}
