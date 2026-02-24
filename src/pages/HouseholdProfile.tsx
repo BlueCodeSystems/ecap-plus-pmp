@@ -52,20 +52,22 @@ const HouseholdProfile = () => {
   }, [location.state?.id]);
 
   const { user } = useAuth();
-  const district = user?.location ?? DEFAULT_DISTRICT;
+  const isDistrictUser = user?.description === "District User";
+  // Admins and Provincial Users have global view access at the profile level
+  const district = isDistrictUser ? (user?.location || "None") : "";
 
   const { data: households, isLoading: isLoadingActive } = useQuery({
     queryKey: ["households", "district", district],
-    queryFn: () => getHouseholdsByDistrict(district ?? ""),
-    enabled: Boolean(district),
+    queryFn: () => getHouseholdsByDistrict(district),
+    enabled: true,
   });
 
-  console.log("all housegolds:", households)
+
 
   const { data: archivedHouseholds, isLoading: isLoadingArchived } = useQuery({
     queryKey: ["households", "archived", "district", district],
-    queryFn: () => getHouseholdArchivedRegister(district ?? ""),
-    enabled: Boolean(district),
+    queryFn: () => getHouseholdArchivedRegister(district),
+    enabled: true,
   });
 
   const { data: allServices } = useQuery({
@@ -84,8 +86,8 @@ const HouseholdProfile = () => {
 
   const { data: vcas } = useQuery({
     queryKey: ["vcas", "district", district],
-    queryFn: () => getChildrenByDistrict(district ?? ""),
-    enabled: Boolean(district),
+    queryFn: () => getChildrenByDistrict(district),
+    enabled: true,
   });
 
   const { data: flaggedRecords } = useQuery({
@@ -129,6 +131,13 @@ const HouseholdProfile = () => {
   }, [allServices, id, household?.household_id]);
 
   const sortedCasePlans = useMemo(() => {
+    if (householdCasePlans?.length > 0) {
+      console.log("Caregiver Plans Vulnerabilities Debug:", householdCasePlans.map((p: any) => ({
+        id: p.id,
+        date: p.case_plan_date || p.date_of_caseplan,
+        vulnerabilities: p.vulnerabilities || p.caregiver_vulnerabilities || "not found"
+      })));
+    }
     return [...householdCasePlans].sort((a: any, b: any) => {
       const dateA = safeParseDate(a.case_plan_date || a.date_of_caseplan || a.date);
       const dateB = safeParseDate(b.case_plan_date || b.date_of_caseplan || b.date);
@@ -152,36 +161,19 @@ const HouseholdProfile = () => {
     });
   }, [vcas, id]);
 
-  const { data: allReferrals = [], isLoading: isLoadingReferrals } = useQuery({
-    queryKey: ["caregiver-referrals", "district", district],
-    queryFn: () => getCaregiverReferralsByMonth(district ?? ""),
-    enabled: Boolean(district),
+  const { data: householdReferrals = [], isLoading: isLoadingReferrals } = useQuery({
+    queryKey: ["caregiver-referrals", id],
+    queryFn: () => getHouseholdReferralsById(id ?? ""),
+    enabled: Boolean(id),
   });
 
   const sortedReferrals = useMemo(() => {
-    console.log("[Referrals Debug] All Referrals count:", allReferrals.length);
-    if (allReferrals.length > 0) {
-      console.log("[Referrals Debug] Sample Referral Item:", allReferrals[0]);
-      console.log("[Referrals Debug] Sample Referral Keys:", Object.keys(allReferrals[0]));
-    }
-    console.log("[Referrals Debug] Current Profile ID:", id);
-    console.log("[Referrals Debug] Household Data ID:", household?.household_id);
-
-    const hhId = String(household?.household_id || id).toLowerCase();
-    const filtered = allReferrals.filter((r: any) => {
-      // Log matching attempt for first 5 items
-      const rId = String(r.household_id || r.householdId || r.hh_id || r.household_code || r.unique_id || r.id || "").toLowerCase();
-      return rId === hhId;
-    });
-
-    console.log("[Referrals Debug] Filtered Referrals for", hhId, ":", filtered);
-
-    return [...filtered].sort((a: any, b: any) => {
+    return [...householdReferrals].sort((a: any, b: any) => {
       const dateA = safeParseDate(a.service_date || a.visit_date || a.date || a.referral_date);
       const dateB = safeParseDate(b.service_date || b.visit_date || b.date || b.referral_date);
       return dateB - dateA;
     });
-  }, [allReferrals, id, household?.household_id]);
+  }, [householdReferrals]);
 
   if (isLoadingActive || isLoadingArchived) {
     return (
@@ -238,7 +230,7 @@ const HouseholdProfile = () => {
                   </Badge>
                 </div>
                 <h1 className="text-3xl font-bold text-white lg:text-4xl">
-                  {caregiverName}
+                  Household {id}
                 </h1>
               </div>
               <Button
@@ -270,15 +262,27 @@ const HouseholdProfile = () => {
 
         {/* Quick Info Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Card 1: Ward */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-slate-100 p-2">
+                  <MapPin className="h-4 w-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Ward</p>
+                  <p className="text-sm font-medium text-slate-900">{String(household.ward || "N/A")}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 2: Primary Facility */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-slate-100 p-2">
                   <HeartPulse className="h-4 w-4 text-slate-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Ward</p>
-                  <p className="text-sm font-medium text-slate-900">{String(household.ward || "N/A")}</p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Primary Facility</p>
@@ -288,6 +292,7 @@ const HouseholdProfile = () => {
             </CardContent>
           </Card>
 
+          {/* Card 3: Last Service Date */}
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -297,22 +302,6 @@ const HouseholdProfile = () => {
                 <div>
                   <p className="text-xs text-slate-500">Last Service Date</p>
                   <p className="text-sm font-medium text-slate-900">{String(lastServiceDate)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-100 p-2">
-                  <Calendar className="h-4 w-4 text-slate-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Last Visitation</p>
-                  <p className="text-sm font-medium text-slate-900">
-                    {String(lastServiceDate)}
-                  </p>
                 </div>
               </div>
             </CardContent>
@@ -350,11 +339,11 @@ const HouseholdProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <User className="h-5 w-5 text-slate-600" /> Caregiver Personal Information
+                    <User className="h-5 w-5 text-slate-600" /> CAREGIVER PERSONAL INFORMATION
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoItem label="Caregiver Name" value={caregiverName} icon={<User className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Caregiver Name" value="Anonymous" icon={<User className="h-3.5 w-3.5" />} />
                   <InfoItem label="Caregiver Sex" value={String(household.caregiver_sex || household.sex || household.gender || "N/A")} />
                   <InfoItem label="Date of Birth" value={String(household.caregiver_birthdate || household.caregiver_birth_date || household.dob || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
                   <InfoItem label="HIV Status" value={String(household.caregiver_hiv_status || household.hiv_status || "N/A")} icon={<Activity className="h-3.5 w-3.5" />} />
@@ -368,7 +357,7 @@ const HouseholdProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <Home className="h-5 w-5 text-slate-600" /> Household Information
+                    <Home className="h-5 w-5 text-slate-600" /> HOUSEHOLD INFORMATION
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -388,7 +377,7 @@ const HouseholdProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <MapPin className="h-5 w-5 text-slate-600" /> Location & Facility
+                      <MapPin className="h-5 w-5 text-slate-600" /> LOCATION & FACILITY
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -404,7 +393,7 @@ const HouseholdProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Briefcase className="h-5 w-5 text-slate-600" /> Caseworker & System
+                      <Briefcase className="h-5 w-5 text-slate-600" /> CASEWORKER & SYSTEM
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -418,41 +407,13 @@ const HouseholdProfile = () => {
                 </Card>
               </div>
 
-              {/* Eligibility Markers */}
-              <Card className="border-slate-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                    <ShieldCheck className="h-5 w-5 text-slate-600" /> Eligibility Markers
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {Object.entries(household).some(([key, value]) => (value === "1" || value === "true" || value === 1 || value === true)) ? (
-                    Object.entries(household).map(([key, value]) => {
-                      if ((value === "1" || value === "true" || value === 1 || value === true) && subPopulationFilterLabels[key]) {
-                        return (
-                          <div key={key} className="flex items-center justify-between rounded-xl bg-slate-50 p-4 border border-slate-100">
-                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{subPopulationFilterLabels[key]}</span>
-                            <Badge className="bg-emerald-500/10 text-emerald-600 border-0 px-3 font-bold">ACTIVE</Badge>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })
-                  ) : (
-                    <div className="col-span-full flex flex-col items-center justify-center py-6 text-center text-slate-400">
-                      <ClipboardCheck className="h-8 w-8 opacity-10 mb-2" />
-                      <p className="text-xs font-bold uppercase tracking-widest">No Active Markers</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="family">
             <Card className="overflow-hidden border-slate-200">
               <CardHeader className="bg-slate-50/50">
-                <CardTitle className="text-xl font-bold">Family Members</CardTitle>
+                <CardTitle className="text-xl font-bold">FAMILY MEMBERS</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {isLoadingMembers ? (
@@ -472,9 +433,8 @@ const HouseholdProfile = () => {
                     <TableBody>
                       {householdMembers.map((m: any, idx: number) => (
                         <TableRow key={idx}>
-                          <TableCell className="pl-6 font-bold text-slate-900">
-                            {String(m.firstname || "")} {String(m.lastname || "")}
-                            <p className="text-[10px] font-normal text-slate-500 mt-0.5">{String(m.uid || m.vca_id || "N/A")}</p>
+                          <TableCell className="pl-6 align-top">
+                            <span className="text-sm font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">{String(m.uid || m.vca_id || "N/A")}</span>
                           </TableCell>
                           <TableCell className="text-sm">
                             {String(m.birthdate || "N/A")}
@@ -553,7 +513,7 @@ const HouseholdProfile = () => {
           <TabsContent value="flags">
             <Card className="overflow-hidden border-slate-200">
               <div className="bg-red-900/10 p-6 flex items-center justify-between border-b border-red-100">
-                <h3 className="text-lg font-bold text-red-900">Flagged Record Forms</h3>
+                <h3 className="text-lg font-bold text-red-900">FLAGGED RECORD FORMS</h3>
                 <Button
                   size="sm"
                   variant="destructive"

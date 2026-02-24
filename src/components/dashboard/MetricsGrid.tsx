@@ -167,7 +167,7 @@ const MetricsGrid = () => {
     {
       title: "Caseworkers",
       value: formatCount(caseworkersCount),
-      subtitle: district === "All" || !district ? "Nationwide count" : `Active in ${district}`,
+      subtitle: district === "All" || !district ? "Caseworkers tracked" : `Active in ${district}`,
       icon: <Briefcase className="h-5 w-5" />,
       variant: "default" as const,
       isLoading: householdsDataQuery.isLoading,

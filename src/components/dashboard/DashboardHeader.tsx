@@ -1,4 +1,4 @@
-import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap, CircleHelp } from "lucide-react";
+import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap, CircleHelp, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,11 +9,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { GlobalSearch } from "./GlobalSearch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getFileUrl } from "@/lib/directus";
 import {
   getCaregiverServicesByDistrict
 } from "@/lib/api";
@@ -68,7 +69,7 @@ const DashboardHeader = ({
             : <Bell className="h-4 w-4 text-primary" />,
           link: isExtract
             ? "/weekly-extracts"
-            : (n.collection === "support_chat" || n.collection === "support_chat_outbox") && n.sender
+            : n.collection?.startsWith("support") && n.sender
               ? `/support?userId=${n.sender}`
               : undefined,
         };
@@ -144,6 +145,16 @@ const DashboardHeader = ({
             title="Support Center"
           >
             <CircleHelp className="h-5 w-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden sm:inline-flex relative transition-transform duration-300 hover:-translate-y-0.5 text-slate-500 hover:text-primary"
+            onClick={() => navigate("/calendar")}
+            title="Event Calendar"
+          >
+            <Calendar className="h-5 w-5" />
           </Button>
 
           {/* Notifications */}
@@ -232,6 +243,7 @@ const DashboardHeader = ({
                 className="gap-2 px-2 transition-transform duration-300 hover:-translate-y-0.5"
               >
                 <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
                   <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                     {initials}
                   </AvatarFallback>

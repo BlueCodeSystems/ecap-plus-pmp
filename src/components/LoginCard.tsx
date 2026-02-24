@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +10,7 @@ import LoadingDots from "@/components/aceternity/LoadingDots";
 const LoginCard = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { login, isLoading } = useAuth();
@@ -34,6 +35,8 @@ const LoginCard = () => {
     login(email, password)
       .then(() => {
         const trimmedEmail = email.trim().toLowerCase();
+        const isFirstLogin = !knownUsers.includes(trimmedEmail);
+        sessionStorage.setItem("ecap.first_login", isFirstLogin ? "true" : "false");
         const updatedUsers = Array.from(new Set([...knownUsers, trimmedEmail]));
         localStorage.setItem("ecap.known_users", JSON.stringify(updatedUsers));
         localStorage.setItem("ecap.returning_user", "true"); // Keep legacy flag for compatibility
@@ -77,13 +80,20 @@ const LoginCard = () => {
         <div className="relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
           <Input
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="h-12 pl-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-primary/30"
+            className="h-12 pl-11 pr-11 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-300 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:ring-primary/30"
             required
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+          >
+            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          </button>
         </div>
 
         <div className="flex items-center justify-between text-sm text-slate-600">
