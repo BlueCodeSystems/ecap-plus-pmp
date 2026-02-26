@@ -28,7 +28,7 @@ const EmptyState = ({
           {icon || <InboxIcon className="h-7 w-7" />}
         </span>
       </div>
-      <h3 className="text-sm font-bold uppercase tracking-widest text-slate-600">
+      <h3 className="text-sm font-bold tracking-widest text-slate-600">
         {title}
       </h3>
       {description && (

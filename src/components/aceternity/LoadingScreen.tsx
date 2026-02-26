@@ -15,7 +15,7 @@ const LoadingScreen = ({ label = "ECAPII PMP" }: LoadingScreenProps) => {
         <GlowCard className="px-8 py-6">
           <div className="flex flex-col items-center text-center gap-3">
             <img src="/ecap-logo.png" alt="ECAP+ logo" className="h-14 w-auto" />
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">
+            <p className="text-sm font-semibold tracking-[0.3em] text-slate-500">
               {label}
             </p>
             <div className="flex items-center gap-2">

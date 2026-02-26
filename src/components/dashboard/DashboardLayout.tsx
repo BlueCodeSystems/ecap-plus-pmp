@@ -53,7 +53,7 @@ const DashboardLayout = ({ title, subtitle, children }: DashboardLayoutProps) =>
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
 
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-w-0">
           <GlowHeader className="sticky top-0 z-30 sm:static sm:z-auto">
             <div className="flex items-center gap-2 sm:hidden">
               <Sheet>
@@ -94,7 +94,7 @@ const DashboardLayout = ({ title, subtitle, children }: DashboardLayoutProps) =>
             <DashboardHeader title={title} subtitle={subtitle} />
           </GlowHeader>
 
-          <div className="flex-1 p-4 pb-24 space-y-6 sm:p-6 sm:pb-6 animate-fade-in">{children}</div>
+          <div className="flex-1 p-4 pb-24 space-y-6 sm:p-6 sm:pb-6 animate-fade-in min-w-0 overflow-x-hidden">{children}</div>
         </main>
       </div>
       <MobileBottomNav

@@ -236,81 +236,29 @@ const Districts = () => {
 
   return (
     <DashboardLayout subtitle="Districts">
-      {/* ... (Keep PageIntro and KPI Cards same as before) ... */}
-      <PageIntro
-        eyebrow="Districts"
-        title="District-level readiness at a glance."
-        description="Compare screening coverage, open household caseloads, and service follow-ups."
-        actions={
-          <div className="flex items-center gap-2">
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-3 py-1 rounded-full border-0 font-medium">
-              Live Coverage
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-muted-foreground"
-              onClick={handleExportSummary}
-              disabled={districtData.length === 0}
-            >
-              <Download className="h-4 w-4" />
-              Export Summary
-            </Button>
-          </div>
-        }
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
-        <KpiCard
-          title="Households Screened"
-          value={formatCount(householdCountQuery.data)}
-          caption={dashboardDistrict === "All" ? "All households" : `${dashboardDistrict} households`}
-          isLoading={householdCountQuery.isFetching}
-          icon={<Home className="h-5 w-5" />}
-          iconBg="bg-emerald-50"
-          iconText="text-emerald-600"
-          borderAccent="border-l-4 border-l-emerald-500"
-          hoverable
-        />
-        <KpiCard
-          title="Total VCAs Screened"
-          value={formatCount(vcaCountQuery.data)}
-          caption={dashboardDistrict === "All" ? "All registered children" : `${dashboardDistrict} children`}
-          isLoading={vcaCountQuery.isFetching}
-          delay={0.1}
-          icon={<Users className="h-5 w-5" />}
-          iconBg="bg-amber-50"
-          iconText="text-amber-600"
-          borderAccent="border-l-4 border-l-amber-500"
-          hoverable
-        />
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          {/* ... Header ... */}
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold text-foreground">District Coverage</h2>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-foreground gap-2 transition-all disabled:opacity-50"
-            onClick={() => {
-              // Invalidate all related queries to trigger a fresh background fetch
-              queryClient.invalidateQueries({ queryKey: ["kpi"] });
-              queryClient.invalidateQueries({ queryKey: ["districts-discovery"] });
-              queryClient.invalidateQueries({ queryKey: ["district-stats"] });
-            }}
-            disabled={isSyncing}
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
-            {isSyncing ? "Syncing..." : "Sync Districts"}
-          </Button>
-        </div>
-
+      <div className="space-y-4 pt-4">
         <GlowCard className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/10 py-4">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-semibold text-foreground">District Coverage</h2>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground gap-2 transition-all disabled:opacity-50"
+              onClick={() => {
+                // Invalidate all related queries to trigger a fresh background fetch
+                queryClient.invalidateQueries({ queryKey: ["kpi"] });
+                queryClient.invalidateQueries({ queryKey: ["districts-discovery"] });
+                queryClient.invalidateQueries({ queryKey: ["district-stats"] });
+              }}
+              disabled={isSyncing}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
+              {isSyncing ? "Syncing..." : "Sync Districts"}
+            </Button>
+          </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader className="bg-muted/30">
@@ -339,7 +287,7 @@ const Districts = () => {
                   districtData.map((data: any, index) => (
                     <TableRow key={data.district} className="group transition-colors hover:bg-muted/30">
                       <TableCell className="font-medium text-muted-foreground hidden md:table-cell">{index + 1}</TableCell>
-                      <TableCell className="font-semibold text-foreground">
+                      <TableCell className="font-bold text-foreground">
                         <div className="flex flex-col">
                           <span>{data.district}</span>
                           <div className="flex gap-2 mt-1 sm:hidden">
@@ -372,7 +320,7 @@ const Districts = () => {
                             className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5"
                             onClick={() => navigate(`/households?district=${encodeURIComponent(data.district)}`)}
                           >
-                            Explore <ChevronRight className="h-4 w-4" />
+                            View Records<ChevronRight className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>

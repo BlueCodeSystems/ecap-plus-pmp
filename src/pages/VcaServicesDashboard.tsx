@@ -74,25 +74,11 @@ import {
 } from "recharts";
 
 // Full list of 14 filters from legacy TreeTable.tsx
-const subPopulationFilterLabels: Record<string, string> = {
-  calhiv: 'C/ALHIV',
-  hei: 'HEI',
-  cwlhiv: 'C/WLHIV',
-  agyw: 'AGYW',
-  csv: 'C/SV',
-  cfsw: 'CFSW',
-  abym: 'ABYM',
-  caahh: 'child_adolescent_in_aged_headed_household',
-  caichh: 'child_adolescent_in_chronically_ill_headed_household',
-  caich: 'child_adolescent_in_child_headed_household',
-  calwd: 'child_adolescent_living_with_disability',
-  caifhh: 'child_adolescent_in_female_headed_household',
-  muc: 'under_5_malnourished',
-  pbfw: 'pbfw'
-};
+
 
 // Mapping for filters where the data key differs from the filter key
-const NOT_APPLICABLE = ["not applicable", "n/a", "na", "none", "no", "false", "0"];
+const NOT_APPLICABLE = ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}"];
+
 
 const parseHealthServices = (services: any): string[] => {
   if (!services) return [];
@@ -123,76 +109,68 @@ const filterKeyToDataKey: Record<string, string> = {
   pbfw: 'pbfw'
 };
 
-const RiskKpiCard = ({ label, count, percent, thresholds, icon: Icon, description, isAbsoluteOnly = false, to }: any) => {
-  const getSeverityColor = (val: number, rules: any) => {
-    if (!rules) return "text-slate-600";
-    if (rules.inverse) {
-      if (val <= rules.red) return "text-rose-600";
-      if (val <= rules.yellow) return "text-amber-600";
-      return "text-emerald-600";
-    }
-    if (val >= rules.red) return "text-rose-600";
-    if (val >= rules.yellow) return "text-amber-600";
-    return "text-emerald-600";
-  };
+const isNotApplicable = (val: any) => {
+  if (val === null || val === undefined) return true;
+  const s = String(val).trim().toLowerCase();
+  return s === "" || ["not applicable", "n/a", "na", "null", "none", "no", "0", "false", "[]", "{}", "null"].includes(s);
+};
 
-  const getSeverityBg = (val: number, rules: any) => {
-    if (!rules) return "bg-slate-100";
-    if (rules.inverse) {
-      if (val <= rules.red) return "bg-rose-500/10";
-      if (val <= rules.yellow) return "bg-amber-500/10";
-      return "bg-emerald-500/10";
-    }
-    if (val >= rules.red) return "bg-rose-500/10";
-    if (val >= rules.yellow) return "bg-amber-500/10";
-    return "bg-emerald-500/10";
-  };
+const RiskKpiCard = ({ label, count, percent, thresholds, icon: Icon, description, isAbsoluteOnly = false, to }: any) => {
 
   const isPercentValid = typeof percent === "number" && !isNaN(percent);
-  const value = isPercentValid ? `${percent.toFixed(1)}%` : (count !== null && count !== undefined ? count.toLocaleString() : "0");
-  const color = isPercentValid ? getSeverityColor(percent, thresholds) : "text-slate-900";
-  const bg = isPercentValid ? getSeverityBg(percent, thresholds) : "bg-slate-100/50";
+  const isCountValid = count !== null && count !== undefined;
+  const value = isCountValid ? count.toLocaleString() : "0";
+  const percentageText = isPercentValid ? ` (${percent.toFixed(1)}%)` : "";
+
+  const getStyle = () => {
+    if (!isPercentValid || !thresholds) return { bg: "bg-slate-50", text: "text-slate-600" };
+    if (thresholds.inverse) {
+      if (percent <= thresholds.red) return { bg: "bg-rose-50", text: "text-rose-600" };
+      if (percent <= thresholds.yellow) return { bg: "bg-amber-50", text: "text-amber-600" };
+      return { bg: "bg-emerald-50", text: "text-emerald-600" };
+    }
+    if (percent >= thresholds.red) return { bg: "bg-rose-50", text: "text-rose-600" };
+    if (percent >= thresholds.yellow) return { bg: "bg-amber-50", text: "text-amber-600" };
+    return { bg: "bg-emerald-50", text: "text-emerald-600" };
+  };
+
+  const style = getStyle();
 
   const content = (
-    <>
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
-        <div className={cn("p-2 rounded-lg transition-transform group-hover:rotate-12", bg, color)}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
+    <div
+      className={cn(
+        "p-4 rounded-xl border bg-white shadow-sm transition-all hover:shadow-md active:scale-95 border-slate-100 h-full flex flex-col justify-between",
+        to && "cursor-pointer"
+      )}
+    >
       <div>
-        <div className={cn("text-3xl font-black mb-1", color)}>{value}</div>
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-bold text-slate-500 uppercase">
-            {!isAbsoluteOnly && count !== null && count !== undefined ? `${count.toLocaleString()} Children` : description}
+        <div className="flex items-center gap-3 mb-2">
+          <div className={cn("p-2 rounded-lg", style.bg, style.text)}>
+            <Icon className="h-4 w-4" />
           </div>
-          {to && <ChevronRight className="h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all font-black" />}
+          <span className="text-xs font-bold tracking-wider text-muted-foreground">{label}</span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-black text-slate-900">{value}</span>
         </div>
       </div>
-    </>
-  );
-
-  const containerClassName = cn(
-    "p-6 rounded-2xl border flex flex-col justify-between shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] group bg-white",
-    isPercentValid && (thresholds?.inverse ? percent <= (thresholds?.red || -1) : percent >= (thresholds?.red || 999)) ? "bg-rose-50 border-rose-200" :
-      isPercentValid && (thresholds?.inverse ? percent <= (thresholds?.yellow || -1) : percent >= (thresholds?.yellow || 999)) ? "bg-amber-50 border-amber-200" : "border-slate-200"
+      <p className="text-[10px] text-slate-500 mt-1">
+        {to ? "Click to view" : description}{!isAbsoluteOnly && percentageText}
+      </p>
+    </div>
   );
 
   if (to) {
     return (
-      <Link to={to} className={containerClassName}>
+      <Link to={to} className="block group h-full">
         {content}
       </Link>
     );
   }
 
-  return (
-    <div className={containerClassName}>
-      {content}
-    </div>
-  );
+  return content;
 };
+
 
 const VcaServicesDashboard = () => {
   const navigate = useNavigate();
@@ -205,20 +183,7 @@ const VcaServicesDashboard = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
-  const [subPopulationFilters, setSubPopulationFilters] = useState<Record<string, string>>(
-    Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-  );
 
-  const handleFilterChange = (key: string, value: string) => {
-    setSubPopulationFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleClearFilters = () => {
-    setSubPopulationFilters(
-      Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-    );
-    setSearchQuery("");
-  };
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
@@ -366,22 +331,7 @@ const VcaServicesDashboard = () => {
 
     if (!vcas.length && !services.length) return null;
 
-    // Apply Sub-population Filters to base vcas list
-    vcas = vcas.filter((vca: any) => {
-      return Object.entries(subPopulationFilters).every(([key, value]) => {
-        if (value === "all") return true;
 
-        let dataKey = key;
-        if (key in filterKeyToDataKey) {
-          dataKey = filterKeyToDataKey[key];
-        }
-
-        const recordValue = vca[dataKey];
-        return value === "yes"
-          ? recordValue === "1" || recordValue === "true" || recordValue === 1 || recordValue === true
-          : recordValue === "0" || recordValue === "false" || recordValue === 0 || recordValue === false;
-      });
-    });
 
     if (!vcas.length && !services.length) return null;
 
@@ -491,20 +441,23 @@ const VcaServicesDashboard = () => {
       return (isHivPos && (isNoVl || isUnsuppressed)) || isOutOfSchool || noService90d || noActiveCasePlan;
     });
 
-    // 6. Per-VCA domain coverage from services
+    // 6. Per-VCA domain    // Build per-VCA service map
     const serviceMap = new Map<string, any[]>();
     services.forEach(s => {
-      const vId = String(s.vca_id || s.vcaid || s.child_id || "");
+      const vId = String(s.vca_id || s.vcaid || s.child_id || s.uid || s.id || "").trim();
       if (!serviceMap.has(vId)) serviceMap.set(vId, []);
       serviceMap.get(vId)?.push(s);
     });
 
     const isCategoryProvided = (record: any, key: string): boolean => {
       const val = record[key];
-      if (val === null || val === undefined || val === "") return false;
-      const sVal = String(val).toLowerCase().trim();
-      return !["not applicable", "n/a", "na", "none", "no", "[]"].includes(sVal);
+      if (val === null || val === undefined) return false;
+      const sVal = String(val).trim();
+      if (sVal === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(sVal.toLowerCase())) return false;
+      if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal)) return false;
+      return true;
     };
+
 
     let healthDomainCount = 0;
     let schooledDomainCount = 0;
@@ -513,7 +466,7 @@ const VcaServicesDashboard = () => {
     let allFourDomainsCount = 0;
 
     vcas.forEach((v: any) => {
-      const vId = String(v.uid || v.unique_id || v.vca_id || "");
+      const vId = String(v.uid || v.unique_id || v.vca_id || v.child_id || v.id || "").trim();
       const vServices = serviceMap.get(vId) || [];
       let hasHealth = false, hasSchooled = false, hasSafe = false, hasStable = false;
       vServices.forEach(s => {
@@ -610,7 +563,7 @@ const VcaServicesDashboard = () => {
       districtRiskData,
       healthServiceStats: healthServiceStatsFinal,
     };
-  }, [vcasQuery.data, servicesQuery.data, casePlansQuery.data, referralsQuery.data, selectedDistrict, vcaListQuery.data, subPopulationFilters]);
+  }, [vcasQuery.data, servicesQuery.data, casePlansQuery.data, referralsQuery.data, selectedDistrict, vcaListQuery.data]);
 
   const displayStats = selectedDistrict === "All" ? (dashboardStats || cachedNationwideStats) : dashboardStats;
   const isRefreshing = servicesQuery.isFetching && (displayStats?.totalVcas > 0);
@@ -621,7 +574,7 @@ const VcaServicesDashboard = () => {
   ];
 
   return (
-    <DashboardLayout subtitle="VCA Services Intelligence">
+    <DashboardLayout subtitle="Vca services intelligence">
       {/* ── Banner ── */}
       <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8">
         <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 p-6 lg:p-8">
@@ -630,22 +583,16 @@ const VcaServicesDashboard = () => {
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <Badge className="text-xs border-0 bg-white/20 text-white font-bold">VCA Services</Badge>
-                <Badge className="text-xs border-0 bg-white/20 text-white text-emerald-100 font-bold uppercase tracking-wider">Risk Analytics</Badge>
-              </div>
+
               <h1 className="text-3xl font-black text-white lg:text-4xl leading-tight">
-                VCA Services
+                Vca services
               </h1>
               <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm font-medium">
                 <span className="flex items-center gap-1.5">
                   <Activity className="h-4 w-4" />
                   {(displayStats?.totalVcas || 0).toLocaleString()} Children
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <ShieldAlert className="h-4 w-4" />
-                  {displayStats?.highRiskCount || 0} High Risk Identified
-                </span>
+
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-4 w-4" />
                   {selectedDistrict}
@@ -659,10 +606,10 @@ const VcaServicesDashboard = () => {
                 disabled={user?.description === "District User"}
               >
                 <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="Select District" />
+                  <SelectValue placeholder="Select district" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All Districts</SelectItem>
+                  <SelectItem value="All">All districts</SelectItem>
                   {districts.map((d) => (
                     <SelectItem key={d} value={d}>{d}</SelectItem>
                   ))}
@@ -679,59 +626,20 @@ const VcaServicesDashboard = () => {
           </div>
         </div>
 
-        {/* Banner Metadata Strip */}
-        <div className="bg-white border border-slate-200 border-t-0 rounded-b-2xl px-6 py-3 lg:px-8">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] font-black uppercase tracking-widest text-slate-400">
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-              Health: <span className="text-slate-900 ml-1 font-bold">{(displayStats?.healthDomainRate ?? 0).toFixed(1)}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-              Schooled: <span className="text-slate-900 ml-1 font-bold">{(displayStats?.schooledDomainRate ?? 0).toFixed(1)}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-              Safe: <span className="text-slate-900 ml-1 font-bold">{(displayStats?.safeDomainRate ?? 0).toFixed(1)}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Stable: <span className="text-slate-900 ml-1 font-bold">{(displayStats?.stableDomainRate ?? 0).toFixed(1)}%</span>
-            </div>
-            {(displayStats?.allFourDomainsRate || 0) < 10 && (
-              <div className="ml-auto flex items-center gap-2 text-rose-600 font-bold bg-rose-50 px-3 py-1 rounded-full border border-rose-100">
-                <AlertTriangle className="h-3 w-3" />
-                <span>Low Graduation Readiness</span>
-              </div>
-            )}
-            {isRefreshing && (
-              <div className="ml-auto flex items-center gap-2 text-emerald-600 animate-pulse">
-                <RefreshCcw className="h-3 w-3 animate-spin" />
-                <span>Syncing records...</span>
-              </div>
-            )}
-          </div>
-        </div>
+
       </div>
 
-      <div className="mb-6">
-        <SubPopulationFilter
-          filters={subPopulationFilters}
-          labels={subPopulationFilterLabels}
-          onChange={handleFilterChange}
-          onClear={handleClearFilters}
-        />
-      </div>
+
 
       <div className="space-y-8 pb-20">
         {/* 🎯 SECTION 1: DOMAIN COVERAGE KPIs */}
         <div className="space-y-2 mb-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">OVC Service Domain Coverage</p>
-          <p className="text-xs text-slate-500">Percentage of VCAs receiving services in each domain. Low rates indicate intervention gaps.</p>
+          <p className="text-[10px] font-black tracking-widest text-slate-400"></p>
+          <p className="text-xs text-slate-500"></p>
         </div>
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
           <RiskKpiCard
-            label="Health Coverage"
+            label="Health coverage"
             count={displayStats?.healthDomainCount}
             percent={displayStats?.healthDomainRate}
             thresholds={{ yellow: 60, red: 40, inverse: true }}
@@ -740,7 +648,7 @@ const VcaServicesDashboard = () => {
             to={`/registers/vca-risk?type=health_domain&district=${selectedDistrict}`}
           />
           <RiskKpiCard
-            label="Schooled Coverage"
+            label="Schooled coverage"
             count={displayStats?.schooledDomainCount}
             percent={displayStats?.schooledDomainRate}
             thresholds={{ yellow: 60, red: 40, inverse: true }}
@@ -749,7 +657,7 @@ const VcaServicesDashboard = () => {
             to={`/registers/vca-risk?type=schooled_domain&district=${selectedDistrict}`}
           />
           <RiskKpiCard
-            label="Safe Coverage"
+            label="Safe coverage"
             count={displayStats?.safeDomainCount}
             percent={displayStats?.safeDomainRate}
             thresholds={{ yellow: 60, red: 40, inverse: true }}
@@ -758,7 +666,7 @@ const VcaServicesDashboard = () => {
             to={`/registers/vca-risk?type=safe_domain&district=${selectedDistrict}`}
           />
           <RiskKpiCard
-            label="Stable Coverage"
+            label="Stable coverage"
             count={displayStats?.stableDomainCount}
             percent={displayStats?.stableDomainRate}
             thresholds={{ yellow: 60, red: 40, inverse: true }}
@@ -769,7 +677,7 @@ const VcaServicesDashboard = () => {
         </div>
         <div className="animate-in fade-in slide-in-from-bottom-3 duration-500">
           <RiskKpiCard
-            label="Graduation Readiness (All 4 Domains)"
+            label="Graduation readiness (all 4 domains)"
             count={displayStats?.allFourDomainsCount}
             percent={displayStats?.allFourDomainsRate}
             thresholds={{ yellow: 15, red: 5, inverse: true }}
@@ -786,14 +694,14 @@ const VcaServicesDashboard = () => {
               <div>
                 <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
                   <Stethoscope className="h-5 w-5 text-emerald-600" />
-                  Most Common Health Services
+                  Most common health services
                 </CardTitle>
-                <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                  Provided Health Services across All Profiles — {selectedDistrict}
+                <CardDescription className="text-xs font-bold text-slate-400 tracking-widest mt-1">
+                  Provided health services across all profiles — {selectedDistrict}
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="h-6 px-3 border-emerald-200 bg-emerald-50 text-emerald-700 font-black text-[10px] uppercase">
-                {displayStats?.totalServices || 0} Service Events
+              <Badge variant="outline" className="h-6 px-3 border-emerald-200 bg-emerald-50 text-emerald-700 font-black text-[10px]">
+                {displayStats?.totalServices || 0} service events
               </Badge>
             </div>
           </CardHeader>
@@ -844,13 +752,13 @@ const VcaServicesDashboard = () => {
           <div className="p-6 border-b border-slate-100 bg-slate-50/30 backdrop-blur-sm">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="text-lg font-black text-slate-900">Audit History</h3>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Audited operations in {selectedDistrict}</p>
+                <h3 className="text-lg font-black text-slate-900">Vca Services</h3>
+                <p className="text-xs text-slate-400 font-bold tracking-widest mt-1">Audited operations in {selectedDistrict}</p>
               </div>
               <div className="relative w-full md:w-[400px] group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
                 <Input
-                  placeholder="Search by Beneficiary ID, Caseworker or District..."
+                  placeholder="Search by beneficiary id, caseworker or district..."
                   className="pl-11 bg-white border-slate-200 h-11 text-sm font-bold rounded-xl focus-visible:ring-emerald-500/20 shadow-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -863,11 +771,11 @@ const VcaServicesDashboard = () => {
             <Table>
               <TableHeader className="bg-slate-50/50 border-b border-slate-100">
                 <TableRow>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 pl-8 h-14">Beneficiary ID</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">District</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">Date of Service</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">Service Provided</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-right pr-8 h-14">Caseworker</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 pl-8 h-14">Beneficiary id</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">District</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Date of service</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Service provided</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 text-right pr-8 h-14">Caseworker</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -884,7 +792,7 @@ const VcaServicesDashboard = () => {
                     <TableCell colSpan={5} className="py-20 text-center">
                       <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
                         <FileText className="h-10 w-10 opacity-20" />
-                        <p className="text-xs font-bold uppercase tracking-widest opacity-50">No service logs available</p>
+                        <p className="text-xs font-bold tracking-widest opacity-50">No service logs available</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -919,13 +827,13 @@ const VcaServicesDashboard = () => {
                       <TableRow key={index} className="hover:bg-slate-50/50 transition-colors group text-sm">
                         <TableCell className="pl-6 py-4">
                           <div className="flex items-center gap-3">
-                            <span className="font-mono text-[11px] bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200/40 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-100 transition-all uppercase">
+                            <span className="font-mono text-[11px] bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200/40 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-100 transition-all">
                               {vcaId}
                             </span>
                             <ChevronRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-emerald-600" />
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs font-bold text-slate-600 uppercase tracking-tighter">
+                        <TableCell className="text-xs font-bold text-slate-600 tracking-tighter">
                           {String(record.district || "N/A")}
                         </TableCell>
                         <TableCell className="text-xs font-bold text-slate-500">
@@ -935,7 +843,7 @@ const VcaServicesDashboard = () => {
                           <div className="flex flex-wrap gap-1.5 max-w-[400px]">
                             {providedServices.length > 0 ? (
                               providedServices.slice(0, 3).map((s, i) => (
-                                <Badge key={i} variant="outline" className="text-[9px] font-black border-slate-200 bg-white h-6 px-2.5 rounded-md uppercase tracking-tighter">
+                                <Badge key={i} variant="outline" className="text-[9px] font-black border-slate-200 bg-white h-6 px-2.5 rounded-md tracking-tighter">
                                   {s}
                                 </Badge>
                               ))
@@ -944,17 +852,17 @@ const VcaServicesDashboard = () => {
                             )}
                             {providedServices.length > 3 && (
                               <Badge variant="outline" className="text-[9px] font-black border-emerald-100 bg-emerald-50 text-emerald-700 h-6 px-2.5 rounded-md">
-                                +{providedServices.length - 3} More
+                                +{providedServices.length - 3} more
                               </Badge>
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="text-right pr-6 py-4">
                           <div className="flex flex-col items-end">
-                            <span className="font-black text-slate-900 text-[11px] uppercase truncate max-w-[150px]">
+                            <span className="font-black text-slate-900 text-[11px] truncate max-w-[150px]">
                               {caseworker}
                             </span>
-                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Field Officer</span>
+                            <span className="text-[9px] text-slate-400 font-bold tracking-widest">Case worker</span>
                           </div>
                         </TableCell>
                       </TableRow>

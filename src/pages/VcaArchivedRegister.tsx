@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Archive, Search, Filter } from "lucide-react";
+import { Archive, Search, Filter, Download } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -221,8 +221,9 @@ const VcaArchivedRegister = () => {
       // Global Search
       const lowerCaseQuery = searchQuery.toLowerCase();
       const matchesSearch = searchQuery
-        ? (vca.vca_id?.toLowerCase() || "").includes(lowerCaseQuery) ||
-        (vca.uid?.toLowerCase() || "").includes(lowerCaseQuery) ||
+        ? (vca.uid?.toLowerCase() || "").includes(lowerCaseQuery) ||
+        (vca.unique_id?.toLowerCase() || "").includes(lowerCaseQuery) ||
+        (vca.vca_id?.toLowerCase() || "").includes(lowerCaseQuery) ||
         (vca.homeaddress?.toLowerCase() || "").includes(lowerCaseQuery) ||
         (vca.ward?.toLowerCase() || "").includes(lowerCaseQuery)
         : true;
@@ -323,7 +324,7 @@ const VcaArchivedRegister = () => {
             if (key === 'age') return calculateAge(row.birthdate);
             if (key === 'reason') return pickValue(row, ["de_registration_reason", "reason", "archived_reason", "case_status", "status"]);
             if (key === 'archived_on') return pickValue(row, ["de_registration_date", "archived_on", "archivedOn", "date_archived", "updated_at"]);
-            if (key === 'uid') return pickValue(row, ["uid", "vca_id", "id", "unique_id"]);
+            if (key === 'uid') return pickValue(row, ["uid", "unique_id", "vca_id", "vcaid", "id", "child_id"]);
             return row[key] ?? "";
           };
 
@@ -358,17 +359,6 @@ const VcaArchivedRegister = () => {
 
   return (
     <DashboardLayout subtitle="VCA Archived Register">
-      <PageIntro
-        eyebrow="Register"
-        title="VCA Archived Register"
-        description=""
-        actions={
-          <Button variant="outline" className="border-slate-200" onClick={exportToCSV}>
-            Export to CSV
-          </Button>
-        }
-      />
-
       <GlowCard>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -378,7 +368,17 @@ const VcaArchivedRegister = () => {
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-3">
-              <span className="text-xs font-black uppercase text-slate-400 whitespace-nowrap">District:</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-slate-200 text-slate-600 hover:text-primary transition-all"
+                onClick={exportToCSV}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+              <div className="h-8 w-px bg-slate-100 mx-1 hidden sm:block" />
+              <span className="text-xs font-black text-slate-400 whitespace-nowrap">District:</span>
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
@@ -403,7 +403,7 @@ const VcaArchivedRegister = () => {
 
         <CardContent className="space-y-6">
           {/* Filters Section */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
+          <div className="space-y-6">
             {/* Sub-population Filters */}
             <SubPopulationFilter
               filters={subPopulationFilters}
@@ -453,10 +453,10 @@ const VcaArchivedRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px] hidden sm:table-cell">Unique ID</TableHead>
+                  <TableHead className="w-[120px] hidden sm:table-cell">Unique id</TableHead>
                   <TableHead className="w-[80px] hidden sm:table-cell">Gender</TableHead>
                   <TableHead className="w-[60px] hidden sm:table-cell">Age</TableHead>
-                  <TableHead className="min-w-[200px] hidden lg:table-cell">Household Details</TableHead>
+                  <TableHead className="min-w-[200px] hidden lg:table-cell">Household details</TableHead>
                   <TableHead className="w-[100px] hidden md:table-cell">Archived</TableHead>
                   <TableHead className="w-[120px] hidden lg:table-cell">Reason</TableHead>
                   <TableHead className="text-right w-[60px]">Action</TableHead>
@@ -485,7 +485,7 @@ const VcaArchivedRegister = () => {
                   </TableRow>
                 )}
                 {paginatedVcas.map((vca: any, index: number) => {
-                  const id = pickValue(vca, ["vca_id", "vcaid", "id", "unique_id", "child_id", "uid"]);
+                  const id = pickValue(vca, ["uid", "unique_id", "vca_id", "vcaid", "id", "child_id"]);
                   const fullName = `${vca.firstname || ''} ${vca.lastname || ''}`.trim();
                   const age = calculateAge(vca.birthdate);
 

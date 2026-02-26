@@ -345,7 +345,7 @@ const SupportCenter = () => {
               <Play className="h-4 w-4 text-emerald-600 fill-emerald-600" />
             </div>
             <audio src={fileUrl} controls className="h-8 max-w-[180px] filter invert hue-rotate-180 brightness-110" />
-            <div className="text-[10px] font-bold text-slate-400 rotate-90 tracking-widest uppercase">Voice</div>
+            <div className="text-[10px] font-bold text-slate-400 rotate-90 tracking-widest">Voice</div>
           </div>
         );
       }
@@ -357,7 +357,7 @@ const SupportCenter = () => {
             <div className="overflow-hidden rounded-2xl border border-white/40 shadow-lg transition-transform duration-500 group-hover:scale-[1.02]">
               <img src={fileUrl} alt="Shared image" className="max-w-xs object-cover" />
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 pl-1">{msg.message.replace("📷 ", "") || "Shared Image"}</p>
+            <p className="text-[10px] font-bold tracking-widest text-slate-400 pl-1">{msg.message.replace("📷 ", "") || "Shared image"}</p>
           </div>
         );
       }
@@ -375,7 +375,7 @@ const SupportCenter = () => {
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{msg.message.replace("📎 ", "")}</span>
-              <span className="text-[9px] font-black uppercase tracking-tighter text-slate-400">Download File</span>
+              <span className="text-[9px] font-black tracking-tighter text-slate-400">Download file</span>
             </div>
           </a>
         );
@@ -395,7 +395,7 @@ const SupportCenter = () => {
         {msg.subject && msg.subject !== "Normal" && (
           <Badge
             variant="outline"
-            className={`text-[9px] h-4 uppercase font-black mb-1 px-1.5 border-none shadow-sm ${msg.subject === "Critical"
+            className={`text-[9px] h-4 font-black mb-1 px-1.5 border-none shadow-sm ${msg.subject === "Critical"
               ? "bg-rose-500 text-white"
               : "bg-amber-400 text-slate-900"
               }`}
@@ -470,7 +470,7 @@ const SupportCenter = () => {
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-sm truncate">
                         {partnerName}
-                        {!partner && <span className="ml-1.5 text-[10px] bg-slate-100 text-slate-500 px-1 rounded uppercase">Remote</span>}
+                        {!partner && <span className="ml-1.5 text-[10px] bg-slate-100 text-slate-500 px-1 rounded">Remote</span>}
                       </p>
                       {conv.timestamp && (
                         <span className="text-xs text-slate-400 shrink-0">
@@ -566,7 +566,7 @@ const SupportCenter = () => {
                         setProfileModalOpen(true);
                       }}
                     >
-                      View {selectedUser.id === user?.id ? "My" : ""} Profile
+                      View {selectedUserId === user?.id ? "my" : ""} profile
                     </DropdownMenuItem>
                     {selectedUser.id === user?.id && (
                       <>
@@ -579,7 +579,7 @@ const SupportCenter = () => {
                             }
                           }}
                         >
-                          Account Settings
+                          Account settings
                         </DropdownMenuItem>
                       </>
                     )}
@@ -629,7 +629,7 @@ const SupportCenter = () => {
                           "flex items-center gap-1.5 px-2",
                           isMine ? "justify-end" : "justify-start"
                         )}>
-                          <p className="text-[10px] font-bold uppercase tracking-tighter text-slate-400">
+                          <p className="text-[10px] font-bold tracking-tighter text-slate-400">
                             {format(new Date(msg.timestamp), "HH:mm")}
                           </p>
                           {isMine && (
@@ -670,14 +670,14 @@ const SupportCenter = () => {
                   />
                   <EmojiPicker onEmojiSelect={handleEmojiSelect} />
                   <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-                    <SelectTrigger className={`w-[110px] h-10 text-[10px] font-black uppercase tracking-tighter border-none shadow-none rounded-xl transition-all ${selectedPriority === "Critical" ? "bg-red-500 text-white" : selectedPriority === "Urgent" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-500"
+                    <SelectTrigger className={`w-[110px] h-10 text-[10px] font-black tracking-tighter border-none shadow-none rounded-xl transition-all ${selectedPriority === "Critical" ? "bg-red-500 text-white" : selectedPriority === "Urgent" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-500"
                       }`}>
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                      <SelectItem value="Normal" className="text-[10px] font-bold uppercase tracking-widest">Normal</SelectItem>
-                      <SelectItem value="Urgent" className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Urgent</SelectItem>
-                      <SelectItem value="Critical" className="text-[10px] font-bold uppercase tracking-widest text-red-600">Critical</SelectItem>
+                      <SelectItem value="Normal" className="text-[10px] font-bold tracking-widest">Normal</SelectItem>
+                      <SelectItem value="Urgent" className="text-[10px] font-bold tracking-widest text-amber-600">Urgent</SelectItem>
+                      <SelectItem value="Critical" className="text-[10px] font-bold tracking-widest text-red-600">Critical</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="flex-1 bg-white border border-slate-200 rounded-2xl flex items-center shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all px-3">

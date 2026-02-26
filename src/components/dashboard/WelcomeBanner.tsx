@@ -12,15 +12,14 @@ const WelcomeBanner = () => {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   };
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-700 via-green-700 to-teal-700 p-6 sm:p-8 text-white shadow-lg"
-      style={{ background: 'var(--banner-color, linear-gradient(to right, var(--tw-gradient-from), var(--tw-gradient-to)))' } as any}
+      className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-700 via-emerald-600 to-teal-600 p-6 sm:p-8 text-white shadow-lg"
     >
       {/* Decorative elements */}
       <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
@@ -29,7 +28,7 @@ const WelcomeBanner = () => {
 
       <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="mb-1 flex overflow-hidden text-xs font-bold uppercase tracking-wider text-emerald-100/80">
+          <div className="mb-1 flex overflow-hidden text-xs font-bold tracking-wider text-emerald-100/80">
             {getGreeting().split("").map((char, index) => (
               <span
                 key={index}
@@ -40,11 +39,11 @@ const WelcomeBanner = () => {
               </span>
             ))}
           </div>
-          <h1 className="text-2xl font-bold sm:text-3xl">
+          <h1 className="text-3xl font-black sm:text-4xl leading-tight">
             {isFirstLogin ? `Welcome, ${firstName}` : `Welcome back, ${firstName}`}
           </h1>
-          <p className="mt-1 text-sm text-white/80 max-w-lg">
-            Monitor screening coverage, validate data quality, and coordinate fieldwork — all in one place.
+          <p className="mt-1 text-sm text-white/90 max-w-lg font-medium">
+            Monitor screening coverage, validate data quality, and coordinate fieldwork all in one place.
           </p>
         </div>
         <Button

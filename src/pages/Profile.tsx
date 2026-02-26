@@ -80,7 +80,7 @@ const Profile = () => {
         eyebrow="Profile"
         title="Keep your ECAP+ identity ready for field work."
         description="Update account details, verify access, and see how your role connects to program delivery."
-        actions={<Badge className="bg-emerald-100 text-emerald-700">Directus Account</Badge>}
+        actions={<Badge className="bg-emerald-100 text-emerald-700">Directus account</Badge>}
       />
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -102,8 +102,8 @@ const Profile = () => {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  Account Holder
+                <p className="text-xs font-semibold tracking-[0.3em] text-slate-500">
+                  Account holder
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-slate-900">
                   {displayName || "N/A"}
@@ -111,7 +111,7 @@ const Profile = () => {
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-sm text-slate-600">{user.email}</p>
                   <span className="h-1 w-1 rounded-full bg-slate-300" />
-                  <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{roleLabel}</p>
+                  <p className="text-[10px] font-bold text-primary tracking-wider">{roleLabel}</p>
                 </div>
               </div>
             </div>
@@ -128,26 +128,26 @@ const Profile = () => {
               <div className="rounded-xl border border-slate-200 bg-white/90 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                   <UserCircle2 className="h-4 w-4 text-primary" />
-                  Display Name
+                  Display name
                 </div>
                 <p className="mt-2 text-sm text-slate-600">{displayName || "N/A"}</p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white/90 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                   <Mail className="h-4 w-4 text-primary" />
-                  Email Address
+                  Email address
                 </div>
                 <p className="mt-2 text-sm text-slate-600">{user.email}</p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white/90 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                   <ShieldCheck className="h-4 w-4 text-primary" />
-                  Role Access
+                  Role access
                 </div>
                 <p className="mt-2 text-sm text-slate-600">{roleLabel}</p>
               </div>
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <div className="text-sm font-semibold text-amber-800">Access Notes</div>
+                <div className="text-sm font-semibold text-amber-800">Access notes</div>
                 <p className="mt-2 text-sm text-amber-700">
                   Your permissions are synced from Directus. Contact an admin if role updates
                   are required.
@@ -160,7 +160,7 @@ const Profile = () => {
         <GlowCard className="p-6">
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Manage Identity</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Manage identity</h3>
               <p className="text-sm text-slate-600">
                 Update your profile picture and account security details.
               </p>
@@ -168,7 +168,7 @@ const Profile = () => {
 
             <div className="space-y-4">
               <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-3">
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Profile Picture</h4>
+                <h4 className="text-xs font-bold text-slate-900 tracking-wider">Profile picture</h4>
                 <div className="flex gap-2">
                   <Button
                     className="flex-1 bg-slate-900 text-white hover:bg-slate-800 rounded-xl h-11"
@@ -176,7 +176,7 @@ const Profile = () => {
                     disabled={uploading}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    {uploading ? "Updating..." : "Change Photo"}
+                    {uploading ? "Updating..." : "Change photo"}
                   </Button>
                   {user.avatar && (
                     <Button
@@ -193,10 +193,10 @@ const Profile = () => {
 
               <div className="space-y-2">
                 <Button variant="outline" className="w-full border-slate-200 rounded-xl h-11 text-slate-700">
-                  Reset Password
+                  Reset password
                 </Button>
                 <Button variant="ghost" className="w-full text-slate-500 text-xs hover:bg-slate-100 rounded-xl h-10">
-                  Request Role Review
+                  Request role review
                 </Button>
               </div>
             </div>

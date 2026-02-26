@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+
 import { useAuth } from "@/context/AuthContext";
 import {
   Users,
@@ -49,7 +50,60 @@ import { toast } from "sonner";
 
 const CHART_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#a855f7", "#ec4899", "#06b6d4", "#f43f5e", "#8b5cf6"];
 
-const CaseworkerServices = () => {
+const RiskKpiCard = ({ label, count, icon: Icon, description, to, color = "emerald" }: any) => {
+  const isCountValid = count !== null && count !== undefined;
+  const value = isCountValid ? count.toLocaleString() : "0";
+
+  const colorMap: any = {
+    emerald: { bg: "bg-emerald-50", text: "text-emerald-600" },
+    teal: { bg: "bg-teal-50", text: "text-teal-600" },
+    amber: { bg: "bg-amber-50", text: "text-amber-600" },
+    rose: { bg: "bg-rose-50", text: "text-rose-600" },
+    blue: { bg: "bg-blue-50", text: "text-blue-600" },
+    purple: { bg: "bg-purple-50", text: "text-purple-600" },
+    slate: { bg: "bg-slate-50", text: "text-slate-600" },
+  };
+
+  const style = colorMap[color] || colorMap.slate;
+
+  const content = (
+    <div
+      className={cn(
+        "p-4 rounded-xl border bg-white shadow-sm transition-all hover:shadow-md active:scale-95 border-slate-100 h-full flex flex-col justify-between",
+        to && "cursor-pointer"
+      )}
+    >
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <div className={cn("p-2 rounded-lg", style.bg, style.text)}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <span className="text-xs font-bold tracking-wider text-muted-foreground">{label}</span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-black text-slate-900">{value}</span>
+        </div>
+      </div>
+      <p className="text-[10px] text-slate-500 mt-1">
+        {to ? "Click to view" : description}
+      </p>
+    </div>
+  );
+
+  if (to) {
+    return (
+      <Link to={to} className="block group h-full">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
+};
+
+
+
+const Caseworkers = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -107,7 +161,7 @@ const CaseworkerServices = () => {
   };
 
   useEffect(() => {
-    // SECURITY GUARD: District Users are not allowed to access Caseworker Services
+    // SECURITY GUARD: District Users are not allowed to access Caseworkers
     if (user && user.description === "District User") {
       navigate("/dashboard");
     }
@@ -245,7 +299,9 @@ const CaseworkerServices = () => {
       topCaseworkers,
       topDistricts,
       mostPerformingDistrict: topDistricts[0]?.name || "N/A",
+      districtServiceCount: topDistricts[0]?.value || 0,
     };
+
   }, [allServices, householdCwMap]);
 
   const filteredAuditLog = useMemo(() => {
@@ -261,7 +317,7 @@ const CaseworkerServices = () => {
   }, [allServices, searchQuery, householdCwMap]);
 
   return (
-    <DashboardLayout subtitle="Caseworker Performance & Impact">
+    <DashboardLayout subtitle="Caseworker performance & impact">
       {/* ── Banner ── */}
       <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8">
         <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 p-6 lg:p-8">
@@ -269,90 +325,76 @@ const CaseworkerServices = () => {
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <Badge className="text-xs border-0 bg-white/20 text-white font-bold">Caseworker Services</Badge>
-                <Badge className="text-xs border-0 bg-white/20 text-emerald-100 font-bold uppercase tracking-wider">Performance Monitor</Badge>
-              </div>
+
               <h1 className="text-3xl font-black text-white lg:text-4xl leading-tight">
-                Caseworker Services
+                Caseworkers
               </h1>
               <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm font-medium">
                 <span className="flex items-center gap-1.5">
                   <Briefcase className="h-4 w-4" />
                   {stats?.activeWorkers || 0} Active Caseworkers
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Activity className="h-4 w-4" />
-                  {stats?.totalServices?.toLocaleString() || 0} Total Interventions
-                </span>
+
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-4 w-4" />
-                  Most Performing: {stats?.mostPerformingDistrict}
+                  Most performing: {stats?.mostPerformingDistrict}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm gap-2 hover:bg-white/20"
-                onClick={handleRefresh}
-                disabled={isLoading}
+              <Select
+                value={selectedDistrict}
+                onValueChange={setSelectedDistrict}
+                disabled={user?.description === "District User"}
               >
-                <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-                Sync Data
-              </Button>
-
-              <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
                 <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="Select District" />
+                  <SelectValue placeholder="Select district" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All Districts</SelectItem>
+                  <SelectItem value="All">All districts</SelectItem>
                   {districts.map((d) => (
                     <SelectItem key={d} value={d}>{d}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                onClick={handleRefresh}
+                className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
+                disabled={isLoading}
+              >
+                <RefreshCcw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+                Sync
+              </Button>
             </div>
+
           </div>
         </div>
       </div>
 
-      {/* ── Performance Highlights ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <GlowCard className="border-l-4 border-l-emerald-500">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Services Milestone</span>
-              <Trophy className="h-4 w-4 text-emerald-500" />
-            </div>
-            <div className="text-3xl font-black text-slate-900 mb-1">{stats?.totalServices?.toLocaleString() || 0}</div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase">Total interventions delivered</p>
-          </div>
-        </GlowCard>
+        <RiskKpiCard
+          label="Services"
+          icon={Trophy}
+          count={stats?.totalServices || 0}
+          description="Click to view"
+          color="emerald"
+        />
 
-        <GlowCard className="border-l-4 border-l-teal-500">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Workforce</span>
-              <Users className="h-4 w-4 text-teal-500" />
-            </div>
-            <div className="text-3xl font-black text-slate-900 mb-1">{stats?.activeWorkers || 0}</div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase">Active caseworkers in {selectedDistrict}</p>
-          </div>
-        </GlowCard>
+        <RiskKpiCard
+          label="Caseworkers"
+          icon={Users}
+          count={stats?.activeWorkers || 0}
+          description="Click to view"
+          color="teal"
+        />
 
-        <GlowCard className="border-l-4 border-l-amber-500">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Top Performing District</span>
-              <Star className="h-4 w-4 text-amber-500" />
-            </div>
-            <div className="text-2xl font-black text-slate-900 mb-1 truncate">{stats?.mostPerformingDistrict}</div>
-            <p className="text-[10px] text-slate-500 font-bold uppercase">Highest activity volume</p>
-          </div>
-        </GlowCard>
+        <RiskKpiCard
+          label="Top performing district"
+          icon={Star}
+          count={stats?.districtServiceCount || 0}
+          description="Click to view"
+          color="amber"
+        />
       </div>
 
       {/* ── Charts Section ── */}
@@ -360,11 +402,11 @@ const CaseworkerServices = () => {
         {/* Top 5 Caseworkers */}
         <GlowCard>
           <CardHeader>
-            <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+            <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-emerald-600" />
-              Top 5 Hardworking Caseworkers
+              Top 5 hardworking caseworkers
             </CardTitle>
-            <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <CardDescription className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mt-1">
               By total services recorded
             </CardDescription>
           </CardHeader>
@@ -377,7 +419,7 @@ const CaseworkerServices = () => {
                   <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50 transition-colors group">
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full font-black text-xs shadow-sm",
+                        "flex h-10 w-10 items-center justify-center rounded-full font-bold text-xs shadow-sm",
                         index === 0 ? "bg-amber-100 text-amber-700 ring-4 ring-amber-50" :
                           index === 1 ? "bg-slate-200 text-slate-700 ring-4 ring-slate-100" :
                             index === 2 ? "bg-orange-100 text-orange-700 ring-4 ring-orange-50" :
@@ -386,22 +428,22 @@ const CaseworkerServices = () => {
                         {index + 1}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-black text-slate-900 group-hover:text-emerald-600 transition-colors uppercase">
+                        <span className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                           {worker.name}
                         </span>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <MapPin className="h-3 w-3 text-slate-400" />
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          <span className="text-[10px] font-bold text-slate-500 tracking-wider">
                             {worker.district}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-black text-slate-900">
-                        {worker.value}
+                      <div className="text-base font-bold text-slate-900">
+                        {worker.value.toLocaleString()}
                       </div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      <div className="text-[10px] font-bold text-slate-400 tracking-widest">
                         Services
                       </div>
                     </div>
@@ -415,11 +457,11 @@ const CaseworkerServices = () => {
         {/* Top Districts */}
         <GlowCard>
           <CardHeader>
-            <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+            <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
               <MapPin className="h-5 w-5 text-emerald-600" />
-              District Ranking (Top 5)
+              District ranking (top 5)
             </CardTitle>
-            <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <CardDescription className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mt-1">
               By service intensity volume
             </CardDescription>
           </CardHeader>
@@ -432,7 +474,7 @@ const CaseworkerServices = () => {
                   <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50 transition-colors group">
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full font-black text-xs shadow-sm",
+                        "flex h-10 w-10 items-center justify-center rounded-full font-bold text-xs shadow-sm",
                         index === 0 ? "bg-emerald-100 text-emerald-700 ring-4 ring-emerald-50" :
                           index === 1 ? "bg-teal-100 text-teal-700 ring-4 ring-teal-50" :
                             index === 2 ? "bg-cyan-100 text-cyan-700 ring-4 ring-cyan-50" :
@@ -441,7 +483,7 @@ const CaseworkerServices = () => {
                         {index + 1}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-black text-slate-900 group-hover:text-emerald-600 transition-colors uppercase">
+                        <span className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                           {district.name}
                         </span>
                         <Button
@@ -451,15 +493,15 @@ const CaseworkerServices = () => {
                           onClick={() => handleExportDistrictDetails(district.name)}
                         >
                           <Download className="h-3 w-3" />
-                          Download Report
+                          Download report
                         </Button>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-black text-slate-900">
-                        {district.value}
+                      <div className="text-base font-bold text-slate-900">
+                        {district.value.toLocaleString()}
                       </div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      <div className="text-[10px] font-bold text-slate-400 tracking-widest">
                         Services
                       </div>
                     </div>
@@ -476,8 +518,8 @@ const CaseworkerServices = () => {
         <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/30 backdrop-blur-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Recent Interventions</CardTitle>
-              <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Audit Log by Caseworker & District</CardDescription>
+              <CardTitle className="text-lg font-bold text-slate-900 tracking-tight text-xl">Recent interventions</CardTitle>
+              <CardDescription className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mt-1">Audit log by caseworker & district</CardDescription>
             </div>
             <div className="relative w-full md:w-[400px]">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -495,10 +537,10 @@ const CaseworkerServices = () => {
           <Table>
             <TableHeader className="bg-slate-50/50 border-b">
               <TableRow>
-                <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 pl-8 h-14">Caseworker</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">Household ID</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">Service Date</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-right pr-8 h-14">District</TableHead>
+                <TableHead className="font-bold text-[10px] tracking-widest text-slate-400 pl-8 h-14 uppercase">Caseworker</TableHead>
+                <TableHead className="font-bold text-[10px] tracking-widest text-slate-400 h-14 uppercase">Household id</TableHead>
+                <TableHead className="font-bold text-[10px] tracking-widest text-slate-400 h-14 uppercase">Service date</TableHead>
+                <TableHead className="font-bold text-[10px] tracking-widest text-slate-400 text-right pr-8 h-14 uppercase">District</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -517,7 +559,7 @@ const CaseworkerServices = () => {
                   <TableRow key={i} className="hover:bg-slate-50/50 transition-colors">
                     <TableCell className="pl-8 py-5">
                       <div className="flex flex-col">
-                        <span className="font-black text-slate-900 text-sm uppercase">
+                        <span className="font-bold text-slate-900 text-sm">
                           {s.caseworker_name ||
                             s.caseworkerName ||
                             s.cwac_member_name ||
@@ -525,7 +567,7 @@ const CaseworkerServices = () => {
                             householdCwMap[String(s.household_id || s.hh_id || "")] ||
                             "N/A"}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-bold">Field Officer</span>
+                        <span className="text-[10px] text-slate-400 font-bold">Case Worker</span>
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-slate-600">
@@ -535,7 +577,7 @@ const CaseworkerServices = () => {
                       {s.service_date || s.date || "N/A"}
                     </TableCell>
                     <TableCell className="text-right pr-8">
-                      <Badge variant="outline" className="text-[10px] font-black border-slate-200 bg-white">
+                      <Badge variant="outline" className="text-[10px] font-bold border-slate-200 bg-white">
                         {s.district || "N/A"}
                       </Badge>
                     </TableCell>
@@ -550,4 +592,4 @@ const CaseworkerServices = () => {
   );
 };
 
-export default CaseworkerServices;
+export default Caseworkers;

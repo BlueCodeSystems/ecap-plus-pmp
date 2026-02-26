@@ -42,7 +42,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TableSkeleton from "@/components/ui/TableSkeleton";
 import { format, subDays, parseISO, isAfter } from "date-fns";
-import { cn, toTitleCase } from "@/lib/utils";
+import { cn, toTitleCase, toSentenceCase } from "@/lib/utils";
 
 const RISK_TYPES = {
   health_domain: { label: "Missing Health Services", icon: HeartPulse, color: "text-rose-600", bg: "bg-rose-50", domain: "health_services", domainLabel: "Health" },
@@ -53,31 +53,16 @@ const RISK_TYPES = {
 };
 
 const subPopulationFilterLabels = {
-  calhiv: 'C/ALHIV',
+  calhiv: 'CALHIV',
   hei: 'HEI',
-  cwlhiv: 'C/WLHIV',
+  cwlhiv: 'CWLHIV',
   agyw: 'AGYW',
   csv: 'C/SV',
   cfsw: 'CFSW',
-  abym: 'ABYM',
-  caahh: 'CAAHH',
-  caichh: 'CAICHH',
-  caich: 'CAICH',
-  calwd: 'CALWD',
-  caifhh: 'CAIFHH',
-  muc: 'MUC',
-  pbfw: 'PBFW'
+  abym: 'ABYM'
 };
 
-const filterKeyToDataKey: Record<string, string> = {
-  caahh: 'child_adolescent_in_aged_headed_household',
-  caichh: 'child_adolescent_in_chronically_ill_headed_household',
-  caich: 'child_adolescent_in_child_headed_household',
-  calwd: 'child_adolescent_living_with_disability',
-  caifhh: 'child_adolescent_in_female_headed_household',
-  muc: 'under_5_malnourished',
-  pbfw: 'pbfw'
-};
+const filterKeyToDataKey: Record<string, string> = {};
 
 const HouseholdRiskRegister = () => {
   const navigate = useNavigate();
@@ -152,40 +137,49 @@ const HouseholdRiskRegister = () => {
 
   const isCategoryProvided = (record: any, key: string): boolean => {
     const val = record[key];
-    if (val === null || val === undefined || val === "") return false;
-    const sVal = String(val).toLowerCase().trim();
-    return !["not applicable", "n/a", "na", "none", "no"].includes(sVal);
+    if (val === null || val === undefined) return false;
+    const sVal = String(val).trim();
+    if (sVal === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(sVal.toLowerCase())) return false;
+    if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal)) return false;
+    return true;
   };
 
   const filteredData = useMemo(() => {
-    if (!servicesQuery.data) return [];
-
     const services = servicesQuery.data as any[];
+    const householdsList = (hhListQuery.data ?? []) as any[];
     const now = new Date();
     const NINETY_DAYS_AGO = subDays(now, 90);
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
-    // Group services by household
-    const hhMap = new Map<string, any[]>();
+    // 1. Group services by household
+    const hhServiceMap = new Map<string, any[]>();
     services.forEach(s => {
-      const hhId = String(s.household_id || s.hhid || "unknown");
+      const hhId = String(s.household_id || s.hh_id || s.hhid || s.id || "unknown").trim();
       const sDist = String(s.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return;
 
-      if (!hhMap.has(hhId)) hhMap.set(hhId, []);
-      hhMap.get(hhId)?.push(s);
+      if (!hhServiceMap.has(hhId)) hhServiceMap.set(hhId, []);
+      hhServiceMap.get(hhId)?.push(s);
+    });
+
+    // 2. Filter registered households for the selected district
+    const registeredHhs = householdsList.filter(h => {
+      const hDist = String(h.district || "");
+      return selectedDistrict === "All" || selectedVariants.includes(hDist);
     });
 
     let resultList: any[] = [];
 
-    hhMap.forEach((hhServices, hhId) => {
+    // 3. Evaluate each registered household for gaps
+    registeredHhs.forEach((h) => {
+      const hhId = String(h.household_id || h.hh_id || h.hhid || h.id).trim();
+      const hhServices = hhServiceMap.get(hhId) || [];
+
       let hasHealth = false;
       let hasSchooled = false;
       let hasSafe = false;
       let hasStable = false;
       let isActive = false;
-
-      const lastService = hhServices[0];
 
       hhServices.forEach(s => {
         if (isCategoryProvided(s, "health_services")) hasHealth = true;
@@ -199,8 +193,6 @@ const HouseholdRiskRegister = () => {
 
       const allFour = hasHealth && hasSchooled && hasSafe && hasStable;
 
-      // For domain types: show households MISSING that domain (the gap / problem records)
-      // For graduation_path: show households WITH all 4 domains (ready to graduate)
       let include = false;
       if (type === "health_domain" && !hasHealth) include = true;
       else if (type === "schooled_domain" && !hasSchooled) include = true;
@@ -211,40 +203,32 @@ const HouseholdRiskRegister = () => {
       if (include) {
         resultList.push({
           household_id: hhId,
-          district: lastService.district || "Unknown",
-          last_service_date: lastService.service_date || "N/A",
+          district: h.district || "Unknown",
+          last_service_date: h.last_service_date || "N/A",
           domain_count: [hasHealth, hasSchooled, hasSafe, hasStable].filter(Boolean).length,
           has_health: hasHealth,
           has_schooled: hasSchooled,
           has_safe: hasSafe,
           has_stable: hasStable,
           is_active: isActive,
+          raw_household: h // Store for sub-population filtering
         });
       }
     });
 
-    // Sub-population Filters
-    const households = (hhListQuery.data ?? []) as any[];
-    const hhDataMap = new Map();
-    households.forEach(h => {
-      hhDataMap.set(String(h.household_id || h.hhid || h.id).trim(), h);
-    });
-
+    // 4. Sub-population Filters
     resultList = resultList.filter((item: any) => {
-      const hhData = hhDataMap.get(String(item.household_id).trim());
+      const hhData = item.raw_household;
       return Object.entries(subPopulationFilters).every(([key, value]) => {
         if (value === "all") return true;
         if (!hhData) return false;
 
         let dataKey = key;
-        if (key in filterKeyToDataKey) {
-          dataKey = filterKeyToDataKey[key];
-        }
-
         const recordValue = hhData[dataKey];
+        const sVal = String(recordValue).toLowerCase().trim();
         return value === "yes"
-          ? recordValue === "1" || recordValue === "true" || recordValue === 1 || recordValue === true
-          : recordValue === "0" || recordValue === "false" || recordValue === 0 || recordValue === false;
+          ? sVal === "1" || sVal === "true" || sVal === "yes"
+          : sVal === "0" || sVal === "false" || sVal === "no" || sVal === "";
       });
     });
 
@@ -291,7 +275,7 @@ const HouseholdRiskRegister = () => {
   const RiskIcon = RISK_TYPES[type].icon;
 
   return (
-    <DashboardLayout subtitle="Household Stability Registry">
+    <DashboardLayout subtitle="Household stability registry">
       <div className="flex flex-col gap-6">
         {/* Header Section */}
         <div className="flex items-center justify-between">
@@ -307,9 +291,9 @@ const HouseholdRiskRegister = () => {
             <div>
               <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
                 <RiskIcon className={cn("h-6 w-6", RISK_TYPES[type].color)} />
-                {RISK_TYPES[type].label}
+                {toSentenceCase(RISK_TYPES[type].label)}
               </h1>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+              <p className="text-xs font-bold text-slate-400 tracking-widest mt-1">
                 {filteredData.length} households · {selectedDistrict === "All" ? "Nationwide" : selectedDistrict}
               </p>
             </div>
@@ -322,11 +306,11 @@ const HouseholdRiskRegister = () => {
               }}
             >
               <SelectTrigger className="w-[220px] h-10 font-bold border-slate-200">
-                <SelectValue placeholder="Metric Category" />
+                <SelectValue placeholder="Metric category" />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(RISK_TYPES).map(([key, value]) => (
-                  <SelectItem key={key} value={key}>{value.label}</SelectItem>
+                  <SelectItem key={key} value={key}>{toSentenceCase(value.label)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -343,7 +327,7 @@ const HouseholdRiskRegister = () => {
                 <SelectValue placeholder="District" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="All">All Districts</SelectItem>
+                <SelectItem value="All">All districts</SelectItem>
                 {districts.map((d) => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
                 ))}
@@ -356,7 +340,7 @@ const HouseholdRiskRegister = () => {
               disabled={filteredData.length === 0}
             >
               <Download className="h-4 w-4 mr-2" />
-              Export CSV
+              Export csv
             </Button>
           </div>
         </div>
@@ -365,7 +349,7 @@ const HouseholdRiskRegister = () => {
         {type !== "graduation_path" && (
           <Alert className="bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
             <HeartPulse className="h-4 w-4 text-emerald-600" />
-            <AlertTitle className="text-xs font-black uppercase tracking-wider">Gap Analysis Mode</AlertTitle>
+            <AlertTitle className="text-xs font-black tracking-wider">Gap analysis mode</AlertTitle>
             <AlertDescription className="text-sm font-medium opacity-90">
               The dashboard shows overall coverage, but this register lists households specifically <strong>MISSING</strong> {RISK_TYPES[type].domainLabel} services so you can prioritize them.
             </AlertDescription>
@@ -373,14 +357,12 @@ const HouseholdRiskRegister = () => {
         )}
 
         {/* Sub-population Filters */}
-        <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm">
-          <SubPopulationFilter
-            filters={subPopulationFilters}
-            labels={subPopulationFilterLabels}
-            onChange={handleFilterChange}
-            onClear={handleClearFilters}
-          />
-        </div>
+        <SubPopulationFilter
+          filters={subPopulationFilters}
+          labels={subPopulationFilterLabels}
+          onChange={handleFilterChange}
+          onClear={handleClearFilters}
+        />
 
         {/* Search */}
         <div className="relative flex-1">
@@ -404,12 +386,12 @@ const HouseholdRiskRegister = () => {
               <Table>
                 <TableHeader className="bg-slate-50 border-b">
                   <TableRow>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Household ID</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">District</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Last Service</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Domain Count</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Status Tags</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Action</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Household ID</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">District</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Last service</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Domain count</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Status tags</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -429,11 +411,11 @@ const HouseholdRiskRegister = () => {
                       </TableCell>
                       <TableCell className="text-xs">
                         <div className="flex flex-wrap gap-1">
-                          {item.has_health && <Badge className="bg-rose-100 text-rose-700 border-0 text-[9px] font-black uppercase">Health</Badge>}
-                          {item.has_schooled && <Badge className="bg-indigo-100 text-indigo-700 border-0 text-[9px] font-black uppercase">Schooled</Badge>}
-                          {item.has_safe && <Badge className="bg-orange-100 text-orange-700 border-0 text-[9px] font-black uppercase">Safe</Badge>}
-                          {item.has_stable && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] font-black uppercase">Stable</Badge>}
-                          {item.domain_count === 4 && <Badge className="bg-blue-100 text-blue-700 border-0 text-[9px] font-black uppercase">Grad-Ready</Badge>}
+                          {item.has_health && <Badge className="bg-rose-100 text-rose-700 border-0 text-[9px] font-black">Health</Badge>}
+                          {item.has_schooled && <Badge className="bg-indigo-100 text-indigo-700 border-0 text-[9px] font-black">Schooled</Badge>}
+                          {item.has_safe && <Badge className="bg-orange-100 text-orange-700 border-0 text-[9px] font-black">Safe</Badge>}
+                          {item.has_stable && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] font-black">Stable</Badge>}
+                          {item.domain_count === 4 && <Badge className="bg-blue-100 text-blue-700 border-0 text-[9px] font-black">Grad-ready</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -443,7 +425,7 @@ const HouseholdRiskRegister = () => {
                           className="text-primary font-bold text-xs"
                           onClick={() => navigate(`/profile/household-details?id=${item.household_id}`)}
                         >
-                          View Profile
+                          View profile
                           <ChevronRight className="h-3 w-3 ml-1" />
                         </Button>
                       </TableCell>

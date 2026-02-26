@@ -347,10 +347,10 @@ const VcaServices = () => {
   }, [services.length]);
 
   return (
-    <DashboardLayout subtitle="VCA Services Dashboard">
+    <DashboardLayout subtitle="Vca services dashboard">
       <PageIntro
-        eyebrow="Intelligence Dashboard"
-        title="VCA Services Insights"
+        eyebrow="Intelligence dashboard"
+        title="Vca services insights"
         description="Monitor service delivery trends, engagement depth, and operational performance across the district."
         actions={
           <div className="flex items-center gap-3">
@@ -360,17 +360,17 @@ const VcaServices = () => {
               disabled={user?.description === "District User"}
             >
               <SelectTrigger className="w-[180px] bg-white border-emerald-100 text-emerald-900 font-bold h-10 shadow-sm">
-                <SelectValue placeholder="Select District" />
+                <SelectValue placeholder="Select district" />
               </SelectTrigger>
               <SelectContent className="font-bold border-emerald-100">
-                <SelectItem value="All">All Districts</SelectItem>
+                <SelectItem value="All">All districts</SelectItem>
                 {districts.map((d) => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Badge className="bg-emerald-100 text-emerald-700 font-bold py-1 px-3 h-10 flex items-center">
-              {servicesQuery.isLoading ? <LoadingDots /> : `${services.length} Total Services`}
+              {servicesQuery.isLoading ? <LoadingDots /> : `${services.length} total services`}
             </Badge>
           </div>
         }
@@ -388,15 +388,15 @@ const VcaServices = () => {
       {/* KPI Section */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Services", value: dashboardStats?.total || 0, icon: ClipboardList, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Unique VCAs", value: dashboardStats?.uniqueVcas || 0, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Completion Rate", value: `${dashboardStats?.completionRate || 0}%`, icon: Target, color: "text-amber-600", bg: "bg-amber-50" },
-          { label: "Avg Engagement", value: dashboardStats?.avgEngagement || 0, icon: Activity, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "Total services", value: dashboardStats?.total || 0, icon: ClipboardList, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Unique Vcas", value: dashboardStats?.uniqueVcas || 0, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Completion rate", value: `${dashboardStats?.completionRate || 0}%`, icon: Target, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Avg engagement", value: dashboardStats?.avgEngagement || 0, icon: Activity, color: "text-purple-600", bg: "bg-purple-50" },
         ].map((kpi, idx) => (
           <GlowCard key={idx} className="p-0 border-0 overflow-hidden">
             <div className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">{kpi.label}</p>
+                <p className="text-xs font-bold tracking-wider text-slate-500 mb-1">{kpi.label}</p>
                 <p className="text-3xl font-black text-slate-900">{servicesQuery.isLoading ? "..." : kpi.value}</p>
               </div>
               <div className={`${kpi.bg} ${kpi.color} p-3 rounded-2xl shadow-inner`}>
@@ -418,7 +418,7 @@ const VcaServices = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl">Service Distribution</CardTitle>
+                  <CardTitle className="text-xl">Service distribution</CardTitle>
                   <CardDescription>Frequency of services provided in {selectedDistrict}</CardDescription>
                 </div>
                 <TrendingUp className="h-5 w-5 text-emerald-500" />
@@ -454,7 +454,7 @@ const VcaServices = () => {
           {/* Trend Chart */}
           <GlowCard>
             <CardHeader>
-              <CardTitle className="text-xl">Engagement Velocity</CardTitle>
+              <CardTitle className="text-xl">Engagement velocity</CardTitle>
               <CardDescription>Service delivery volume over time</CardDescription>
             </CardHeader>
             <CardContent className="h-[300px] pt-4">
@@ -493,7 +493,7 @@ const VcaServices = () => {
           {/* Category Pie Chart */}
           <GlowCard className="h-full">
             <CardHeader>
-              <CardTitle className="text-xl">Core Domains</CardTitle>
+              <CardTitle className="text-xl">Core domains</CardTitle>
               <CardDescription>Service category balance</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center pt-8">
@@ -522,7 +522,7 @@ const VcaServices = () => {
                 <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50">
                   <div className="flex items-center gap-2 mb-2">
                     <Zap className="h-4 w-4 text-amber-500" />
-                    <span className="text-sm font-bold text-slate-700 uppercase tracking-wider">Dashboard Insight</span>
+                    <span className="text-sm font-bold text-slate-700 tracking-wider">Dashboard insight</span>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed italic">
                     Dominant service domain: <span className="text-slate-900 font-bold">{categoryData.sort((a, b) => b.value - a.value)[0]?.name}</span>.
@@ -538,7 +538,7 @@ const VcaServices = () => {
       {/* Module Navigation */}
       <GlowCard>
         <CardHeader>
-          <CardTitle>Operative Modules</CardTitle>
+          <CardTitle>Operative modules</CardTitle>
           <CardDescription>Quick actions for field workers</CardDescription>
         </CardHeader>
         <CardContent>
@@ -561,8 +561,8 @@ const VcaServices = () => {
         <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/30 backdrop-blur-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Services Audit Trail</CardTitle>
-              <CardDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Operational Data Check — {selectedDistrict}</CardDescription>
+              <CardTitle className="text-xl font-black text-slate-900 tracking-tight">Services audit trail</CardTitle>
+              <CardDescription className="text-xs font-bold text-slate-400 tracking-widest mt-1">Operational data check — {selectedDistrict}</CardDescription>
             </div>
             <div className="relative w-full md:w-[400px] group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
@@ -581,11 +581,11 @@ const VcaServices = () => {
               <Table>
                 <TableHeader className="bg-slate-50/50 border-b border-slate-100">
                   <TableRow>
-                    <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 pl-8 h-14">Beneficiary ID</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">District</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">Date of Service</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">Service Provided</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-right pr-8 h-14">Caseworker</TableHead>
+                    <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 pl-8 h-14">Beneficiary id</TableHead>
+                    <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">District</TableHead>
+                    <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Date of service</TableHead>
+                    <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Service provided</TableHead>
+                    <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 text-right pr-8 h-14">Caseworker</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -632,13 +632,13 @@ const VcaServices = () => {
                         <TableRow key={index} className="hover:bg-slate-50/50 transition-colors group text-sm">
                           <TableCell className="pl-6 py-4">
                             <div className="flex items-center gap-3">
-                              <span className="font-mono text-[11px] bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200/40 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-100 transition-all uppercase">
+                              <span className="font-mono text-[11px] bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200/40 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-100 transition-all">
                                 {vcaId}
                               </span>
                               <ChevronRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-emerald-600" />
                             </div>
                           </TableCell>
-                          <TableCell className="text-xs font-bold text-slate-600 uppercase tracking-tighter">
+                          <TableCell className="text-xs font-bold text-slate-600 tracking-tighter">
                             {String(record.district || "N/A")}
                           </TableCell>
                           <TableCell className="text-xs font-bold text-slate-500">
@@ -648,7 +648,7 @@ const VcaServices = () => {
                             <div className="flex flex-wrap gap-1.5 max-w-[400px]">
                               {providedServices.length > 0 ? (
                                 providedServices.slice(0, 3).map((s, i) => (
-                                  <Badge key={i} variant="outline" className="text-[9px] font-black border-slate-200 bg-white h-6 px-2.5 rounded-md uppercase tracking-tighter">
+                                  <Badge key={i} variant="outline" className="text-[9px] font-black border-slate-200 bg-white h-6 px-2.5 rounded-md tracking-tighter">
                                     {s}
                                   </Badge>
                                 ))
@@ -664,10 +664,10 @@ const VcaServices = () => {
                           </TableCell>
                           <TableCell className="text-right pr-6 py-4">
                             <div className="flex flex-col items-end">
-                              <span className="font-black text-slate-900 text-[11px] uppercase truncate max-w-[150px]">
+                              <span className="font-black text-slate-900 text-[11px] truncate max-w-[150px]">
                                 {caseworker}
                               </span>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Field Officer</span>
+                              <span className="text-[9px] text-slate-400 font-bold tracking-widest">Case worker</span>
                             </div>
                           </TableCell>
                         </TableRow>

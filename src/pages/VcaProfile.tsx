@@ -1,20 +1,73 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { getChildrenByDistrict, getChildrenArchivedRegister, DEFAULT_DISTRICT, getVcaServicesByDistrict, getVcaReferralsById, getVcaCasePlansById, getFlaggedRecords, getVcaServicesByChildId } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getChildrenByDistrict,
+  getChildrenArchivedRegister,
+  DEFAULT_DISTRICT,
+  getVcaServicesByDistrict,
+  getVcaReferralsById,
+  getVcaCasePlansById,
+  getFlaggedRecords,
+  getVcaServicesByChildId,
+  createFlaggedRecord,
+  updateFlagStatus
+} from "@/lib/api";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { toast } from "sonner";
+import { notifyUsersOfFlag, notifyUsersOfFlagResolution } from "@/lib/directus";
+import { format } from "date-fns";
+
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, MapPin, Calendar, ClipboardCheck, Baby, HeartPulse, FileText, Activity, Link2, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  User,
+  MapPin,
+  Calendar,
+  ClipboardCheck,
+  Baby,
+  HeartPulse,
+  FileText,
+  Activity,
+  Link2,
+  ShieldCheck,
+  Flag,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  AlertCircle,
+  PlusCircle,
+  Sparkles
+} from "lucide-react";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn, toTitleCase } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import EmptyState from "@/components/EmptyState";
 import TableSkeleton from "@/components/ui/TableSkeleton";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const subPopulationFilterLabels: Record<string, string> = {
   calhiv: 'C/ALHIV',
@@ -77,9 +130,18 @@ const safeParseDate = (dateStr: any) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+const flagSchema = z.object({
+  category: z.string().optional(),
+  severity: z.string().optional(),
+  comment: z.string().min(10, { message: "Observation details must be at least 10 characters" }),
+});
+
+const SUB_POPULATION_LABELS = subPopulationFilterLabels;
+
 const VcaProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   // Retrieve ID from location state or sessionStorage fallback
   const id = useMemo(() => {
@@ -125,6 +187,20 @@ const VcaProfile = () => {
     queryFn: () => getVcaCasePlansById(id ?? ""),
     enabled: Boolean(id),
   });
+
+  const { data: allFlags = [], isLoading: isLoadingFlags } = useQuery({
+    queryKey: ["flagged-records"],
+    queryFn: getFlaggedRecords,
+  });
+
+  const vcaFlags = useMemo(() => {
+    if (!allFlags || !id) return [];
+    return allFlags.filter((f: any) => {
+      const vId = id.toLowerCase();
+      const matchId = String(f.vca_id || f.child_id || "").toLowerCase() === vId;
+      return matchId && f.status !== "resolved";
+    });
+  }, [allFlags, id]);
 
   const sortedCasePlans = useMemo(() => {
     return [...vcaCasePlans].sort((a: any, b: any) => {
@@ -179,17 +255,78 @@ const VcaProfile = () => {
     });
   }, [vcaReferrals]);
 
-  const vcaFlags = useMemo(() => {
-    if (!flaggedRecords || !id) return [];
-    return flaggedRecords.filter((f: any) => {
-      const vId = id.toLowerCase();
-      return String(f.vca_id || f.child_id || "").toLowerCase() === vId;
-    });
-  }, [flaggedRecords, id]);
+
+  const form = useForm<z.infer<typeof flagSchema>>({
+    resolver: zodResolver(flagSchema),
+    defaultValues: {
+      category: "",
+      severity: "",
+      comment: "",
+    },
+  });
+
+  const resolveMutation = useMutation({
+    mutationFn: async (flagId: string) => {
+      await updateFlagStatus(flagId, "resolved");
+      const resolver = user ? `${user.first_name} ${user.last_name}` : "Unknown Resolver";
+      const record = vcaFlags.find((f: any) => f.id === flagId);
+      if (record) {
+        await notifyUsersOfFlagResolution(String(record.household_id ?? ""), resolver, "Resolved from VCA profile.", String(record.vca_id ?? ""));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["flagged-records"] });
+      toast.success("Flag resolved", { description: "Caseworker and admins have been notified." });
+    },
+    onError: (err: any) => {
+      toast.error("Failed to resolve flag", { description: err.message });
+    }
+  });
+
+  const handleResolve = (flagId: string) => {
+    resolveMutation.mutate(flagId);
+  };
+
+  const mutation = useMutation({
+    mutationFn: createFlaggedRecord,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["flagged-records"] });
+      const verifier = user ? `${user.first_name} ${user.last_name}` : "Unknown Verifier";
+      notifyUsersOfFlag(((vca as any).household_id || "N/A"), verifier, form.getValues("comment") as string, id || "N/A");
+
+      toast.success("Flag submitted successfully", {
+        description: "The record has been flagged for review.",
+      });
+      form.reset();
+    },
+    onError: (err: Error) => {
+      toast.error("Submission failed", {
+        description: err.message || "Please try again later.",
+      });
+    },
+  });
+
+  const onFlagSubmit = (values: z.infer<typeof flagSchema>) => {
+    const verifier = user ? `${user.first_name} ${user.last_name}` : "Unknown Verifier";
+    const payload = {
+      household_id: vca.household_id || "N/A",
+      vca_id: id,
+      caseworker_phone: vca.caseworker_phone || "N/A",
+      caseworker_name: vca.caseworker_name || vca.cwac_member_name || "N/A",
+      caregiver_name: vca.caregiver_name || "N/A",
+      facility: vca.facility || vca.health_facility || "N/A",
+      comment: values.comment,
+      category: values.category,
+      severity: values.severity,
+      verifier,
+      status: "pending",
+    };
+    mutation.mutate(payload);
+  };
 
   if (isLoadingActive || isLoadingArchived) {
     return (
-      <DashboardLayout subtitle="VCA Profile">
+      <DashboardLayout subtitle="Vca profile">
         <div className="flex h-[50vh] items-center justify-center">
           <LoadingDots />
         </div>
@@ -199,10 +336,10 @@ const VcaProfile = () => {
 
   if (!vca) {
     return (
-      <DashboardLayout subtitle="VCA Not Found">
+      <DashboardLayout subtitle="Vca not found">
         <EmptyState
           icon={<User className="h-7 w-7" />}
-          title="VCA Not Found"
+          title="Vca not found"
           description="The VCA record you're looking for doesn't exist or has been moved."
           action={{ label: "Back to Register", onClick: () => navigate("/vcas") }}
           className="h-[50vh]"
@@ -221,7 +358,7 @@ const VcaProfile = () => {
   const lastServiceDate = sortedVcaServices[0]?.service_date || vca.last_service_date || "N/A";
 
   return (
-    <DashboardLayout subtitle={`VCA: ${id}`}>
+    <DashboardLayout subtitle={`Vca: ${id}`}>
       <div className="space-y-6 pb-20">
         {/* Header Section */}
         <div className="relative overflow-hidden rounded-2xl shadow-lg">
@@ -252,7 +389,7 @@ const VcaProfile = () => {
                   )}
                 </div>
                 <h1 className="text-3xl font-bold text-white lg:text-4xl">
-                  VCA {id}
+                  VCA Name – Confidential
                 </h1>
               </div>
               <Button
@@ -327,7 +464,7 @@ const VcaProfile = () => {
                   <ClipboardCheck className="h-4 w-4 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Last Service Date</p>
+                  <p className="text-xs text-slate-500">Last service date</p>
                   <p className="text-sm font-medium text-slate-900">{String(lastServiceDate)}</p>
                 </div>
               </div>
@@ -339,17 +476,17 @@ const VcaProfile = () => {
         <Tabs defaultValue="overview" className="w-full">
           <div className="mb-8 flex flex-col items-center justify-between gap-6 md:flex-row">
             <TabsList className="h-auto w-full flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/50 p-2 md:w-auto">
-              <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Summary
               </TabsTrigger>
-              <TabsTrigger value="history" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TabsTrigger value="history" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Caseplans
               </TabsTrigger>
-              <TabsTrigger value="audit" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TabsTrigger value="audit" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Referrals
               </TabsTrigger>
-              <TabsTrigger value="flags" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all data-[state=active]:bg-red-600 data-[state=active]:text-white">
-                Flag Record Form
+              <TabsTrigger value="flags" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Flag record form
               </TabsTrigger>
             </TabsList>
             <div className="hidden text-xs font-bold text-slate-400 md:block">
@@ -363,19 +500,19 @@ const VcaProfile = () => {
                 <Card className="h-full border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Baby className="h-5 w-5 text-slate-600" /> PROFILE DEMOGRAPHICS
+                      <Baby className="h-5 w-5 text-slate-600" /> Profile demographics
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-6 sm:grid-cols-2">
-                    <InfoItem label="Full Legal Name" value="Anonymous" icon={<User className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Date of Birth" value={String(vca.birthdate || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Gender Identity" value={String(vca.vca_gender || vca.gender || "N/A")} />
-                    <InfoItem label="Age at Assessment" value={`${age} Years`} />
+                    <InfoItem label="Full legal name" value={String(vca.vca_name || vca.name || "N/A")} icon={<User className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Date of birth" value={String(vca.birthdate || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Gender identity" value={String(vca.vca_gender || vca.gender || "N/A")} />
+                    <InfoItem label="Age at assessment" value={`${age} Years`} />
                     <div className="sm:col-span-2">
-                      <InfoItem label="Primary Physical Address" value={String(vca.homeaddress || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
+                      <InfoItem label="Primary physical address" value={String(vca.homeaddress || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
                     </div>
-                    <InfoItem label="Geographic Ward" value={String(vca.ward || "N/A")} />
-                    <InfoItem label="Province Jurisdiction" value={String(vca.province || "N/A")} />
+                    <InfoItem label="Geographic ward" value={String(vca.ward || "N/A")} />
+                    <InfoItem label="Province jurisdiction" value={String(vca.province || "N/A")} />
                   </CardContent>
                 </Card>
               </div>
@@ -384,7 +521,7 @@ const VcaProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                      <ClipboardCheck className="h-5 w-5 text-slate-600" /> SUB POPULATIONS
+                      <ClipboardCheck className="h-5 w-5 text-slate-600" /> Sub populations
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-wrap gap-2">
@@ -395,7 +532,7 @@ const VcaProfile = () => {
                             <Badge
                               key={key}
                               variant="outline"
-                              className="bg-emerald-50 text-emerald-700 border-emerald-100 px-3 py-1 font-black text-[10px] uppercase tracking-wider"
+                              className="bg-emerald-50 text-emerald-700 border-emerald-100 px-3 py-1 font-black text-[10px] tracking-wider"
                             >
                               {subPopulationFilterLabels[key]}
                             </Badge>
@@ -406,7 +543,7 @@ const VcaProfile = () => {
                     ) : (
                       <div className="w-full flex flex-col items-center justify-center py-6 text-center text-slate-400">
                         <ClipboardCheck className="h-8 w-8 opacity-10 mb-2" />
-                        <p className="text-xs font-bold uppercase tracking-widest">No Sub Populations</p>
+                        <p className="text-xs font-bold tracking-widest">No sub populations</p>
                       </div>
                     )}
                   </CardContent>
@@ -415,41 +552,43 @@ const VcaProfile = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="history">
-            <Card className="border-slate-200">
+          <TabsContent value="history" className="mt-0 w-full overflow-hidden min-w-0">
+            <Card className="border-slate-200 min-w-0 overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-xl font-bold">CASEPLANS</CardTitle>
+                <CardTitle className="text-xl font-bold">Caseplans</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoadingCasePlans ? (
                   <TableSkeleton rows={4} columns={4} />
                 ) : vcaCasePlans.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Created At</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedCasePlans.map((plan: any, idx: number) => (
-                        <CasePlanRow key={idx} plan={plan} servicesSource={sortedVcaServices} />
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="w-full overflow-x-auto">
+                    <Table className="table-fixed w-full">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[120px]">Date</TableHead>
+                          <TableHead className="w-[120px]">Status</TableHead>
+                          <TableHead className="w-[150px]">Created at</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedCasePlans.map((plan: any, idx: number) => (
+                          <CasePlanRow key={idx} plan={plan} servicesSource={sortedVcaServices} />
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
-                  <EmptyState icon={<FileText className="h-7 w-7" />} title="No Caseplans Recorded" description="No case plans have been created for this VCA yet." />
+                  <EmptyState icon={<FileText className="h-7 w-7" />} title="No caseplans recorded" description="No case plans have been created for this VCA yet." />
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="audit">
+          <TabsContent value="audit" className="mt-0 w-full overflow-hidden">
             <Card className="overflow-hidden border-slate-200">
               <div className="bg-white p-6 flex items-center justify-between border-b border-slate-100">
-                <h3 className="text-xl font-bold text-slate-900">REFERRALS</h3>
+                <h3 className="text-xl font-bold text-slate-900">Referrals</h3>
                 <Button variant="outline" size="sm" className="text-xs font-bold">Export</Button>
               </div>
               <ScrollArea className="h-[500px]">
@@ -459,54 +598,210 @@ const VcaProfile = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="flags">
-            <Card className="overflow-hidden border-slate-200">
-              <div className={cn(
-                "p-6 flex items-center justify-between border-b",
-                isMale ? "bg-blue-900/10 border-blue-100" : "bg-red-900/10 border-red-100"
-              )}>
-                <h3 className={cn(
-                  "text-lg font-bold",
-                  isMale ? "text-blue-900" : "text-red-900"
-                )}>FLAGGED RECORD FORMS</h3>
-              </div>
-              <CardContent className="p-0">
-                {vcaFlags.length > 0 ? (
-                  <Table>
-                    <TableHeader className="bg-red-50/50">
-                      <TableRow>
-                        <TableHead className="pl-6">Form Type</TableHead>
-                        <TableHead>Date Flagged</TableHead>
-                        <TableHead>Reason</TableHead>
-                        <TableHead className="text-right pr-6">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {vcaFlags.map((item: any, idx: number) => (
-                        <TableRow key={idx}>
-                          <TableCell className="pl-6 font-bold text-slate-900">
-                            {String(item.form_type || "General Form")}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {String(item.date_created || item.created_at || "N/A")}
-                          </TableCell>
-                          <TableCell className="text-sm max-w-md truncate">
-                            {String(item.description || item.reason || "No description provided")}
-                          </TableCell>
-                          <TableCell className="text-right pr-6">
-                            <Badge variant="outline" className="text-[10px] uppercase font-bold text-red-600 border-red-200 bg-red-50">
-                              Flagged
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <EmptyState icon={<ClipboardCheck className="h-7 w-7" />} title="No Flagged Records" description="This VCA has no flagged records." />
+          <TabsContent value="flags" className="mt-0 w-full overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-500">
+            <div className="space-y-6">
+              <Card className="overflow-hidden border-slate-200 border-none shadow-none bg-transparent">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-black text-slate-900">Data quality flags</h3>
+                </div>
+
+                {vcaFlags.length > 0 && (
+                  <div className="mb-6 space-y-3">
+                    <p className="text-[10px] font-black tracking-widest text-orange-500 uppercase">Active attention required</p>
+                    {vcaFlags.map((flag: any) => (
+                      <div key={flag.id} className="p-4 rounded-2xl bg-orange-50 border border-orange-100 flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-white rounded-xl shadow-sm border border-orange-100 flex-shrink-0">
+                            <AlertTriangle className="h-4 w-4 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">{toTitleCase(flag.comment || "Suspicious data entry")}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">Flagged by {flag.verifier} • {format(new Date(flag.date_created), "MMM d, yyyy")}</p>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => handleResolve(flag.id)}
+                          disabled={resolveMutation.isPending}
+                          size="sm"
+                          variant="ghost"
+                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 font-bold text-[10px] rounded-lg h-8 px-3 transition-all"
+                        >
+                          Resolve
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
+
+                <Card className="border-slate-200 shadow-sm overflow-hidden bg-slate-50/50">
+                  <div className="p-6 border-b border-slate-100 bg-white/50">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <Flag className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-900">Record new flag</h4>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"></p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <CardContent className="p-6">
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onFlagSubmit)} className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Flag category</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="bg-white border-slate-200 rounded-xl h-11 text-sm font-medium">
+                                      <SelectValue placeholder="Choose category...(optional)" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                                    <SelectItem value="Missing Data">Missing data</SelectItem>
+                                    <SelectItem value="Invalid Data">Invalid data</SelectItem>
+                                    <SelectItem value="Duplicate Record">Duplicate record</SelectItem>
+                                    <SelectItem value="Incorrect Service">Incorrect service logging</SelectItem>
+                                    <SelectItem value="Case Plan Mismatch">Case plan mismatch</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="severity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Priority severity</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="bg-white border-slate-200 rounded-xl h-11 text-sm font-medium">
+                                      <SelectValue placeholder="Select severity... (optional)" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                                    <SelectItem value="Low">Low severity</SelectItem>
+                                    <SelectItem value="Medium">Medium severity</SelectItem>
+                                    <SelectItem value="High">High severity</SelectItem>
+                                    <SelectItem value="Critical">Critical issue</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="comment"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Flag observations & action details</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="Provide detailed observations about the data quality issue, any suspected causes, and recommended immediate actions..."
+                                  className="min-h-[120px] bg-white border-slate-200 rounded-xl focus-visible:ring-emerald-500/20 text-sm italic font-medium"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+                          <div className="flex items-center gap-2 text-slate-400">
+                            <AlertCircle className="h-3 w-3" />
+                            <p className="text-[10px] font-medium">Submitted flags will be reviewed by district monitors within 24 hours.</p>
+                          </div>
+                          <Button
+                            type="submit"
+                            disabled={mutation.isPending}
+                            className="bg-slate-900 border-none hover:bg-slate-800 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 whitespace-nowrap">
+                            {mutation.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Submitting...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                Submit flag record
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+              </Card>
+
+              <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <div className="p-6 flex items-center justify-between border-b bg-rose-50/50 border-rose-100">
+                  <h3 className="text-lg font-bold text-rose-900">Flagging history</h3>
+                  <Badge variant="outline" className="bg-white border-rose-200 text-rose-700 font-black text-[10px]">
+                    {vcaFlags.length} records
+                  </Badge>
+                </div>
+                <CardContent className="p-0">
+                  {vcaFlags.length > 0 ? (
+                    <div className="w-full overflow-x-auto">
+                      <Table>
+                        <TableHeader className="bg-slate-50/50">
+                          <TableRow>
+                            <TableHead className="pl-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">Category</TableHead>
+                            <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Date flagged</TableHead>
+                            <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Observations</TableHead>
+                            <TableHead className="text-right pr-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {vcaFlags.map((item: any, idx: number) => (
+                            <TableRow key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              <TableCell className="pl-6">
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-slate-900 text-sm">{String(item.category || item.form_type || "General")}</span>
+                                  <span className={cn(
+                                    "text-[9px] font-black uppercase tracking-tighter",
+                                    item.severity === "Critical" ? "text-red-600" : "text-slate-400"
+                                  )}>
+                                    {item.severity || "Normal"} priority
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors">
+                                {String(item.date_created || item.created_at || "N/A") && format(new Date(item.date_created || item.created_at), "dd MMM yyyy") || "N/A"}
+                              </TableCell>
+                              <TableCell className="text-xs text-slate-600 max-w-md italic leading-relaxed">
+                                {String(item.comment || item.description || item.reason || "No description provided")}
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                <Badge variant="outline" className="text-[9px] font-black text-rose-600 border-rose-100 bg-rose-50 px-2 rounded-md uppercase tracking-tighter">
+                                  Flagged
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <EmptyState icon={<ClipboardCheck className="h-7 w-7" />} title="No flagged records" description="This child has no documented data quality issues." />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
@@ -518,43 +813,45 @@ const ActivityTable = ({ data, isLoading, type, emptyMessage }: { data: any[], i
   if (isLoading) return <div className="p-20 text-center"><LoadingDots /></div>;
   if (data.length === 0) return (
     <div className="p-20 text-center text-slate-400">
-      <p className="font-bold text-xs uppercase tracking-widest">{emptyMessage}</p>
+      <p className="font-bold text-xs tracking-widest">{emptyMessage}</p>
     </div>
   );
 
   return (
-    <Table>
-      <TableHeader className="bg-slate-50">
-        <TableRow>
-          <TableHead className="pl-6">Record Name</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead className="pr-6">Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.map((item, idx) => (
-          <TableRow key={idx}>
-            <TableCell className="pl-6 font-bold text-slate-900">
-              {String(item.service || item.service_name || item.form_name || item.referral_type || "N/A")}
-            </TableCell>
-            <TableCell className="text-sm">
-              {String(item.service_date || item.visit_date || item.date || "N/A")}
-            </TableCell>
-            <TableCell className="pr-6">
-              <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary">
-                {String(item.status || item.state || "N/A")}
-              </Badge>
-            </TableCell>
+    <div className="w-full overflow-x-auto">
+      <Table>
+        <TableHeader className="bg-slate-50">
+          <TableRow>
+            <TableHead className="pl-6">Record Name</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="pr-6">Status</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {data.map((item, idx) => (
+            <TableRow key={idx}>
+              <TableCell className="pl-6 font-bold text-slate-900">
+                {String(item.service || item.service_name || item.form_name || item.referral_type || "N/A")}
+              </TableCell>
+              <TableCell className="text-sm">
+                {String(item.service_date || item.visit_date || item.date || "N/A")}
+              </TableCell>
+              <TableCell className="pr-6">
+                <Badge variant="outline" className="text-[10px] font-bold text-primary">
+                  {String(item.status || item.state || "N/A")}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 
 const InfoItem = ({ label, value, icon }: { label: string, value: string, icon?: React.ReactNode }) => (
   <div className="space-y-1 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
-    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+    <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">{label}</p>
     <div className="flex items-center gap-2">
       {icon && <span className="text-slate-400">{icon}</span>}
       <p className="text-sm font-semibold text-slate-800">{value}</p>
@@ -565,45 +862,20 @@ const InfoItem = ({ label, value, icon }: { label: string, value: string, icon?:
 const cleanArrayString = (str: string | null | undefined) => {
   if (!str) return "-";
   try {
-    // legacy logic: .replace(/[\[\]"]/g, '')
-    return String(str).replace(/[\[\]"]/g, '').replace(/,/g, ', ');
+    return String(str).replace(/[\[\]"]/g, "").replace(/,/g, ", ");
   } catch (e) {
     return String(str);
   }
 };
 
-const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?: any[] }) => {
+const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any; servicesSource?: any[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bottomScrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
+  const [tableWidth, setTableWidth] = useState(0);
 
-    const top = topScrollRef.current;
-    const bottom = bottomScrollRef.current;
-
-    if (!top || !bottom) return;
-
-    const handleTopScroll = () => {
-      if (bottom) bottom.scrollLeft = top.scrollLeft;
-    };
-
-    const handleBottomScroll = () => {
-      if (top) top.scrollLeft = bottom.scrollLeft;
-    };
-
-    top.addEventListener('scroll', handleTopScroll);
-    bottom.addEventListener('scroll', handleBottomScroll);
-
-    return () => {
-      top.removeEventListener('scroll', handleTopScroll);
-      bottom.removeEventListener('scroll', handleBottomScroll);
-    };
-  }, [isOpen]);
-
-  // Try to find services linked to this case plan
-  let linkedServices = servicesSource.filter(s => {
+  let linkedServices = servicesSource.filter((s) => {
     const serviceLinkId = String(s.case_plan_id || s.vcaid || s.caseplan_id || "");
     const planId = String(plan.case_plan_id || plan.unique_id || plan.id || "");
     return serviceLinkId && planId && serviceLinkId === planId;
@@ -613,6 +885,48 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
   if (isFallback) {
     linkedServices = servicesSource;
   }
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isSyncing = false;
+
+    const timer = setTimeout(() => {
+      const top = topScrollRef.current;
+      const bottom = bottomScrollRef.current;
+      if (!top || !bottom) return;
+
+      // Update dummy width to match real table content
+      const realWidth = bottom.scrollWidth;
+      setTableWidth(realWidth);
+
+      bottom.scrollLeft = top.scrollLeft;
+
+      const handleTopScroll = () => {
+        if (isSyncing) return;
+        isSyncing = true;
+        bottom.scrollLeft = top.scrollLeft;
+        requestAnimationFrame(() => { isSyncing = false; });
+      };
+
+      const handleBottomScroll = () => {
+        if (isSyncing) return;
+        isSyncing = true;
+        top.scrollLeft = bottom.scrollLeft;
+        requestAnimationFrame(() => { isSyncing = false; });
+      };
+
+      top.addEventListener("scroll", handleTopScroll, { passive: true });
+      bottom.addEventListener("scroll", handleBottomScroll, { passive: true });
+
+      return () => {
+        top.removeEventListener("scroll", handleTopScroll);
+        bottom.removeEventListener("scroll", handleBottomScroll);
+      };
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, linkedServices.length]);
 
   return (
     <>
@@ -626,7 +940,7 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
             "N/A"}
         </TableCell>
         <TableCell>
-          <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">
+          <Badge variant="secondary" className="text-[10px] font-bold tracking-wider">
             {plan.case_plan_status ||
               plan.status ||
               plan.case_plan?.status ||
@@ -635,8 +949,8 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
           </Badge>
         </TableCell>
         <TableCell className="text-xs text-slate-500">
-          {plan.date_created || plan.created_at || plan.case_plan?.created_at ?
-            new Date(plan.date_created || plan.created_at || plan.case_plan?.created_at).toLocaleDateString()
+          {plan.date_created || plan.created_at || plan.case_plan?.created_at
+            ? new Date(plan.date_created || plan.created_at || plan.case_plan?.created_at).toLocaleDateString()
             : "N/A"}
         </TableCell>
         <TableCell className="text-right">
@@ -652,45 +966,75 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
       </TableRow>
       {isOpen && (
         <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-0">
-          <TableCell colSpan={4} className="p-4 pt-0 overflow-hidden" style={{ width: 0, minWidth: '100%' }}>
-            <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col w-full">
-              <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <h4 className="text-lg font-bold uppercase tracking-wider text-slate-700">Vulnerabilities</h4>
-                {isFallback && <span className="text-sm text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 shadow-sm">Showing all VCA services</span>}
+          <TableCell colSpan={4} className="p-2 md:p-4 pt-0 overflow-hidden" style={{ maxWidth: "1px", width: "100%" }}>
+            <div className="rounded-xl border border-slate-200 bg-white shadow-md overflow-hidden flex flex-col w-full min-w-0">
+              <div className="bg-slate-100 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 flex justify-between items-center">
+                <h4 className="text-sm md:text-lg font-black tracking-wider text-slate-700">Vulnerabilities</h4>
+                {isFallback && (
+                  <span className="text-[10px] md:text-sm text-amber-600 font-bold bg-amber-50 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-amber-200 shadow-sm">
+                    Showing all vca services
+                  </span>
+                )}
               </div>
               {linkedServices.length > 0 ? (
-                <div className="w-full space-y-2">
-                  {/* Top Scrollbar container */}
+                <div className="w-full relative overflow-hidden">
                   <div
                     ref={topScrollRef}
-                    className="w-full overflow-x-auto overflow-y-hidden h-4 bg-slate-50 border-b border-slate-200"
+                    className="w-full overflow-x-auto overflow-y-hidden h-6 bg-slate-50 border-b border-slate-200 scrollbar-thin shadow-inner z-10"
                   >
-                    <div className="min-w-[1200px] h-px" />
+                    <div style={{ width: tableWidth || '1200px' }} className="h-px" />
                   </div>
-
-                  <div ref={bottomScrollRef} className="w-full overflow-x-auto">
-                    <Table className="min-w-[1200px]">
+                  <div ref={bottomScrollRef} className="w-full overflow-x-auto no-scrollbar">
+                    <Table className="min-w-[1200px] table-fixed">
                       <TableHeader>
                         <TableRow className="hover:bg-transparent bg-slate-50/50">
-                          <TableHead className="text-sm font-bold h-12 text-slate-900">Service Date</TableHead>
-                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Health Services</TableHead>
-                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">HIV Services</TableHead>
-                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Other Health</TableHead>
-                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Safe</TableHead>
-                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">School Services</TableHead>
-                          <TableHead className="text-sm font-bold h-12 w-48 text-slate-900">Stable</TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 w-32 md:w-40 border-r border-slate-100">
+                            Service Date
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Health Services
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            HIV Services
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Other Health
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Safe
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            School Services
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900">
+                            Stable
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {linkedServices.map((svc: any, i: number) => (
                           <TableRow key={i} className="hover:bg-slate-50/30">
-                            <TableCell className="text-sm py-4 font-bold text-slate-900">{svc.service_date || "N/A"}</TableCell>
-                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.health_services)}</TableCell>
-                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.hiv_services)}</TableCell>
-                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.other_health_services)}</TableCell>
-                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.safe_services)}</TableCell>
-                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.schooled_services)}</TableCell>
-                            <TableCell className="text-sm py-4 whitespace-normal text-slate-700 min-w-[200px] leading-relaxed">{cleanArrayString(svc.stable_services)}</TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">
+                              {svc.service_date || "N/A"}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.health_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.hiv_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.other_health_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.safe_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.schooled_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed">
+                              {cleanArrayString(svc.stable_services)}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -698,13 +1042,13 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
                   </div>
                 </div>
               ) : (
-                <div className="p-8 text-center text-slate-400 text-xs italic">
+                <div className="p-8 text-center text-slate-400 text-[10px] md:text-xs italic font-bold tracking-widest">
                   No detailed services found.
                 </div>
               )}
             </div>
           </TableCell>
-        </TableRow >
+        </TableRow>
       )}
     </>
   );

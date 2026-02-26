@@ -107,15 +107,15 @@ const FlaggedRecordForm = () => {
 
   if (!location.state?.household) {
     return (
-      <DashboardLayout subtitle="Flag Record">
+      <DashboardLayout subtitle="Flag record">
         <PageIntro
           eyebrow="Flags"
-          title="Flag Record"
+          title="Flag record"
           description="Create a new flagged record entry."
         />
         <div className="flex flex-col items-center justify-center p-12 text-center">
           <AlertCircle className="h-12 w-12 text-slate-300 mb-4" />
-          <h3 className="text-lg font-medium text-slate-900">No Household Selected</h3>
+          <h3 className="text-lg font-medium text-slate-900">No household selected</h3>
           <p className="text-slate-500 max-w-sm mt-2 mb-6">
             This form requires a household context. Please navigate from a household profile.
           </p>
@@ -128,10 +128,10 @@ const FlaggedRecordForm = () => {
   }
 
   return (
-    <DashboardLayout subtitle="Flag Record">
+    <DashboardLayout subtitle="Flag record">
       <PageIntro
         eyebrow="Compliance"
-        title="Flag Record Form"
+        title="Flag record form"
         description="Add a comment for the caseworker regarding this household."
         actions={
           <Button variant="outline" onClick={() => navigate(-1)}>
@@ -148,7 +148,7 @@ const FlaggedRecordForm = () => {
                 <Flag className="h-5 w-5 text-red-600" />
               </div>
               <div>
-                <CardTitle className="text-lg">Household Details</CardTitle>
+                <CardTitle className="text-lg">Household details</CardTitle>
                 <CardDescription>Reference information for this flag</CardDescription>
               </div>
             </div>
@@ -165,7 +165,7 @@ const FlaggedRecordForm = () => {
 
         <Card className="border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle>Add Comment</CardTitle>
+            <CardTitle>Add comment</CardTitle>
             <CardDescription>
               Provide detailed feedback or instructions for the caseworker.
             </CardDescription>
@@ -213,7 +213,7 @@ const FlaggedRecordForm = () => {
                     ) : (
                       <>
                         <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Submit Flag
+                        Submit flag
                       </>
                     )}
                   </Button>
@@ -229,7 +229,7 @@ const FlaggedRecordForm = () => {
 
 const DetailItem = ({ label, value }: { label: string; value: string }) => (
   <div className="space-y-1">
-    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+    <p className="text-xs font-semibold tracking-wider text-slate-500">{label}</p>
     <p className="text-sm font-medium text-slate-900 bg-slate-50 px-3 py-2 rounded-md border border-slate-100">
       {value}
     </p>

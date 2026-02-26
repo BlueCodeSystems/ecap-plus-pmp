@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useMemo } from "react";
+import { toSentenceCase } from "@/lib/utils";
 
 const p = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
@@ -37,7 +38,7 @@ const InfoItem = ({
   icon?: React.ReactNode;
 }) => (
   <div className="space-y-1 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
-    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+    <p className="text-[10px] font-bold tracking-wider text-slate-400">{label}</p>
     <div className="flex items-center gap-2">
       {icon && <span className="text-slate-400">{icon}</span>}
       <p className="text-sm font-semibold text-slate-800">{value}</p>
@@ -183,11 +184,11 @@ const VcaServiceProfile = () => {
         {/* ── Tabs ── */}
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="mb-6 h-auto flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/50 p-2">
-            <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="details" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Intervention Details
+            <TabsTrigger value="details" className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Intervention details
             </TabsTrigger>
           </TabsList>
 
@@ -196,7 +197,7 @@ const VcaServiceProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <User className="h-5 w-5 text-slate-600" /> PRIMARY IDENTIFIERS
+                    <User className="h-5 w-5 text-slate-600" /> Primary identifiers
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4">
@@ -209,7 +210,7 @@ const VcaServiceProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <MapPin className="h-5 w-5 text-slate-600" /> GEOGRAPHIC CONTEXT
+                    <MapPin className="h-5 w-5 text-slate-600" /> Geographic context
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4">
@@ -225,7 +226,7 @@ const VcaServiceProfile = () => {
             <Card className="border-slate-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                  <Activity className="h-5 w-5 text-slate-600" /> SERVICE DELIVERY DATA
+                  <Activity className="h-5 w-5 text-slate-600" /> Service delivery data
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -233,7 +234,7 @@ const VcaServiceProfile = () => {
                   if (typeof value === "string" && value !== "N/A" && value !== "" && value !== "null") {
                     // Filter out UI keys if they appear in record
                     if (['id', 'vca_id', 'service', 'service_date', 'district', 'province', 'health_facility'].includes(key)) return null;
-                    return <InfoItem key={key} label={key.replace(/_/g, " ").toUpperCase()} value={String(value)} />;
+                    return <InfoItem key={key} label={toSentenceCase(key.replace(/_/g, " "))} value={String(value)} />;
                   }
                   return null;
                 })}
