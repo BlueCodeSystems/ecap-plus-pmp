@@ -137,40 +137,49 @@ const HouseholdRiskRegister = () => {
 
   const isCategoryProvided = (record: any, key: string): boolean => {
     const val = record[key];
-    if (val === null || val === undefined || val === "") return false;
-    const sVal = String(val).toLowerCase().trim();
-    return !["not applicable", "n/a", "na", "none", "no"].includes(sVal);
+    if (val === null || val === undefined) return false;
+    const sVal = String(val).trim();
+    if (sVal === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(sVal.toLowerCase())) return false;
+    if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal)) return false;
+    return true;
   };
 
   const filteredData = useMemo(() => {
-    if (!servicesQuery.data) return [];
-
     const services = servicesQuery.data as any[];
+    const householdsList = (hhListQuery.data ?? []) as any[];
     const now = new Date();
     const NINETY_DAYS_AGO = subDays(now, 90);
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
-    // Group services by household
-    const hhMap = new Map<string, any[]>();
+    // 1. Group services by household
+    const hhServiceMap = new Map<string, any[]>();
     services.forEach(s => {
-      const hhId = String(s.household_id || s.hhid || "unknown");
+      const hhId = String(s.household_id || s.hh_id || s.hhid || s.id || "unknown").trim();
       const sDist = String(s.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return;
 
-      if (!hhMap.has(hhId)) hhMap.set(hhId, []);
-      hhMap.get(hhId)?.push(s);
+      if (!hhServiceMap.has(hhId)) hhServiceMap.set(hhId, []);
+      hhServiceMap.get(hhId)?.push(s);
+    });
+
+    // 2. Filter registered households for the selected district
+    const registeredHhs = householdsList.filter(h => {
+      const hDist = String(h.district || "");
+      return selectedDistrict === "All" || selectedVariants.includes(hDist);
     });
 
     let resultList: any[] = [];
 
-    hhMap.forEach((hhServices, hhId) => {
+    // 3. Evaluate each registered household for gaps
+    registeredHhs.forEach((h) => {
+      const hhId = String(h.household_id || h.hh_id || h.hhid || h.id).trim();
+      const hhServices = hhServiceMap.get(hhId) || [];
+
       let hasHealth = false;
       let hasSchooled = false;
       let hasSafe = false;
       let hasStable = false;
       let isActive = false;
-
-      const lastService = hhServices[0];
 
       hhServices.forEach(s => {
         if (isCategoryProvided(s, "health_services")) hasHealth = true;
@@ -184,8 +193,6 @@ const HouseholdRiskRegister = () => {
 
       const allFour = hasHealth && hasSchooled && hasSafe && hasStable;
 
-      // For domain types: show households MISSING that domain (the gap / problem records)
-      // For graduation_path: show households WITH all 4 domains (ready to graduate)
       let include = false;
       if (type === "health_domain" && !hasHealth) include = true;
       else if (type === "schooled_domain" && !hasSchooled) include = true;
@@ -196,40 +203,32 @@ const HouseholdRiskRegister = () => {
       if (include) {
         resultList.push({
           household_id: hhId,
-          district: lastService.district || "Unknown",
-          last_service_date: lastService.service_date || "N/A",
+          district: h.district || "Unknown",
+          last_service_date: h.last_service_date || "N/A",
           domain_count: [hasHealth, hasSchooled, hasSafe, hasStable].filter(Boolean).length,
           has_health: hasHealth,
           has_schooled: hasSchooled,
           has_safe: hasSafe,
           has_stable: hasStable,
           is_active: isActive,
+          raw_household: h // Store for sub-population filtering
         });
       }
     });
 
-    // Sub-population Filters
-    const households = (hhListQuery.data ?? []) as any[];
-    const hhDataMap = new Map();
-    households.forEach(h => {
-      hhDataMap.set(String(h.household_id || h.hhid || h.id).trim(), h);
-    });
-
+    // 4. Sub-population Filters
     resultList = resultList.filter((item: any) => {
-      const hhData = hhDataMap.get(String(item.household_id).trim());
+      const hhData = item.raw_household;
       return Object.entries(subPopulationFilters).every(([key, value]) => {
         if (value === "all") return true;
         if (!hhData) return false;
 
         let dataKey = key;
-        if (key in filterKeyToDataKey) {
-          dataKey = filterKeyToDataKey[key];
-        }
-
         const recordValue = hhData[dataKey];
+        const sVal = String(recordValue).toLowerCase().trim();
         return value === "yes"
-          ? recordValue === "1" || recordValue === "true" || recordValue === 1 || recordValue === true
-          : recordValue === "0" || recordValue === "false" || recordValue === 0 || recordValue === false;
+          ? sVal === "1" || sVal === "true" || sVal === "yes"
+          : sVal === "0" || sVal === "false" || sVal === "no" || sVal === "";
       });
     });
 

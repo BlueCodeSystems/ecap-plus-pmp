@@ -389,7 +389,7 @@ const VcaProfile = () => {
                   )}
                 </div>
                 <h1 className="text-3xl font-bold text-white lg:text-4xl">
-                  Anonymous
+                  VCA Name – Confidential
                 </h1>
               </div>
               <Button

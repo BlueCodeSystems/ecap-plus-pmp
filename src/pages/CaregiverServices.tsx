@@ -77,15 +77,16 @@ const NOT_APPLICABLE = ["not applicable", "n/a", "na", "none", "no", "false", "0
 
 
 const isNotApplicable = (val: unknown): boolean => {
-  if (val === null || val === undefined || val === "") return true;
-  return NOT_APPLICABLE.includes(String(val).toLowerCase().trim());
+  if (val === null || val === undefined) return true;
+  const s = String(val).trim().toLowerCase();
+  return s === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(s);
 };
 
 const isCategoryProvided = (record: Record<string, unknown>, key: string): boolean => {
   const val = record[key];
-  if (val === null || val === undefined || val === "" || isNotApplicable(val)) return false;
+  if (isNotApplicable(val)) return false;
   const sVal = String(val).trim();
-  if (sVal === "[]" || sVal === "{}" || sVal.toLowerCase() === "none") return false;
+  if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal) || sVal.toLowerCase() === "none" || sVal.toLowerCase() === "null") return false;
   return true;
 };
 

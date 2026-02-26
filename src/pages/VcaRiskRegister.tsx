@@ -167,15 +167,17 @@ const VcaRiskRegister = () => {
 
     const isCategoryProvided = (record: any, key: string): boolean => {
       const val = record[key];
-      if (val === null || val === undefined || val === "") return false;
-      const sVal = String(val).toLowerCase().trim();
-      return !["not applicable", "n/a", "na", "none", "no", "[]"].includes(sVal);
+      if (val === null || val === undefined) return false;
+      const sVal = String(val).trim();
+      if (sVal === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(sVal.toLowerCase())) return false;
+      if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal)) return false;
+      return true;
     };
 
     // Build per-VCA service map
     const serviceMap = new Map<string, any[]>();
     services.forEach(s => {
-      const vId = String(s.vca_id || s.vcaid || s.child_id || "");
+      const vId = String(s.vca_id || s.vcaid || s.child_id || s.uid || s.id || "").trim();
       if (!serviceMap.has(vId)) serviceMap.set(vId, []);
       serviceMap.get(vId)?.push(s);
     });

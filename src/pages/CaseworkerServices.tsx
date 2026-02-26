@@ -373,18 +373,18 @@ const Caseworkers = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <RiskKpiCard
-          label="Services milestone"
+          label="Services"
           icon={Trophy}
           count={stats?.totalServices || 0}
-          description="Total interventions delivered"
+          description="Click to view"
           color="emerald"
         />
 
         <RiskKpiCard
-          label="Total workforce"
+          label="Caseworkers"
           icon={Users}
           count={stats?.activeWorkers || 0}
-          description={`Active caseworkers in ${selectedDistrict}`}
+          description="Click to view"
           color="teal"
         />
 
@@ -392,7 +392,7 @@ const Caseworkers = () => {
           label="Top performing district"
           icon={Star}
           count={stats?.districtServiceCount || 0}
-          description={`Highest activity: ${stats?.mostPerformingDistrict}`}
+          description="Click to view"
           color="amber"
         />
       </div>

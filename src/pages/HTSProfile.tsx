@@ -149,7 +149,7 @@ const HTSProfile = () => {
                 </div>
 
                 {/* Name + ID */}
-                <h1 className="text-3xl font-bold text-white lg:text-4xl">Anonymous</h1>
+                <h1 className="text-3xl font-bold text-white lg:text-4xl">Caregiver Name – Confidential</h1>
                 <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm">
                   {ecapId !== "N/A" && (
                     <span className="flex items-center gap-1.5">
@@ -311,7 +311,7 @@ const HTSProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoItem label="Individual Tested" value="Anonymous" icon={<User className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Individual Tested" value="Caregiver Name – Confidential" icon={<User className="h-3.5 w-3.5" />} />
                   <InfoItem label="Age (Index/SNS)" value={p(record, ["age_index_sns"])} />
                   <InfoItem label="Individual Age" value={p(record, ["individual_age"])} />
                   <InfoItem label="Gender (case)" value={p(record, ["gender_case"])} />

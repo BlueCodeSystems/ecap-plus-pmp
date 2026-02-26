@@ -110,9 +110,9 @@ const filterKeyToDataKey: Record<string, string> = {
 };
 
 const isNotApplicable = (val: any) => {
-  if (val === null || val === undefined || val === "") return true;
-  const s = String(val).toLowerCase().trim();
-  return ["n/a", "na", "null", "none", "no", "0", "false", "[]", "{}"].includes(s);
+  if (val === null || val === undefined) return true;
+  const s = String(val).trim().toLowerCase();
+  return s === "" || ["not applicable", "n/a", "na", "null", "none", "no", "0", "false", "[]", "{}", "null"].includes(s);
 };
 
 const RiskKpiCard = ({ label, count, percent, thresholds, icon: Icon, description, isAbsoluteOnly = false, to }: any) => {
@@ -441,22 +441,22 @@ const VcaServicesDashboard = () => {
       return (isHivPos && (isNoVl || isUnsuppressed)) || isOutOfSchool || noService90d || noActiveCasePlan;
     });
 
-    // 6. Per-VCA domain coverage from services
+    // 6. Per-VCA domain    // Build per-VCA service map
     const serviceMap = new Map<string, any[]>();
     services.forEach(s => {
-      const vId = String(s.vca_id || s.vcaid || s.child_id || "");
+      const vId = String(s.vca_id || s.vcaid || s.child_id || s.uid || s.id || "").trim();
       if (!serviceMap.has(vId)) serviceMap.set(vId, []);
       serviceMap.get(vId)?.push(s);
     });
 
     const isCategoryProvided = (record: any, key: string): boolean => {
       const val = record[key];
-      if (val === null || val === undefined || val === "" || isNotApplicable(val)) return false;
+      if (val === null || val === undefined) return false;
       const sVal = String(val).trim();
-      if (sVal === "[]" || sVal === "{}" || sVal.toLowerCase() === "none") return false;
+      if (sVal === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(sVal.toLowerCase())) return false;
+      if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal)) return false;
       return true;
     };
-
 
 
     let healthDomainCount = 0;
@@ -466,7 +466,7 @@ const VcaServicesDashboard = () => {
     let allFourDomainsCount = 0;
 
     vcas.forEach((v: any) => {
-      const vId = String(v.uid || v.unique_id || v.vca_id || "");
+      const vId = String(v.uid || v.unique_id || v.vca_id || v.child_id || v.id || "").trim();
       const vServices = serviceMap.get(vId) || [];
       let hasHealth = false, hasSchooled = false, hasSafe = false, hasStable = false;
       vServices.forEach(s => {

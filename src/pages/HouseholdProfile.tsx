@@ -318,7 +318,7 @@ const HouseholdProfile = () => {
                   </Badge>
                 </div>
                 <h1 className="text-3xl font-bold text-white lg:text-4xl">
-                  Anonymous
+                  Caregiver Name – Confidential
                 </h1>
               </div>
               <Button
