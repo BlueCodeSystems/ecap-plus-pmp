@@ -42,7 +42,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TableSkeleton from "@/components/ui/TableSkeleton";
 import { format, subDays, parseISO, isAfter } from "date-fns";
-import { cn, toTitleCase } from "@/lib/utils";
+import { cn, toTitleCase, toSentenceCase } from "@/lib/utils";
 
 const RISK_TYPES = {
   health_domain: { label: "Missing Health Services", icon: HeartPulse, color: "text-rose-600", bg: "bg-rose-50" },
@@ -274,7 +274,7 @@ const VcaRiskRegister = () => {
   const RiskIcon = RISK_TYPES[type].icon;
 
   return (
-    <DashboardLayout subtitle="VCA High-Risk Registry">
+    <DashboardLayout subtitle="Vca high-risk registry">
       <div className="flex flex-col gap-6">
         {/* Header Section */}
         <div className="flex items-center justify-between">
@@ -290,9 +290,9 @@ const VcaRiskRegister = () => {
             <div>
               <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
                 <RiskIcon className={cn("h-6 w-6", RISK_TYPES[type].color)} />
-                {RISK_TYPES[type].label} Registry
+                {toSentenceCase(RISK_TYPES[type].label)} registry
               </h1>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+              <p className="text-xs font-bold text-slate-400 tracking-widest mt-1">
                 {filteredData.length} children found in {selectedDistrict === "All" ? "Nationwide" : selectedDistrict}
               </p>
             </div>
@@ -305,11 +305,11 @@ const VcaRiskRegister = () => {
               }}
             >
               <SelectTrigger className="w-[200px] h-10 font-bold border-slate-200">
-                <SelectValue placeholder="Risk Category" />
+                <SelectValue placeholder="Risk category" />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(RISK_TYPES).map(([key, value]) => (
-                  <SelectItem key={key} value={key}>{value.label}</SelectItem>
+                  <SelectItem key={key} value={key}>{toSentenceCase(value.label)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -326,7 +326,7 @@ const VcaRiskRegister = () => {
                 <SelectValue placeholder="District" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="All">All Districts</SelectItem>
+                <SelectItem value="All">All districts</SelectItem>
                 {districts.map((d) => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
                 ))}
@@ -339,7 +339,7 @@ const VcaRiskRegister = () => {
               disabled={filteredData.length === 0}
             >
               <Download className="h-4 w-4 mr-2" />
-              Export CSV
+              Export csv
             </Button>
           </div>
         </div>
@@ -348,7 +348,7 @@ const VcaRiskRegister = () => {
         {type !== "graduation_path" && (
           <Alert className="bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
             <HeartPulse className="h-4 w-4 text-emerald-600" />
-            <AlertTitle className="text-xs font-black uppercase tracking-wider">Gap Analysis Mode</AlertTitle>
+            <AlertTitle className="text-xs font-black tracking-wider">Gap analysis mode</AlertTitle>
             <AlertDescription className="text-sm font-medium opacity-90">
               The dashboard shows overall coverage, but this register lists VCAs specifically <strong>MISSING</strong> {type.replace("_domain", "").charAt(0).toUpperCase() + type.replace("_domain", "").slice(1)} services so you can prioritize them.
             </AlertDescription>
@@ -356,14 +356,12 @@ const VcaRiskRegister = () => {
         )}
 
         {/* Sub-population Filters */}
-        <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm">
-          <SubPopulationFilter
-            filters={subPopulationFilters}
-            labels={subPopulationFilterLabels}
-            onChange={handleFilterChange}
-            onClear={handleClearFilters}
-          />
-        </div>
+        <SubPopulationFilter
+          filters={subPopulationFilters}
+          labels={subPopulationFilterLabels}
+          onChange={handleFilterChange}
+          onClear={handleClearFilters}
+        />
 
         {/* Search */}
         <div className="relative flex-1">
@@ -387,12 +385,12 @@ const VcaRiskRegister = () => {
               <Table>
                 <TableHeader className="bg-slate-50 border-b">
                   <TableRow>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Child ID</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">VCA Name</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">District</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Age</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Domain Status</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Action</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Child ID</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Vca name</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">District</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Age</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Domain status</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -412,11 +410,11 @@ const VcaRiskRegister = () => {
                       </TableCell>
                       <TableCell className="text-xs">
                         <div className="flex flex-wrap gap-1">
-                          {item.has_health && <Badge className="bg-rose-100 text-rose-700 border-0 text-[9px] font-black uppercase">Health</Badge>}
-                          {item.has_schooled && <Badge className="bg-indigo-100 text-indigo-700 border-0 text-[9px] font-black uppercase">Schooled</Badge>}
-                          {item.has_safe && <Badge className="bg-orange-100 text-orange-700 border-0 text-[9px] font-black uppercase">Safe</Badge>}
-                          {item.has_stable && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] font-black uppercase">Stable</Badge>}
-                          {item.domain_count === 4 && <Badge className="bg-blue-100 text-blue-700 border-0 text-[9px] font-black uppercase">Grad-Ready</Badge>}
+                          {item.has_health && <Badge className="bg-rose-100 text-rose-700 border-0 text-[9px] font-black">Health</Badge>}
+                          {item.has_schooled && <Badge className="bg-indigo-100 text-indigo-700 border-0 text-[9px] font-black">Schooled</Badge>}
+                          {item.has_safe && <Badge className="bg-orange-100 text-orange-700 border-0 text-[9px] font-black">Safe</Badge>}
+                          {item.has_stable && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] font-black">Stable</Badge>}
+                          {item.domain_count === 4 && <Badge className="bg-blue-100 text-blue-700 border-0 text-[9px] font-black">Grad-ready</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -429,7 +427,7 @@ const VcaRiskRegister = () => {
                             if (id !== "N/A") navigate(`/profile/vca-details?id=${id}`);
                           }}
                         >
-                          View Profile
+                          View profile
                           <ChevronRight className="h-3 w-3 ml-1" />
                         </Button>
                       </TableCell>

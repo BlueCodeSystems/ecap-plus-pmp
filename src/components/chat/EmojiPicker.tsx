@@ -69,7 +69,7 @@ export const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
           <div className="space-y-4">
             {Object.entries(filteredCategories).map(([category, emojis]) => (
               <div key={category} className="space-y-1.5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2">{category}</p>
+                <p className="text-[10px] font-black tracking-widest text-slate-400 px-2">{category}</p>
                 <div className="grid grid-cols-8 gap-1">
                   {emojis.map((emoji) => (
                     <button
@@ -86,7 +86,7 @@ export const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
           </div>
         </ScrollArea>
         <div className="p-2 bg-slate-50/50 border-t border-slate-100">
-          <p className="text-[9px] text-center font-bold text-slate-400 uppercase tracking-tighter">Premium Emoji Selector</p>
+          <p className="text-[9px] text-center font-bold text-slate-400 tracking-tighter">Premium emoji selector</p>
         </div>
       </PopoverContent>
     </Popover>

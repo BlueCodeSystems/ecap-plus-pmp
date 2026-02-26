@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Filter, Search } from "lucide-react";
+import { Filter, Search, Download } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -46,31 +46,16 @@ import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter"
 const ITEMS_PER_PAGE = 50;
 
 const subPopulationFilterLabels = {
-  calhiv: 'C/ALHIV',
+  calhiv: 'CALHIV',
   hei: 'HEI',
-  cwlhiv: 'C/WLHIV',
+  cwlhiv: 'CWLHIV',
   agyw: 'AGYW',
   csv: 'C/SV',
   cfsw: 'CFSW',
-  abym: 'ABYM',
-  caahh: 'CAAHH',
-  caichh: 'CAICHH',
-  caich: 'CAICH',
-  calwd: 'CALWD',
-  caifhh: 'CAIFHH',
-  muc: 'MUC',
-  pbfw: 'PBFW'
+  abym: 'ABYM'
 };
 
-const filterKeyToDataKey: Record<string, string> = {
-  caahh: 'child_adolescent_in_aged_headed_household',
-  caichh: 'child_adolescent_in_chronically_ill_headed_household',
-  caich: 'child_adolescent_in_child_headed_household',
-  calwd: 'child_adolescent_living_with_disability',
-  caifhh: 'child_adolescent_in_female_headed_household',
-  muc: 'under_5_malnourished',
-  pbfw: 'pbfw'
-};
+const filterKeyToDataKey: Record<string, string> = {};
 
 const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
@@ -89,7 +74,7 @@ const HouseholdRegister = () => {
   const urlDistrict = searchParams.get("district");
   const district = urlDistrict || user?.location || DEFAULT_DISTRICT;
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [currentPage, setCurrentPage] = useState(1);
   const [subPopulationFilters, setSubPopulationFilters] = useState<Record<string, string>>(
     Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
@@ -287,18 +272,7 @@ const HouseholdRegister = () => {
 
   return (
     <DashboardLayout subtitle="Household Register">
-      <PageIntro
-        eyebrow="Register"
-        title="All District Households Register"
-        description="Filter households by sub-population and view detailed records."
-        actions={
-          <Button variant="outline" className="border-slate-200" onClick={exportToCSV}>
-            Export to CSV
-          </Button>
-        }
-      />
-
-      <GlowCard>
+      <GlowCard className="mt-4">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div>
@@ -309,7 +283,17 @@ const HouseholdRegister = () => {
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-3">
-              <span className="text-xs font-black uppercase text-slate-400 whitespace-nowrap">Filter District:</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-slate-200 text-slate-600 hover:text-primary transition-all"
+                onClick={exportToCSV}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+              <div className="h-8 w-px bg-slate-100 mx-1 hidden sm:block" />
+              <span className="text-xs font-bold text-slate-400 whitespace-nowrap">District:</span>
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
@@ -357,9 +341,9 @@ const HouseholdRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px] hidden sm:table-cell">HH ID</TableHead>
-                  <TableHead className="min-w-[200px] hidden sm:table-cell">Household Details</TableHead>
-                  <TableHead className="w-[150px] hidden lg:table-cell">Case Worker</TableHead>
+                  <TableHead className="w-[120px] hidden sm:table-cell">Hh id</TableHead>
+                  <TableHead className="min-w-[200px] hidden sm:table-cell">Household details</TableHead>
+                  <TableHead className="w-[150px] hidden lg:table-cell">Case worker</TableHead>
                   <TableHead className="text-right w-[60px]">Action</TableHead>
                 </TableRow>
               </TableHeader>

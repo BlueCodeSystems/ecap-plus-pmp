@@ -55,7 +55,7 @@ const LoginCard = () => {
           alt="ECAP +logo"
           className="w-auto max-h-24"
         />
-        <Title className="mt-2">ECAP+ Program Management Platform</Title>
+        <Title className="mt-2">ECAP+ program management platform</Title>
         <h1 className="mt-2 text-3xl font-semibold text-slate-900">
           {isReturningUser ? "Welcome back" : "Welcome"}
         </h1>
@@ -114,8 +114,9 @@ const LoginCard = () => {
 
         <Button
           type="submit"
-          className="h-12 w-full bg-primary text-primary-foreground transition-transform duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
+          className="h-12 w-full bg-[#EAB308] hover:bg-[#CA8A04] text-slate-900 font-bold transition-transform duration-300 hover:-translate-y-0.5"
           disabled={isLoading}
+          style={{ backgroundColor: '#EAB308' }}
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">

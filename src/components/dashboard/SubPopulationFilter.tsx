@@ -1,13 +1,6 @@
-import { Filter, X } from "lucide-react";
+import { Filter, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface SubPopulationFilterProps {
@@ -25,119 +18,67 @@ export const SubPopulationFilter = ({
   onClear,
   className,
 }: SubPopulationFilterProps) => {
-  const activeFilters = Object.entries(filters).filter(
-    ([_, value]) => value !== "all"
-  );
-
-  const hasActiveFilters = activeFilters.length > 0;
+  const getButtonStyles = (isActive: boolean) => {
+    return cn(
+      "w-full h-8 text-[10px] font-bold rounded transition-all",
+      isActive
+        ? "bg-[#2e7d52] text-white hover:bg-[#256643] border-none shadow-sm"
+        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+    );
+  };
 
   return (
-    <div className={cn("space-y-3", className)}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-9 gap-2 border-slate-200",
-                hasActiveFilters && "border-emerald-500 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
-              )}
-            >
-              <Filter className="h-4 w-4" />
-              <span className="text-xs font-semibold">Sub-population Filters</span>
-              {hasActiveFilters && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1 h-5 min-w-[20px] rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white hover:bg-emerald-600"
-                >
-                  {activeFilters.length}
-                </Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[340px] p-0" align="start">
-            <div className="flex items-center justify-between border-b p-3">
-              <span className="text-sm font-bold text-slate-700">Filters</span>
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClear}
-                  className="h-7 px-2 text-[10px] uppercase tracking-wider text-slate-500 hover:text-emerald-600"
-                >
-                  Clear All
-                </Button>
-              )}
-            </div>
-            <ScrollArea className="h-[400px]">
-              <div className="p-4 space-y-4">
-                {Object.entries(labels).map(([key, label]) => (
-                  <div key={key} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        {label}
-                      </span>
-                    </div>
-                    <ToggleGroup
-                      type="single"
-                      value={filters[key]}
-                      onValueChange={(value) => value && onChange(key, value)}
-                      className="justify-start gap-1"
-                    >
-                      <ToggleGroupItem
-                        value="all"
-                        variant="outline"
-                        className="h-7 px-3 text-[10px] uppercase"
-                      >
-                        All
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="yes"
-                        variant="outline"
-                        className="h-7 px-3 text-[10px] uppercase data-[state=on]:bg-emerald-600 data-[state=on]:text-white data-[state=on]:border-emerald-600"
-                      >
-                        Yes
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="no"
-                        variant="outline"
-                        className="h-7 px-3 text-[10px] uppercase data-[state=on]:bg-slate-700 data-[state=on]:text-white data-[state=on]:border-slate-700"
-                      >
-                        No
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
-
-        {/* Visible Badges for active filters */}
-        <div className="flex flex-wrap gap-1.5">
-          {activeFilters.map(([key, value]) => (
-            <Badge
-              key={key}
-              variant="outline"
-              className={cn(
-                "h-7 items-center gap-1.5 rounded-md pl-2 pr-1 text-[10px] font-bold uppercase tracking-wide transition-all",
-                value === "yes"
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                  : "bg-slate-50 border-slate-200 text-slate-600"
-              )}
-            >
-              <span>{labels[key]}: {value}</span>
-              <button
-                onClick={() => onChange(key, "all")}
-                className="group flex h-4 w-4 items-center justify-center rounded-sm hover:bg-black/5"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-            </Badge>
-          ))}
+    <div className={cn("bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden", className)}>
+      <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-[#2e7d52]" />
+          <h3 className="text-sm font-bold text-slate-900 tracking-tight">Filter by Sub Population</h3>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClear}
+          className="h-8 px-3 text-[10px] font-bold text-slate-500 hover:text-[#2e7d52] hover:bg-emerald-50 gap-2 transition-colors uppercase tracking-widest"
+        >
+          <RotateCcw className="h-3 w-3" />
+          Reset All
+        </Button>
       </div>
+
+      <ScrollArea className="w-full">
+        <div className="p-6">
+          <div className="flex gap-10 min-w-max pb-4">
+            {Object.entries(labels).map(([key, label]) => (
+              <div key={key} className="flex flex-col gap-3 w-[100px]">
+                <span className="text-[11px] font-bold text-slate-800 leading-tight h-8 flex items-end">
+                  {label}
+                </span>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={() => onChange(key, "all")}
+                    className={getButtonStyles(filters[key] === "all")}
+                  >
+                    ALL
+                  </button>
+                  <button
+                    onClick={() => onChange(key, "yes")}
+                    className={getButtonStyles(filters[key] === "yes")}
+                  >
+                    YES
+                  </button>
+                  <button
+                    onClick={() => onChange(key, "no")}
+                    className={getButtonStyles(filters[key] === "no")}
+                  >
+                    NO
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   );
 };

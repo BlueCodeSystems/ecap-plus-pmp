@@ -125,7 +125,7 @@ const HouseholdServicesPage = () => {
   const isRefreshing = servicesQuery.isFetching && (displayStats?.total > 0 || displayStats?.totalServices > 0);
 
   return (
-    <DashboardLayout subtitle="Household Services Intelligence">
+    <DashboardLayout subtitle="Household services intelligence">
       {/* ── Premium Green Banner ── */}
       <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8">
         <div className="relative bg-gradient-to-r from-green-700 via-emerald-600 to-teal-600 p-6 lg:p-8">
@@ -137,14 +137,14 @@ const HouseholdServicesPage = () => {
             <div>
               <div className="flex flex-wrap gap-2 mb-4">
                 <Badge className="text-xs border-0 bg-white/20 text-white font-bold">
-                  Operational Dashboard
+                  Operational dashboard
                 </Badge>
                 <Badge className="text-xs border-0 bg-white/20 text-white">
-                  Household Support
+                  Household support
                 </Badge>
               </div>
               <h1 className="text-3xl font-bold text-white lg:text-4xl leading-tight">
-                Household Services Insights
+                Household services insights
               </h1>
               <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm font-medium">
                 <span className="flex items-center gap-1.5">
@@ -184,18 +184,18 @@ const HouseholdServicesPage = () => {
 
         {/* Banner Metadata Strip */}
         <div className="bg-white border border-slate-200 border-t-0 rounded-b-2xl px-6 py-4 lg:px-8">
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-[11px] font-black uppercase tracking-widest text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-[11px] font-black tracking-widest text-slate-400">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-emerald-500" />
-              Total Services: <span className="text-slate-900 ml-1">{displayStats?.total || 0}</span>
+              Total services: <span className="text-slate-900 ml-1">{displayStats?.total || 0}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-blue-500" />
-              Unique Households: <span className="text-slate-900 ml-1">{displayStats?.uniqueHhs || 0}</span>
+              Unique households: <span className="text-slate-900 ml-1">{displayStats?.uniqueHhs || 0}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-amber-500" />
-              Engagement Depth: <span className="text-slate-900 ml-1">{displayStats?.engagement || 0} services/HH</span>
+              Engagement depth: <span className="text-slate-900 ml-1">{displayStats?.engagement || 0} services/HH</span>
             </div>
             {isRefreshing && (
               <div className="ml-auto flex items-center gap-2 text-emerald-600 animate-pulse">
@@ -210,14 +210,14 @@ const HouseholdServicesPage = () => {
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3 mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
         {[
-          { label: "Total Operations", value: displayStats?.total || 0, icon: ClipboardList, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Target Entities", value: displayStats?.uniqueHhs || 0, icon: Home, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Interaction Density", value: displayStats?.engagement || 0, icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Total operations", value: displayStats?.total || 0, icon: ClipboardList, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Target entities", value: displayStats?.uniqueHhs || 0, icon: Home, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Interaction density", value: displayStats?.engagement || 0, icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
         ].map((kpi, idx) => (
           <GlowCard key={idx} className="p-0 border-0 overflow-hidden group">
             <div className="p-6 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{kpi.label}</p>
+                <p className="text-[10px] font-black tracking-[0.2em] text-slate-400 mb-1">{kpi.label}</p>
                 <p className="text-3xl font-black text-slate-900">
                   {servicesQuery.isLoading && !displayStats ? <LoadingDots className="h-2 w-2" /> : kpi.value}
                 </p>
@@ -234,7 +234,7 @@ const HouseholdServicesPage = () => {
         <div className="p-6 border-b border-slate-100 bg-white/50 backdrop-blur-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-black text-slate-900">Household Operations Audit</h3>
+              <h3 className="text-lg font-black text-slate-900">Household operations audit</h3>
               <p className="text-xs text-slate-500 font-medium">Service interactions logged in {selectedDistrict}</p>
             </div>
             <div className="relative w-full md:w-80">
@@ -253,11 +253,11 @@ const HouseholdServicesPage = () => {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 pl-6 h-12">Household Focus</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 h-12">Service Item</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 h-12">Caseworker</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 h-12">Service Date</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400 text-right pr-6 h-12">Outcome</TableHead>
+                <TableHead className="font-black text-[10px] tracking-widest text-slate-400 pl-6 h-12">Household focus</TableHead>
+                <TableHead className="font-black text-[10px] tracking-widest text-slate-400 h-12">Service item</TableHead>
+                <TableHead className="font-black text-[10px] tracking-widest text-slate-400 h-12">Caseworker</TableHead>
+                <TableHead className="font-black text-[10px] tracking-widest text-slate-400 h-12">Service date</TableHead>
+                <TableHead className="font-black text-[10px] tracking-widest text-slate-400 text-right pr-6 h-12">Outcome</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -314,7 +314,7 @@ const HouseholdServicesPage = () => {
                       {pickValue(service, ["service_date", "visit_date", "date"])}
                     </TableCell>
                     <TableCell className="text-right pr-6">
-                      <Badge variant="outline" className="text-[10px] h-6 px-2 font-black border-slate-200 bg-slate-50 text-slate-600 shadow-sm uppercase tracking-tighter">
+                      <Badge variant="outline" className="text-[10px] h-6 px-2 font-black border-slate-200 bg-slate-50 text-slate-600 shadow-sm tracking-tighter">
                         {pickValue(service, ["status", "state", "outcome"])}
                       </Badge>
                     </TableCell>

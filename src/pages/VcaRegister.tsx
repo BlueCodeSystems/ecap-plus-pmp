@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Filter, Search } from "lucide-react";
+import { Filter, Search, Download } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -338,29 +338,28 @@ const VcaRegister = () => {
 
   return (
     <DashboardLayout subtitle="VCA Register">
-      <PageIntro
-        eyebrow="Register"
-        title="All District VCAs Register"
-        description="Filter VCAs by sub-population and view detailed records."
-        actions={
-          <Button variant="outline" className="border-slate-200" onClick={exportToCSV}>
-            Export to CSV
-          </Button>
-        }
-      />
-
-      <GlowCard>
+      <GlowCard className="mt-4">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div>
-              <CardTitle>VCA Register</CardTitle>
+              <CardTitle>Vca register</CardTitle>
               <div className="mt-2 text-sm text-amber-600 font-medium">
                 Note: Only active VCAs are shown.
               </div>
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-3">
-              <span className="text-xs font-black uppercase text-slate-400 whitespace-nowrap">Filter District:</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-slate-200 text-slate-600 hover:text-primary transition-all"
+                onClick={exportToCSV}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+              <div className="h-8 w-px bg-slate-100 mx-1 hidden sm:block" />
+              <span className="text-xs font-bold text-slate-400 whitespace-nowrap">District:</span>
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
@@ -408,10 +407,10 @@ const VcaRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px] hidden sm:table-cell">Unique ID</TableHead>
+                  <TableHead className="w-[120px] hidden sm:table-cell">Unique id</TableHead>
                   <TableHead className="w-[80px] hidden sm:table-cell">Gender</TableHead>
                   <TableHead className="w-[60px] hidden sm:table-cell">Age</TableHead>
-                  <TableHead className="min-w-[200px] hidden lg:table-cell">Household Details</TableHead>
+                  <TableHead className="min-w-[200px] hidden lg:table-cell">Household details</TableHead>
                   <TableHead className="text-right w-[60px]">Action</TableHead>
                 </TableRow>
               </TableHeader>

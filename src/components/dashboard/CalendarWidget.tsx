@@ -43,7 +43,7 @@ const CalendarWidget = () => {
               <p className="text-xs text-slate-500 font-medium">No events for today</p>
               <button
                 onClick={() => navigate("/calendar")}
-                className="mt-2 text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700"
+                className="mt-2 text-[10px] font-bold tracking-widest text-emerald-600 hover:text-emerald-700"
               >
                 Schedule now
               </button>
@@ -79,9 +79,9 @@ const CalendarWidget = () => {
 
           <button
             onClick={() => navigate("/calendar")}
-            className="w-full py-2.5 rounded-xl border border-slate-200 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all"
+            className="w-full py-2.5 rounded-xl border border-slate-200 text-[10px] font-bold tracking-widest text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all"
           >
-            View Full Calendar
+            View full calendar
           </button>
         </div>
       </CardContent>

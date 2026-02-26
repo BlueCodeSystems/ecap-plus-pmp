@@ -1,7 +1,7 @@
 import { getStoredToken } from "@/lib/auth";
 
 const DQA_BASE_URL =
-  import.meta.env.VITE_DQA_BASE_URL ?? "https://api.achieve.bluecodeltd.com";
+  import.meta.env.VITE_DQA_BASE_URL;
 
 export const DEFAULT_DISTRICT = import.meta.env.VITE_DEFAULT_DISTRICT;
 
@@ -433,6 +433,29 @@ export const createFlaggedRecord = async (payload: any) => {
   if (!response.ok) {
     const errorData = await safeJson(response);
     throw new Error(errorData?.message || "Failed to create flagged record");
+  }
+
+  return safeJson(response);
+};
+export const updateFlagStatus = async (flagId: string, status: string) => {
+  const token = getStoredToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const response = await fetch(
+    `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp/${flagId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await safeJson(response);
+    throw new Error(errorData?.message || "Failed to update flagged record");
   }
 
   return safeJson(response);

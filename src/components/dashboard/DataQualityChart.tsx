@@ -97,14 +97,29 @@ const DataQualityChart = () => {
       if (!Array.isArray(items)) return;
       items.forEach(item => {
         if (!item[dateKey]) return;
-        const [month, year] = item[dateKey].split("-");
 
-        if (year === selectedYear) {
-          const monthIndex = parseInt(month, 10) - 1;
+        // Handle various date formats: YYYY-MM, MM-YYYY, YYYY-MM-DD
+        const parts = String(item[dateKey]).split("-");
+        let monthStr = "";
+        let yearStr = "";
+
+        if (parts[0].length === 4) {
+          // YYYY-MM or YYYY-MM-DD
+          yearStr = parts[0];
+          monthStr = parts[1];
+        } else if (parts.length >= 2) {
+          // MM-YYYY
+          monthStr = parts[0];
+          yearStr = parts[parts.length - 1];
+        }
+
+        if (yearStr === selectedYear) {
+          const monthIndex = parseInt(monthStr, 10) - 1;
           if (monthIndex >= 0 && monthIndex < 12) {
             const monthName = MONTHS[monthIndex];
 
-            // Filter by month if selected
+            // If a specific month is selected, we only process data for that month
+            // but we keep ALL months in the map so the chart trend stays consistent
             if (selectedMonth !== "all" && monthName !== selectedMonth) return;
 
             const entry = dataByMonth.get(monthName);
@@ -125,13 +140,6 @@ const DataQualityChart = () => {
     processItems(queries.caregiverServices.data ?? [], "caregiverServices", "service_month");
     processItems(queries.vcaReferrals.data ?? [], "vcaReferrals", "referral_month");
     processItems(queries.caregiverReferrals.data ?? [], "caregiverReferrals", "referral_month");
-
-    // If a specific month is selected, we might only want to show that one month, 
-    // or still show all for context but zeroed out? 
-    // Usually charts show the filtered range.
-    if (selectedMonth !== "all") {
-      return [dataByMonth.get(selectedMonth)];
-    }
 
     return Array.from(dataByMonth.values());
   }, [queries, selectedYear, selectedMonth, selectedDataType, isLoading]);

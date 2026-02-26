@@ -50,85 +50,67 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const RiskKpiCard = ({ label, count, percent, thresholds, icon: Icon, description, isAbsoluteOnly = false, to }: any) => {
-  const getSeverityColor = (val: number, rules: any) => {
-    if (!rules) return "text-slate-900";
-    if (rules.inverse) {
-      if (val <= rules.red) return "text-rose-600";
-      if (val <= rules.yellow) return "text-amber-500";
-      return "text-emerald-600";
-    }
-    if (val >= rules.red) return "text-rose-600";
-    if (val >= rules.yellow) return "text-amber-500";
-    return "text-emerald-600";
-  };
-
-  const getSeverityBg = (val: number, rules: any) => {
-    if (!rules) return "bg-slate-50";
-    if (rules.inverse) {
-      if (val <= rules.red) return "bg-rose-50";
-      if (val <= rules.yellow) return "bg-amber-50";
-      return "bg-emerald-50";
-    }
-    if (val >= rules.red) return "bg-rose-50";
-    if (val >= rules.yellow) return "bg-amber-50";
-    return "bg-emerald-50";
-  };
-
+const RiskKpiCard = ({ label, count, percent, thresholds, icon: Icon, description, to }: any) => {
   const isPercentValid = typeof percent === "number" && !isNaN(percent);
-  const value = isPercentValid ? `${percent.toFixed(1)}%` : (count !== null && count !== undefined ? count.toLocaleString() : "0");
-  const color = isPercentValid ? getSeverityColor(percent, thresholds) : "text-slate-900";
-  const bg = isPercentValid ? getSeverityBg(percent, thresholds) : "bg-slate-50";
+  const isCountValid = count !== null && count !== undefined;
+  const value = isCountValid ? count.toLocaleString() : "0";
+  const percentageText = isPercentValid ? ` (${percent.toFixed(1)}%)` : "";
+
+  const getStyle = () => {
+    if (!isPercentValid || !thresholds) return { bg: "bg-slate-50", text: "text-slate-600" };
+    if (thresholds.inverse) {
+      if (percent <= thresholds.red) return { bg: "bg-rose-50", text: "text-rose-600" };
+      if (percent <= thresholds.yellow) return { bg: "bg-amber-50", text: "text-amber-600" };
+      return { bg: "bg-emerald-50", text: "text-emerald-600" };
+    }
+    if (percent >= thresholds.red) return { bg: "bg-rose-50", text: "text-rose-600" };
+    if (percent >= thresholds.yellow) return { bg: "bg-amber-50", text: "text-amber-600" };
+    return { bg: "bg-emerald-50", text: "text-emerald-600" };
+  };
+
+  const style = getStyle();
 
   const content = (
-    <div className="p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div className={cn("p-2 rounded-lg transition-all duration-300 group-hover:scale-105", bg, color)}>
-          <Icon className="h-4 w-4" />
-        </div>
-        {isPercentValid && (
-          <Badge variant="outline" className={cn("text-[9px] font-bold border-0 uppercase tracking-wider px-2 py-0.5", bg, color)}>
-            {thresholds.inverse
-              ? (percent <= thresholds.red ? "Critical" : percent <= thresholds.yellow ? "Warning" : "Stable")
-              : (percent >= (thresholds?.red || 0) ? "Critical" : percent >= (thresholds?.yellow || 0) ? "Warning" : "Stable")}
-          </Badge>
-        )}
-      </div>
-      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">{label}</p>
-      <div className="flex items-center justify-between">
-        <p className={cn("text-2xl font-black tracking-tight", color)}>{value}</p>
-        {to && <ChevronRight className="h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />}
-      </div>
-      {!isAbsoluteOnly && count !== null && count !== undefined && (
-        <p className="text-[10px] text-slate-400 font-medium mt-1">
-          Raw Count: <span className="text-slate-600 font-bold">{count.toLocaleString()}</span>
-        </p>
+    <div
+      className={cn(
+        "p-4 rounded-xl border bg-white shadow-sm transition-all hover:shadow-md active:scale-95 border-slate-100 h-full flex flex-col justify-between",
+        to && "cursor-pointer"
       )}
-      <p className="text-[10px] text-slate-400 font-medium italic mt-2 line-clamp-1">{description}</p>
+    >
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <div className={cn("p-2 rounded-lg", style.bg, style.text)}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <span className="text-xs font-bold tracking-wider text-muted-foreground">{label}</span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-black text-slate-900">{value}</span>
+        </div>
+      </div>
+      <p className="text-[10px] text-slate-500 mt-1">
+        {to ? "Click to view" : description}{percentageText}
+      </p>
     </div>
   );
 
   if (to) {
     return (
-      <Link to={to} className="block group">
-        <GlowCard className="p-0 border-0 overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
-          {content}
-        </GlowCard>
+      <Link to={to} className="block group h-full">
+        {content}
       </Link>
     );
   }
 
-  return (
-    <GlowCard className="p-0 border-0 overflow-hidden group">
-      {content}
-    </GlowCard>
-  );
+  return content;
 };
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const SERVICE_CATEGORIES = ["health_services", "schooled_services", "safe_services", "stable_services", "hh_level_services"] as const;
-const NOT_APPLICABLE = ["not applicable", "n/a", "na", "none", "no", "false", "0"];
+const NOT_APPLICABLE = ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}"];
+
 
 const parseHealthServices = (services: any): string[] => {
   if (!services) return [];
@@ -148,8 +130,12 @@ const isNotApplicable = (val: unknown): boolean => {
 
 const isCategoryProvided = (record: Record<string, unknown>, key: string): boolean => {
   const val = record[key];
-  return val !== null && val !== undefined && val !== "" && !isNotApplicable(val);
+  if (val === null || val === undefined || val === "" || isNotApplicable(val)) return false;
+  const sVal = String(val).trim();
+  if (sVal === "[]" || sVal === "{}" || sVal.toLowerCase() === "none") return false;
+  return true;
 };
+
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 const NINETY_DAYS_MS = 90 * DAY_MS;
@@ -164,32 +150,8 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
   return "N/A";
 };
 
-const subPopulationFilterLabels: Record<string, string> = {
-  calhiv: 'C/ALHIV',
-  hei: 'HEI',
-  cwlhiv: 'C/WLHIV',
-  agyw: 'AGYW',
-  csv: 'C/SV',
-  cfsw: 'CFSW',
-  abym: 'ABYM',
-  caahh: 'CAAHH',
-  caichh: 'CAICHH',
-  caich: 'CAICH',
-  calwd: 'CALWD',
-  caifhh: 'CAIFHH',
-  muc: 'MUC',
-  pbfw: 'PBFW'
-};
+const filterKeyToDataKey: Record<string, string> = {};
 
-const filterKeyToDataKey: Record<string, string> = {
-  caahh: 'child_adolescent_in_aged_headed_household',
-  caichh: 'child_adolescent_in_chronically_ill_headed_household',
-  caich: 'child_adolescent_in_child_headed_household',
-  calwd: 'child_adolescent_living_with_disability',
-  caifhh: 'child_adolescent_in_female_headed_household',
-  muc: 'under_5_malnourished',
-  pbfw: 'pbfw'
-};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -204,20 +166,7 @@ const HouseholdServices = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
-  const [subPopulationFilters, setSubPopulationFilters] = useState<Record<string, string>>(
-    Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-  );
 
-  const handleFilterChange = (key: string, value: string) => {
-    setSubPopulationFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleClearFilters = () => {
-    setSubPopulationFilters(
-      Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-    );
-    setSearchQuery("");
-  };
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
@@ -299,25 +248,10 @@ const HouseholdServices = () => {
       // Filter by district (handling variants)
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return;
 
-      const hhData = hhDataMap.get(hhId);
-      const matchesSubPop = Object.entries(subPopulationFilters).every(([key, value]) => {
-        if (value === "all") return true;
-        if (!hhData) return false;
-
-        let dataKey = key;
-        if (key in filterKeyToDataKey) dataKey = filterKeyToDataKey[key];
-
-        const recordValue = hhData[dataKey];
-        return value === "yes"
-          ? recordValue === "1" || recordValue === "true" || recordValue === 1 || recordValue === true
-          : recordValue === "0" || recordValue === "false" || recordValue === 0 || recordValue === false;
-      });
-
-      if (matchesSubPop) {
-        if (!hhMap.has(hhId)) hhMap.set(hhId, []);
-        hhMap.get(hhId)?.push(s);
-      }
+      if (!hhMap.has(hhId)) hhMap.set(hhId, []);
+      hhMap.get(hhId)?.push(s);
     });
+
 
     const totalHouseholds = hhMap.size;
 
@@ -355,27 +289,28 @@ const HouseholdServices = () => {
     });
 
     const nationwideHhs = (householdsListQuery.data ?? []) as any[];
-    const effectiveTotalHouseholds = selectedDistrict === "All" && Object.values(subPopulationFilters).every(v => v === "all") ? nationwideHhs.length : totalHouseholds;
+    const registrationCount = selectedDistrict === "All" ? nationwideHhs.length : nationwideHhs.filter(h => h.district === selectedDistrict || (discoveredDistrictsMap.get(selectedDistrict) || []).includes(h.district)).length;
 
     return {
-      totalHouseholds: effectiveTotalHouseholds,
+      totalHouseholds: registrationCount,
       // Domain coverage
       healthCount,
-      healthRate: totalHouseholds > 0 ? (healthCount / totalHouseholds) * 100 : 0,
+      healthRate: registrationCount > 0 ? (healthCount / registrationCount) * 100 : 0,
       schooledCount,
-      schooledRate: totalHouseholds > 0 ? (schooledCount / totalHouseholds) * 100 : 0,
+      schooledRate: registrationCount > 0 ? (schooledCount / registrationCount) * 100 : 0,
       safeCount,
-      safeRate: totalHouseholds > 0 ? (safeCount / totalHouseholds) * 100 : 0,
+      safeRate: registrationCount > 0 ? (safeCount / registrationCount) * 100 : 0,
       stableCount,
-      stableRate: totalHouseholds > 0 ? (stableCount / totalHouseholds) * 100 : 0,
+      stableRate: registrationCount > 0 ? (stableCount / registrationCount) * 100 : 0,
       // Derived
       allDomainsCount,
-      allDomainsRate: totalHouseholds > 0 ? (allDomainsCount / totalHouseholds) * 100 : 0,
+      allDomainsRate: registrationCount > 0 ? (allDomainsCount / registrationCount) * 100 : 0,
       activeHHCount,
-      activeRate: totalHouseholds > 0 ? (activeHHCount / totalHouseholds) * 100 : 0,
+      activeRate: registrationCount > 0 ? (activeHHCount / registrationCount) * 100 : 0,
       totalVisits: Array.from(hhMap.values()).flat().length,
     };
-  }, [allServices, selectedDistrict, householdsListQuery.data, subPopulationFilters]);
+
+  }, [allServices, selectedDistrict, householdsListQuery.data]);
 
   // ── Filtered audit log
   const filteredAuditLog = useMemo(() => {
@@ -390,24 +325,11 @@ const HouseholdServices = () => {
     const base = allServices.filter((s) => {
       const sDistrict = String(s.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return false;
-      const hhId = String(s.household_id ?? "").trim();
-      const hhData = hhDataMap.get(hhId);
 
-      const matchesSubPop = Object.entries(subPopulationFilters).every(([key, value]) => {
-        if (value === "all") return true;
-        if (!hhData) return false;
-        let dataKey = key;
-        if (key in filterKeyToDataKey) dataKey = filterKeyToDataKey[key];
-        const recordValue = hhData[dataKey];
-        return value === "yes"
-          ? recordValue === "1" || recordValue === "true" || recordValue === 1 || recordValue === true
-          : recordValue === "0" || recordValue === "false" || recordValue === 0 || recordValue === false;
-      });
-
-      if (!matchesSubPop) return false;
 
       const query = searchQuery.toLowerCase();
       const district = String(s.district || "").toLowerCase();
+      const hhId = String(s.household_id ?? "").trim();
       const caseworker = String(s.caseworker_name || s.caseworker || householdCwMap[hhId] || "").toLowerCase();
 
       return hhId.toLowerCase().includes(query) ||
@@ -423,7 +345,7 @@ const HouseholdServices = () => {
       const dateB = new Date(valB).getTime();
       return dateB - dateA;
     });
-  }, [allServices, selectedDistrict, searchQuery, subPopulationFilters, householdsListQuery.data, householdCwMap]);
+  }, [allServices, selectedDistrict, searchQuery, householdsListQuery.data, householdCwMap]);
 
   const isLoading = servicesQuery.isLoading;
 
@@ -449,7 +371,7 @@ const HouseholdServices = () => {
     <GlowCard className="p-0 border-0 overflow-hidden group">
       <div className="p-5 flex items-center justify-between h-full">
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">{label}</p>
+          <p className="text-[10px] font-bold tracking-wider text-slate-500 mb-1">{label}</p>
           <div className="flex items-baseline gap-1">
             <p className="text-2xl font-black text-slate-900 tracking-tight">
               {isLoading ? <LoadingDots className="h-2 w-2" /> : value}
@@ -478,100 +400,62 @@ const HouseholdServices = () => {
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <Badge className="text-xs border-0 bg-white/20 text-white font-bold">Household Services</Badge>
-                <Badge className="text-xs border-0 bg-white/20 text-emerald-50 font-bold uppercase tracking-wider">Stability Tracker</Badge>
-              </div>
+
               <h1 className="text-3xl font-black text-white lg:text-4xl leading-tight">
                 Household Services
               </h1>
-              <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-white/90 text-xs font-bold uppercase tracking-wide">
+              <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-white/90 text-xs font-bold tracking-wide">
                 <span className="flex items-center gap-1.5">
                   <Home className="h-3.5 w-3.5 text-emerald-200" />
                   {(dashboardStats?.totalHouseholds ?? 0).toLocaleString()} Households
                 </span>
-                <span className="flex items-center gap-1.5">
+                {/* <span className="flex items-center gap-1.5">
                   <Activity className="h-3.5 w-3.5 text-emerald-200" />
                   {(dashboardStats?.totalVisits ?? 0).toLocaleString()} Interactions
-                </span>
+                </span> */}
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-emerald-200" />
-                  {selectedDistrict === "All" ? "National Overview" : selectedDistrict}
+                  {selectedDistrict === "All" ? "All Districts" : selectedDistrict}
                 </span>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="bg-white/10 p-1 rounded-xl backdrop-blur-md border border-white/20">
-                <Select
-                  value={selectedDistrict}
-                  onValueChange={setSelectedDistrict}
-                  disabled={user?.description === "District User"}
-                >
-                  <SelectTrigger className="w-[180px] bg-transparent border-0 text-white font-black h-10 focus:ring-0">
-                    <SelectValue placeholder="Select District" />
-                  </SelectTrigger>
-                  <SelectContent className="font-bold border-emerald-100">
-                    <SelectItem value="All">All Districts</SelectItem>
-                    {districts.map((d) => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select
+                value={selectedDistrict}
+                onValueChange={setSelectedDistrict}
+                disabled={user?.description === "District User"}
+              >
+                <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder={householdsListQuery.isLoading ? "Loading..." : "Select District"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Districts</SelectItem>
+                  {districts.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 onClick={() => servicesQuery.refetch()}
-                className="bg-white text-emerald-900 hover:bg-emerald-50 shadow-2xl h-12 font-black px-6 rounded-xl transition-all duration-300 active:scale-95"
+                className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
               >
                 <RefreshCcw className={`h-4 w-4 mr-2 ${servicesQuery.isFetching ? "animate-spin" : ""}`} />
-                SYNC DATA
+                Sync
               </Button>
             </div>
+
           </div>
         </div>
 
-        {/* Domain Coverage Strip */}
-        <div className="bg-slate-50/50 border-x border-b border-slate-200 rounded-b-2xl px-8 py-3.5">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-              Health: <span className="text-slate-900 ml-1 font-bold">{(dashboardStats?.healthRate ?? 0).toFixed(1)}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-              Schooled: <span className="text-slate-900 ml-1 font-bold">{(dashboardStats?.schooledRate ?? 0).toFixed(1)}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-              Safe: <span className="text-slate-900 ml-1 font-bold">{(dashboardStats?.safeRate ?? 0).toFixed(1)}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Stable: <span className="text-slate-900 ml-1 font-bold">{(dashboardStats?.stableRate ?? 0).toFixed(1)}%</span>
-            </div>
-            {(dashboardStats?.allDomainsRate || 0) < 10 && (
-              <div className="ml-auto flex items-center gap-2 text-rose-600 font-bold bg-rose-50 px-3 py-1 rounded-full border border-rose-100">
-                <AlertTriangle className="h-3 w-3" />
-                <span>Low Graduation Readiness</span>
-              </div>
-            )}
-          </div>
-        </div>
+
       </div>
 
-      <div className="mb-6">
-        <SubPopulationFilter
-          filters={subPopulationFilters}
-          labels={subPopulationFilterLabels}
-          onChange={handleFilterChange}
-          onClear={handleClearFilters}
-        />
-      </div>
+
 
       {/* ── Domain Coverage KPIs ── */}
       <div className="space-y-2 mb-1">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">OVC Service Domain Coverage</p>
-        <p className="text-xs text-slate-500">Percentage of households receiving services in each domain. Low rates indicate intervention gaps.</p>
+
       </div>
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
         {/* Health Domain */}
@@ -639,24 +523,24 @@ const HouseholdServices = () => {
                 <AlertTriangle className="h-4 w-4 text-rose-500" />
               </div>
               <div>
-                <CardTitle className="text-base font-black text-slate-900">Stability Blockers</CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase text-rose-500/80 tracking-wider">Critical intervention gaps detected</CardDescription>
+                <CardTitle className="text-base font-black text-slate-900">Stability blockers</CardTitle>
+                <CardDescription className="text-[10px] font-bold text-rose-500/80 tracking-wider">Critical intervention gaps detected</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {([
-                { label: "Health Gap", rate: dashboardStats?.healthRate ?? 0, color: "bg-rose-50 border-rose-100", textColor: "text-rose-600", desc: "No health services recorded" },
-                { label: "Schooled Gap", rate: dashboardStats?.schooledRate ?? 0, color: "bg-indigo-50 border-indigo-100", textColor: "text-indigo-600", desc: "No schooled services recorded" },
-                { label: "Safe Gap", rate: dashboardStats?.safeRate ?? 0, color: "bg-orange-50 border-orange-100", textColor: "text-orange-600", desc: "No safe services recorded" },
-                { label: "Stable Gap", rate: dashboardStats?.stableRate ?? 0, color: "bg-emerald-50 border-emerald-100", textColor: "text-emerald-600", desc: "No stable services recorded" },
-              ]).map(({ label, rate, color, textColor, desc }) => (
+                { label: "Health Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.healthCount ?? 0), rate: dashboardStats?.healthRate ?? 0, color: "bg-rose-50 border-rose-100", textColor: "text-rose-600", desc: "No health services recorded" },
+                { label: "Schooled Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.schooledCount ?? 0), rate: dashboardStats?.schooledRate ?? 0, color: "bg-indigo-50 border-indigo-100", textColor: "text-indigo-600", desc: "No schooled services recorded" },
+                { label: "Safe Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.safeCount ?? 0), rate: dashboardStats?.safeRate ?? 0, color: "bg-orange-50 border-orange-100", textColor: "text-orange-600", desc: "No safe services recorded" },
+                { label: "Stable Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.stableCount ?? 0), rate: dashboardStats?.stableRate ?? 0, color: "bg-emerald-50 border-emerald-100", textColor: "text-emerald-600", desc: "No stable services recorded" },
+              ]).map(({ label, count, rate, color, textColor, desc }) => (
                 <div key={label} className={`flex items-center justify-between p-5 rounded-xl border transition-all hover:brightness-95 ${color}`}>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">{label}</p>
-                    <p className={`text-2xl font-black tracking-tight ${textColor}`}>{(100 - rate).toFixed(1)}%</p>
-                    <p className="text-[10px] text-slate-400 mt-1">{desc}</p>
+                    <p className="text-[10px] font-bold text-slate-500 mb-1 tracking-wider">{label}</p>
+                    <p className={`text-2xl font-black tracking-tight ${textColor}`}>{count.toLocaleString()}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{desc} ({(100 - rate).toFixed(1)}%)</p>
                   </div>
                 </div>
               ))}
@@ -678,10 +562,10 @@ const HouseholdServices = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  Household Service Audit
-                  <Badge className="bg-emerald-100 text-emerald-700 border-0 h-5 px-3 text-[9px] font-black uppercase italic">Mastery View</Badge>
+                  Household services
+
                 </h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                <p className="text-[10px] text-slate-400 font-bold tracking-widest mt-1">
                   Showing {filteredAuditLog.length} most recent interventions
                 </p>
               </div>
@@ -701,11 +585,11 @@ const HouseholdServices = () => {
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="border-b border-slate-100">
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 pl-8 h-14">Beneficiary ID</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">District</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">Date of Service</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 h-14">Service Provided</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 text-right pr-8 h-14">Caseworker</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 pl-8 h-14">Beneficiary id</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">District</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Date of service</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Service provided</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 text-right pr-8 h-14">Caseworker</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -720,7 +604,7 @@ const HouseholdServices = () => {
                     <TableCell colSpan={5} className="text-center py-20">
                       <div className="flex flex-col items-center gap-2 opacity-20">
                         <Search className="h-10 w-10 text-slate-400" />
-                        <p className="text-sm font-black uppercase tracking-widest text-slate-500">No records matched your search</p>
+                        <p className="text-sm font-black tracking-widest text-slate-500">No records matched your search</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -754,13 +638,13 @@ const HouseholdServices = () => {
                           className="flex items-center gap-3 cursor-pointer group"
                           onClick={() => navigate(`/profile/household-details`, { state: { id: hhId } })}
                         >
-                          <span className="font-mono text-[11px] bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200/40 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-100 transition-all uppercase tracking-tight">
+                          <span className="font-mono text-[11px] bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200/40 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-100 transition-all tracking-tight">
                             {hhId}
                           </span>
                           <ChevronRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-emerald-600" />
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs font-bold text-slate-600 uppercase tracking-tighter">
+                      <TableCell className="text-xs font-bold text-slate-600 tracking-tighter">
                         {String(s.district || "N/A")}
                       </TableCell>
                       <TableCell className="text-xs font-bold text-slate-500">
@@ -770,7 +654,7 @@ const HouseholdServices = () => {
                         <div className="flex flex-wrap gap-1.5 max-w-[400px]">
                           {providedServices.length > 0 ? (
                             providedServices.slice(0, 3).map((svc, i) => (
-                              <Badge key={i} variant="outline" className="text-[9px] font-black border-slate-200 bg-white h-6 px-2.5 rounded-md uppercase tracking-tighter">
+                              <Badge key={i} variant="outline" className="text-[9px] font-black border-slate-200 bg-white h-6 px-2.5 rounded-md tracking-tighter">
                                 {svc}
                               </Badge>
                             ))
@@ -786,10 +670,10 @@ const HouseholdServices = () => {
                       </TableCell>
                       <TableCell className="text-right pr-8 py-5">
                         <div className="flex flex-col items-end">
-                          <span className="font-black text-slate-900 text-[11px] uppercase truncate max-w-[150px]">
+                          <span className="font-black text-slate-900 text-[11px] truncate max-w-[150px]">
                             {String(caseworker)}
                           </span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Field Officer</span>
+                          <span className="text-[9px] text-slate-400 font-bold tracking-widest">Case worker</span>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -802,8 +686,14 @@ const HouseholdServices = () => {
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs font-black text-slate-400 hover:text-emerald-600 tracking-widest uppercase"
-              onClick={() => navigate("/household-register")}
+              className="text-xs font-black text-slate-400 hover:text-emerald-600 tracking-widest"
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (selectedDistrict !== "All") params.append("district", selectedDistrict);
+                if (searchQuery) params.append("search", searchQuery);
+                const queryString = params.toString();
+                navigate(`/households${queryString ? `?${queryString}` : ""}`);
+              }}
             >
               Access Full Household Register <ChevronRight className="h-4 w-4 ml-1" />
             </Button>

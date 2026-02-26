@@ -8,9 +8,9 @@ const Charts = () => {
   return (
     <DashboardLayout subtitle="Charts">
       <PageIntro
-        eyebrow="Visualization"
+
         title="Program Dashboard"
-        description="Comprehensive view of program performance and trends."
+
       />
 
       <div className="space-y-6">

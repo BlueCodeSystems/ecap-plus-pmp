@@ -55,10 +55,7 @@ const MetricCard = ({
 
   return (
     <GlowCard hoverable className={colorClass?.borderAccent}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
+      <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
         {colorClass ? (
           <div className={`rounded-lg p-2 ${colorClass.iconBg} ${colorClass.iconText}`}>
             {icon}
@@ -66,10 +63,13 @@ const MetricCard = ({
         ) : (
           <div className={variantStyles[variant]}>{icon}</div>
         )}
+        <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground">
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-foreground">
-          {isLoading ? <LoadingDots className="text-slate-600" /> : <AnimatedCounter value={value} />}
+        <div className="text-2xl font-black text-foreground tracking-tight">
+          {isLoading ? <LoadingDots className="text-muted-foreground" /> : <AnimatedCounter value={value} />}
         </div>
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -139,7 +139,7 @@ const MetricsGrid = () => {
 
   const summaryMetrics = [
     {
-      title: "Total VCAs",
+      title: "VCAs",
       value: formatCount(totalVcasQuery.data),
       subtitle: "All registered children",
       icon: <FileCheck className="h-5 w-5" />,
@@ -148,11 +148,11 @@ const MetricsGrid = () => {
       colorClass: {
         iconBg: "bg-emerald-50",
         iconText: "text-emerald-600",
-        borderAccent: "border-l-4 border-l-emerald-500",
+        borderAccent: "",
       },
     },
     {
-      title: "Total Households",
+      title: "Households",
       value: formatCount(totalHouseholdsQuery.data),
       subtitle: "Households tracked",
       icon: <Home className="h-5 w-5" />,
@@ -161,20 +161,20 @@ const MetricsGrid = () => {
       colorClass: {
         iconBg: "bg-emerald-50",
         iconText: "text-emerald-600",
-        borderAccent: "border-l-4 border-l-emerald-500",
+        borderAccent: "",
       },
     },
     {
       title: "Caseworkers",
       value: formatCount(caseworkersCount),
-      subtitle: district === "All" || !district ? "Caseworkers tracked" : `Active in ${district}`,
+      subtitle: district === "All" || !district ? "All active Caseworkers" : `Active in ${district}`,
       icon: <Briefcase className="h-5 w-5" />,
       variant: "default" as const,
       isLoading: householdsDataQuery.isLoading,
       colorClass: {
         iconBg: "bg-blue-50",
         iconText: "text-blue-600",
-        borderAccent: "border-l-4 border-l-blue-500",
+        borderAccent: "",
       },
     },
   ];
