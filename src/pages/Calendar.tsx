@@ -138,7 +138,7 @@ const CalendarPage = () => {
     return (
       <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div key={d} className="bg-slate-50 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <div key={d} className="bg-slate-50 py-3 text-center text-[10px] font-bold tracking-widest text-slate-500">
             {d}
           </div>
         ))}
@@ -214,7 +214,7 @@ const CalendarPage = () => {
                 "p-3 rounded-2xl flex flex-col items-center gap-1 transition-all border",
                 isToday(d) ? "bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-600/20" : "bg-white border-slate-100 group-hover:border-slate-300"
               )}>
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                <span className="text-[10px] font-black tracking-widest opacity-60">
                   {format(d, "EEE")}
                 </span>
                 <span className="text-xl font-black">
@@ -247,7 +247,7 @@ const CalendarPage = () => {
                 ))}
                 {dayEvents.length === 0 && (
                   <div className="h-20 rounded-2xl border border-dashed border-slate-200 flex items-center justify-center opacity-40">
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Free</span>
+                    <span className="text-[10px] font-bold tracking-widest">Free</span>
                   </div>
                 )}
               </div>
@@ -265,7 +265,7 @@ const CalendarPage = () => {
       <div className="max-w-2xl mx-auto w-full space-y-6">
         <div className="flex items-center gap-6 bg-white p-6 rounded-3xl border shadow-sm">
           <div className="h-20 w-20 rounded-2xl bg-emerald-600 flex flex-col items-center justify-center text-white shadow-xl shadow-emerald-600/20">
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{format(currentDate, "EEE")}</span>
+            <span className="text-[10px] font-black tracking-widest opacity-70">{format(currentDate, "EEE")}</span>
             <span className="text-3xl font-black">{format(currentDate, "d")}</span>
           </div>
           <div>
@@ -292,13 +292,13 @@ const CalendarPage = () => {
             >
               <div className="flex flex-col items-center gap-1 min-w-[80px]">
                 <span className="text-lg font-black">{format(new Date(event.start_time), "HH:mm")}</span>
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Start</span>
+                <span className="text-[10px] font-black tracking-widest opacity-60">Start</span>
               </div>
 
               <div className="w-px h-12 bg-current opacity-20" />
 
               <div className="flex-1">
-                <Badge variant="outline" className="mb-2 bg-white/50 border-current/20 text-current font-black text-[9px] uppercase tracking-widest">
+                <Badge variant="outline" className="mb-2 bg-white/50 border-current/20 text-current font-black text-[9px] tracking-widest">
                   {event.category}
                 </Badge>
                 <h4 className="text-xl font-black leading-tight mb-1">{event.title}</h4>
@@ -314,10 +314,10 @@ const CalendarPage = () => {
           {dayEvents.length === 0 && (
             <div className="py-20 flex flex-col items-center justify-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
               <CalendarIcon className="h-12 w-12 text-slate-300 mb-4" />
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No events scheduled</p>
+              <p className="text-slate-400 font-bold tracking-widest text-sm">No events scheduled</p>
               <Button
                 variant="link"
-                className="text-emerald-600 font-black tracking-widest text-xs mt-2 uppercase"
+                className="text-emerald-600 font-black tracking-widest text-xs mt-2"
                 onClick={openAddModal}
               >
                 Schedule Something
@@ -384,7 +384,7 @@ const CalendarPage = () => {
             className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 gap-2 font-bold"
             onClick={openAddModal}
           >
-            <Plus className="h-5 w-5" /> Schedule Event
+            <Plus className="h-5 w-5" /> Schedule event
           </Button>
 
           <Card className="border-slate-200 shadow-sm overflow-hidden rounded-2xl">
@@ -499,7 +499,7 @@ const CalendarPage = () => {
             </div>
             <DialogHeader>
               <DialogTitle className="text-2xl font-black tracking-tight">
-                {isEditing ? "Edit Event" : "Schedule New Event"}
+                {isEditing ? "Edit event" : "Schedule new event"}
               </DialogTitle>
               <p className="text-emerald-100 text-sm mt-1">
                 {isEditing ? "Update your event details below." : "Fill in the details to add to your agenda."}
@@ -509,7 +509,7 @@ const CalendarPage = () => {
 
           <div className="p-8 space-y-6 bg-white">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Event Title</label>
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Event title</label>
               <Input
                 placeholder="Ex: Weekly Team Review"
                 className="h-12 rounded-2xl border-slate-200 focus:ring-emerald-500"
@@ -520,7 +520,7 @@ const CalendarPage = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Start Time</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Start time</label>
                 <Input
                   type="datetime-local"
                   className="h-12 rounded-2xl border-slate-200"
@@ -529,7 +529,7 @@ const CalendarPage = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">End Time</label>
+                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">End time</label>
                 <Input
                   type="datetime-local"
                   className="h-12 rounded-2xl border-slate-200"
@@ -540,7 +540,7 @@ const CalendarPage = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Category</label>
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Category</label>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map(cat => (
                   <button
@@ -560,7 +560,7 @@ const CalendarPage = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Description (Optional)</label>
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Description (optional)</label>
               <Input
                 placeholder="Add more context..."
                 className="h-12 rounded-2xl border-slate-200"
@@ -610,14 +610,14 @@ const CalendarPage = () => {
               <div className="p-8 space-y-6 bg-white">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Starts</p>
+                    <p className="text-[10px] font-black tracking-widest text-slate-400">Starts</p>
                     <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
                       <Clock className="h-4 w-4 text-slate-400" />
                       {format(new Date(selectedEvent.start_time), "MMM d, HH:mm")}
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ends</p>
+                    <p className="text-[10px] font-black tracking-widest text-slate-400">Ends</p>
                     <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
                       <Clock className="h-4 w-4 text-slate-400" />
                       {format(new Date(selectedEvent.end_time), "MMM d, HH:mm")}
@@ -627,7 +627,7 @@ const CalendarPage = () => {
 
                 {selectedEvent.description && (
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</p>
+                    <p className="text-[10px] font-black tracking-widest text-slate-400">Description</p>
                     <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
                       {selectedEvent.description}
                     </p>

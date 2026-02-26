@@ -41,7 +41,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TableSkeleton from "@/components/ui/TableSkeleton";
 import { format, subDays, parseISO, isAfter } from "date-fns";
-import { cn, toTitleCase } from "@/lib/utils";
+import { cn, toTitleCase, toSentenceCase } from "@/lib/utils";
 
 const RISK_TYPES = {
   health_domain: { label: "Missing Health Services", icon: HeartPulse, color: "text-rose-600", bg: "bg-rose-50", domainLabel: "Health" },
@@ -221,7 +221,7 @@ const CaregiverRiskRegister = () => {
   const RiskIcon = RISK_TYPES[type].icon;
 
   return (
-    <DashboardLayout subtitle="Detailed Risk Registry">
+    <DashboardLayout subtitle="Detailed risk registry">
       <div className="flex flex-col gap-6">
         {/* Header Section */}
         <div className="flex items-center justify-between">
@@ -237,9 +237,9 @@ const CaregiverRiskRegister = () => {
             <div>
               <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
                 <RiskIcon className={cn("h-6 w-6", RISK_TYPES[type].color)} />
-                {RISK_TYPES[type].label} Registry
+                {toSentenceCase(RISK_TYPES[type].label)} registry
               </h1>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+              <p className="text-xs font-bold text-slate-400 tracking-widest mt-1">
                 {filteredData.length} records found in {selectedDistrict === "All" ? "Nationwide" : selectedDistrict}
               </p>
             </div>
@@ -252,11 +252,11 @@ const CaregiverRiskRegister = () => {
               }}
             >
               <SelectTrigger className="w-[200px] h-10 font-bold border-slate-200">
-                <SelectValue placeholder="Risk Category" />
+                <SelectValue placeholder="Risk category" />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(RISK_TYPES).map(([key, value]) => (
-                  <SelectItem key={key} value={key}>{value.label}</SelectItem>
+                  <SelectItem key={key} value={key}>{toSentenceCase(value.label)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -273,7 +273,7 @@ const CaregiverRiskRegister = () => {
                 <SelectValue placeholder="District" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="All">All Districts</SelectItem>
+                <SelectItem value="All">All districts</SelectItem>
                 {districts.map((d) => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
                 ))}
@@ -286,7 +286,7 @@ const CaregiverRiskRegister = () => {
               disabled={filteredData.length === 0}
             >
               <Download className="h-4 w-4 mr-2" />
-              Export CSV
+              Export csv
             </Button>
           </div>
         </div>
@@ -295,7 +295,7 @@ const CaregiverRiskRegister = () => {
         {type !== "graduation_path" && (
           <Alert className="bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
             <HeartPulse className="h-4 w-4 text-emerald-600" />
-            <AlertTitle className="text-xs font-black uppercase tracking-wider">Gap Analysis Mode</AlertTitle>
+            <AlertTitle className="text-xs font-black tracking-wider">Gap analysis mode</AlertTitle>
             <AlertDescription className="text-sm font-medium opacity-90">
               The dashboard shows overall coverage, but this register lists caregivers specifically <strong>MISSING</strong> {RISK_TYPES[type].domainLabel} services so you can prioritize them.
             </AlertDescription>
@@ -326,14 +326,14 @@ const CaregiverRiskRegister = () => {
               <Table>
                 <TableHeader className="bg-slate-50 border-b">
                   <TableRow>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Household ID</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Caregiver Name</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">District</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Health</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Schooled</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Safe</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Stable</TableHead>
-                    <TableHead className="text-[11px] font-black uppercase text-slate-500">Action</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Household ID</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Caregiver name</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">District</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Health</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Schooled</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Safe</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Stable</TableHead>
+                    <TableHead className="text-[11px] font-black text-slate-500">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -342,14 +342,14 @@ const CaregiverRiskRegister = () => {
                       <TableCell className="font-bold text-slate-900 text-xs text-nowrap">{item.displayId}</TableCell>
                       <TableCell className="text-xs font-medium text-slate-600">{item.caregiver_name || item.name || "N/A"}</TableCell>
                       <TableCell className="text-xs font-medium text-slate-600"><Badge variant="outline" className="bg-slate-50 text-[10px] font-bold">{item.district}</Badge></TableCell>
-                      <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold uppercase", item.has_health ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>{item.has_health ? "Yes" : "No"}</Badge></TableCell>
-                      <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold uppercase", item.has_schooled ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>{item.has_schooled ? "Yes" : "No"}</Badge></TableCell>
-                      <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold uppercase", item.has_safe ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>{item.has_safe ? "Yes" : "No"}</Badge></TableCell>
-                      <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold uppercase", item.has_stable ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>{item.has_stable ? "Yes" : "No"}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold", item.has_health ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>{item.has_health ? "Yes" : "No"}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold", item.has_schooled ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>{item.has_schooled ? "Yes" : "No"}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold", item.has_safe ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>{item.has_safe ? "Yes" : "No"}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold", item.has_stable ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>{item.has_stable ? "Yes" : "No"}</Badge></TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {item.domain_count === 4 && (
-                            <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px] font-black uppercase">Grad-Ready</Badge>
+                            <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px] font-black">Grad-ready</Badge>
                           )}
                           <Button
                             variant="ghost"
@@ -359,7 +359,7 @@ const CaregiverRiskRegister = () => {
                               navigate(`/profile/household-details?id=${item.displayId}`);
                             }}
                           >
-                            View Profile
+                            View profile
                             <ChevronRight className="h-3 w-3 transition-transform group-hover/btn:translate-x-0.5" />
                           </Button>
                         </div>

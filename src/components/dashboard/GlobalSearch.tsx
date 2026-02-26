@@ -37,7 +37,7 @@ const navigationItems = [
   { title: "VCA Register", url: "/vcas", icon: Users, category: "Navigation" },
   { title: "VCA Services", url: "/vca-services", icon: ClipboardList, category: "Navigation" },
   { title: "Caregiver Services", url: "/caregiver-services", icon: HeartPulse, category: "Navigation" },
-  { title: "Caseworker Services", url: "/caseworker-services", icon: Briefcase, category: "Navigation" },
+  { title: "Caseworkers", url: "/caseworkers", icon: Briefcase, category: "Navigation" },
   { title: "Flags", url: "/flags", icon: Flag, category: "Navigation" },
   { title: "Household Archived", url: "/households/archived", icon: Archive, category: "Navigation" },
   { title: "VCA Archived", url: "/vcas/archived", icon: Archive, category: "Navigation" },
@@ -93,11 +93,11 @@ export function GlobalSearch() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="relative flex w-full items-center justify-start rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-500 shadow-sm transition-all hover:bg-white hover:shadow-md md:w-64 lg:w-80"
+        className="relative flex w-full items-center justify-start rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm text-muted-foreground shadow-sm transition-all hover:bg-white hover:shadow-md md:w-64 lg:w-80"
       >
         <Search className="mr-2 h-4 w-4 text-slate-400" />
-        <span className="hidden lg:inline-flex">Search households, VCAs...</span>
-        <span className="inline-flex lg:hidden">Search...</span>
+        <span className="hidden lg:inline-flex font-medium">Search households, VCAs...</span>
+        <span className="inline-flex lg:hidden font-medium">Search...</span>
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
@@ -113,9 +113,9 @@ export function GlobalSearch() {
                 className="flex items-center gap-3 px-4 py-3"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
-                  <item.icon className="h-4 w-4 text-slate-600" />
+                  <item.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <span className="font-medium text-slate-700">{item.title}</span>
+                <span className="font-semibold text-foreground/90">{item.title}</span>
               </CommandItem>
             ))}
           </CommandGroup>
@@ -137,8 +137,8 @@ export function GlobalSearch() {
                       <Users className="h-4 w-4 text-blue-600" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-medium text-slate-900">{name}</span>
-                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">VCA ID: {id}</span>
+                      <span className="font-bold text-foreground">{name}</span>
+                      <span className="text-[10px] text-muted-foreground tracking-wider font-bold">VCA ID: {id}</span>
                     </div>
                   </CommandItem>
                 );
@@ -163,8 +163,8 @@ export function GlobalSearch() {
                       <Home className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-medium text-slate-900">{name}</span>
-                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">HH ID: {id}</span>
+                      <span className="font-bold text-foreground">{name}</span>
+                      <span className="text-[10px] text-muted-foreground tracking-wider font-bold">HH ID: {id}</span>
                     </div>
                   </CommandItem>
                 );
@@ -185,8 +185,8 @@ export function GlobalSearch() {
                   <Book className="h-4 w-4 text-indigo-600" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-medium text-slate-900">{item.title}</span>
-                  <span className="text-[10px] text-slate-500">Quick Guide • {item.time}</span>
+                  <span className="font-bold text-foreground">{item.title}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium">Quick Guide • {item.time}</span>
                 </div>
               </CommandItem>
             ))}
@@ -200,8 +200,8 @@ export function GlobalSearch() {
                   <HelpCircle className="h-4 w-4 text-amber-600" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-medium text-slate-900">{faq.question}</span>
-                  <span className="text-[10px] text-slate-500">FAQ</span>
+                  <span className="font-bold text-foreground">{faq.question}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium">FAQ</span>
                 </div>
               </CommandItem>
             ))}

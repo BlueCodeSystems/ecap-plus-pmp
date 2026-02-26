@@ -15,6 +15,7 @@ import {
   getCaregiverServicesByDistrict,
   getFlaggedRecords,
 } from "@/lib/api";
+import { cn, toTitleCase } from "@/lib/utils";
 
 type FeedItem = {
   type: "vca-service" | "caregiver-service" | "flag";
@@ -92,6 +93,7 @@ const FEED_LIMIT = 15;
 const RecentActivity = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "incomplete" | "draft">("all");
 
   const flagsQuery = useQuery({
     queryKey: ["recent-flags"],
@@ -100,12 +102,24 @@ const RecentActivity = () => {
 
   const isLoading = flagsQuery.isLoading;
 
-  const feed = useMemo(() => {
+  const { feed, counts } = useMemo(() => {
     const items: FeedItem[] = [];
+    const stats = { all: 0, pending: 0, incomplete: 0, draft: 0 };
 
-    // Flags
-    for (const raw of flagsQuery.data ?? []) {
+    // Flags — exclude resolved records
+    const flagsData = (flagsQuery.data ?? []).filter(
+      (r: any) => r.status?.toLowerCase() !== "resolved"
+    );
+    stats.all = flagsData.length;
+
+    for (const raw of flagsData) {
       const record = raw as Record<string, unknown>;
+      const status = String(pickValue(record, ["status"])).toLowerCase();
+
+      if (status.includes("pending")) stats.pending++;
+      else if (status.includes("incomplete")) stats.incomplete++;
+      else if (status.includes("draft")) stats.draft++;
+
       items.push({
         type: "flag",
         id: pickValue(record, ["id"]),
@@ -120,39 +134,106 @@ const RecentActivity = () => {
     // Sort by date descending
     items.sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
 
-    return items;
+    return { feed: items, counts: stats };
   }, [flagsQuery.data]);
 
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return feed.slice(0, FEED_LIMIT);
-    const q = searchQuery.toLowerCase();
-    return feed.filter(item =>
-      item.id.toLowerCase().includes(q) ||
-      item.title.toLowerCase().includes(q) ||
-      item.subtitle.toLowerCase().includes(q)
-    ).slice(0, FEED_LIMIT);
-  }, [feed, searchQuery]);
+    let result = feed;
+
+    // Apply Status Filter
+    if (activeFilter !== "all") {
+      result = result.filter(item => item.status?.toLowerCase().includes(activeFilter));
+    }
+
+    // Apply Search Query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(item =>
+        item.id.toLowerCase().includes(q) ||
+        item.title.toLowerCase().includes(q) ||
+        item.subtitle.toLowerCase().includes(q)
+      );
+    }
+
+    // Apply Casing and Limit
+    return result.map(item => ({
+      ...item,
+      title: toTitleCase(item.title),
+      subtitle: toTitleCase(item.subtitle),
+      status: toTitleCase(item.status || "Pending review")
+    })).slice(0, FEED_LIMIT);
+  }, [feed, searchQuery, activeFilter]);
 
   return (
     <GlowCard>
       <CardHeader className="pb-3 border-b border-slate-50">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
-                <Flag className="h-4 w-4" />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                  <Flag className="h-4 w-4" />
+                </div>
+                <CardTitle className="text-lg font-bold">Flagged Records</CardTitle>
               </div>
-              <CardTitle className="text-lg font-black">Flagged Records</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground font-medium">
+                Review records requiring administrative attention
+              </p>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground font-medium">
-              Review records requiring clinical or administrative attention
-            </p>
+
+            {/* Status Counts Strip */}
+            <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 p-1.5 rounded-xl border border-slate-100">
+              <button
+                onClick={() => setActiveFilter("all")}
+                className={cn(
+                  "px-3 py-1 rounded-lg shadow-sm border flex items-center gap-2 transition-all",
+                  activeFilter === "all" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-900 border-slate-100 hover:bg-slate-50"
+                )}
+              >
+                <span className={cn("text-[10px] font-black tracking-wider", activeFilter === "all" ? "text-slate-400" : "text-slate-400")}>All</span>
+                <span className="text-xs font-bold">{counts.all}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveFilter("pending")}
+                className={cn(
+                  "px-3 py-1 rounded-lg shadow-sm border flex items-center gap-2 transition-all",
+                  activeFilter === "pending" ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-900 border-slate-100 hover:bg-slate-50"
+                )}
+              >
+                <span className={cn("text-[10px] font-black tracking-wider", activeFilter === "pending" ? "text-amber-100" : "text-amber-500")}>Pending</span>
+                <span className="text-xs font-bold">{counts.pending}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveFilter("incomplete")}
+                className={cn(
+                  "px-3 py-1 rounded-lg shadow-sm border flex items-center gap-2 transition-all",
+                  activeFilter === "incomplete" ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-900 border-slate-100 hover:bg-slate-50"
+                )}
+              >
+                <span className={cn("text-[10px] font-black tracking-wider", activeFilter === "incomplete" ? "text-indigo-100" : "text-indigo-500")}>Incomplete</span>
+                <span className="text-xs font-bold">{counts.incomplete}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveFilter("draft")}
+                className={cn(
+                  "px-3 py-1 rounded-lg shadow-sm border flex items-center gap-2 transition-all",
+                  activeFilter === "draft" ? "bg-slate-500 text-white border-slate-500" : "bg-white text-slate-900 border-slate-100 hover:bg-slate-50"
+                )}
+              >
+                <span className={cn("text-[10px] font-black tracking-wider", activeFilter === "draft" ? "text-slate-200" : "text-slate-500")}>Draft</span>
+                <span className="text-xs font-bold">{counts.draft}</span>
+              </button>
+            </div>
           </div>
-          <div className="relative w-full sm:w-64">
+
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Filter flags..."
-              className="pl-9 h-9 bg-slate-50 border-none text-xs font-bold focus-visible:ring-amber-500/20"
+              placeholder="Filter flags by name, ID or reason..."
+              className="pl-9 h-9 bg-slate-50 border-none text-xs font-semibold focus-visible:ring-amber-500/20"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -168,8 +249,8 @@ const RecentActivity = () => {
             <div className="p-6 rounded-full bg-slate-50 border border-slate-100 mb-4 opacity-40">
               <Flag className="h-10 w-10" />
             </div>
-            <p className="font-black text-slate-500">No flags requiring attention</p>
-            <p className="text-xs mt-1">Excellent! All records are clean.</p>
+            <p className="font-bold text-slate-500">No flags requiring attention</p>
+            <p className="text-xs mt-1 font-medium">Excellent! All records are clean.</p>
           </div>
         ) : (
           <ScrollArea className="h-[420px] pr-2">
@@ -192,16 +273,16 @@ const RecentActivity = () => {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-4">
-                        <p className="text-[13px] font-black text-slate-900 leading-tight">
+                        <p className="text-sm font-bold text-slate-900 leading-tight">
                           {item.title}
                         </p>
-                        <span className="shrink-0 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        <span className="shrink-0 text-[10px] font-semibold text-slate-400 tracking-tight">
                           {formatDate(item.date)}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs font-bold text-slate-500 truncate">{item.subtitle}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500 truncate">{item.subtitle}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge className="text-[9px] font-black px-2 py-0.5 h-auto bg-amber-50 text-amber-700 border-amber-100 uppercase tracking-widest">
+                        <Badge className="text-[9px] font-bold px-2 py-0.5 h-auto bg-amber-50 text-amber-700 border-amber-100 tracking-widest">
                           {item.status || "Pending review"}
                         </Badge>
                         <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">

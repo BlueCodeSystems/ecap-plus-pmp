@@ -142,7 +142,7 @@ export const AiAssistant = () => {
       {/* Chat Window */}
       {isOpen && (
         <Card className={cn(
-          "absolute right-0 w-[calc(100vw-32px)] sm:w-[380px] border-slate-200 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 animate-in slide-in-from-bottom-5 overflow-hidden ring-1 ring-slate-200/50 pb-2",
+          "absolute right-0 w-[calc(100%-32px)] sm:w-[380px] border-slate-200 bg-white/95 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl transition-all duration-500 animate-in slide-in-from-bottom-5 overflow-hidden ring-1 ring-slate-200/50 pb-2",
           isMinimized ? "h-14" : "h-[480px] sm:h-[600px]",
           "bottom-full mb-4"
         )}>
@@ -156,10 +156,10 @@ export const AiAssistant = () => {
                 <Bot className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <CardTitle className="text-xs font-bold tracking-wide uppercase text-slate-800">ECAP+ AI</CardTitle>
+                <CardTitle className="text-xs font-bold tracking-wide text-slate-800">ECAP+ AI</CardTitle>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] text-slate-500 font-medium">System Intelligence</span>
+                  <span className="text-[10px] text-slate-500 font-medium">System intelligence</span>
                 </div>
               </div>
             </div>
@@ -200,7 +200,7 @@ export const AiAssistant = () => {
                         </div>
 
                         <div className="flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
-                          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-1 ml-1 px-1">Common Queries</p>
+                          <p className="text-[10px] font-bold tracking-widest text-slate-400 mb-1 ml-1 px-1">Common queries</p>
                           {SUGGESTIONS.map((s, idx) => (
                             <Button
                               key={idx}
@@ -268,31 +268,15 @@ export const AiAssistant = () => {
                   onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                   className="flex w-full flex-col gap-3"
                 >
-                  <div className="flex items-center justify-between px-1">
-                    {messages.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={clearChat}
-                        className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1.5 font-bold uppercase tracking-widest transition-colors w-fit"
-                      >
-                        <Trash2 className="h-3 w-3" /> Reset Session
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={resetTheme}
-                      className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1.5 font-bold uppercase tracking-widest transition-colors w-fit"
-                    >
-                      Reset Colors
-                    </button>
+                  <div className="flex items-center gap-3 px-1">
                     <button
                       type="button"
                       onClick={() => setIsOpen(false)}
-                      className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1.5 font-bold uppercase tracking-widest transition-colors w-fit ml-2"
+                      className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1.5 font-bold tracking-widest transition-colors w-fit"
                     >
-                      <X className="h-3 w-3" /> Close Chat
+                      <X className="h-3 w-3" /> Close chat
                     </button>
-                    <span className="text-[10px] text-slate-300 font-medium uppercase tracking-[0.2em] ml-auto"></span>
+                    <span className="text-[10px] text-slate-300 font-medium tracking-[0.2em] ml-auto"></span>
                   </div>
 
                   <div className="group relative flex items-center gap-2 rounded-xl bg-slate-50 p-1.5 border border-slate-200 transition-all focus-within:border-emerald-500/30 focus-within:ring-4 focus-within:ring-emerald-500/5 shadow-inner">

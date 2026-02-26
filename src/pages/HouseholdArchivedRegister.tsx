@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Archive, Search, Filter } from "lucide-react";
+import { Archive, Search, Filter, Download } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -45,31 +45,16 @@ import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter"
 const ITEMS_PER_PAGE = 50;
 
 const subPopulationFilterLabels = {
-  calhiv: 'C/ALHIV',
+  calhiv: 'CALHIV',
   hei: 'HEI',
-  cwlhiv: 'C/WLHIV',
+  cwlhiv: 'CWLHIV',
   agyw: 'AGYW',
   csv: 'C/SV',
   cfsw: 'CFSW',
-  abym: 'ABYM',
-  caahh: 'CAAHH',
-  caichh: 'CAICHH',
-  caich: 'CAICH',
-  calwd: 'CALWD',
-  caifhh: 'CAIFHH',
-  muc: 'MUC',
-  pbfw: 'PBFW'
+  abym: 'ABYM'
 };
 
-const filterKeyToDataKey: Record<string, string> = {
-  caahh: 'child_adolescent_in_aged_headed_household',
-  caichh: 'child_adolescent_in_chronically_ill_headed_household',
-  caich: 'child_adolescent_in_child_headed_household',
-  calwd: 'child_adolescent_living_with_disability',
-  caifhh: 'child_adolescent_in_female_headed_household',
-  muc: 'under_5_malnourished',
-  pbfw: 'pbfw'
-};
+const filterKeyToDataKey: Record<string, string> = {};
 
 const graduationOptions = [
   "Graduated (Household has met the graduation benchmarks in ALL domains)",
@@ -300,17 +285,6 @@ const HouseholdArchivedRegister = () => {
 
   return (
     <DashboardLayout subtitle="Household Archived Register">
-      <PageIntro
-        eyebrow="Register"
-        title="Household Archived Register"
-        description=""
-        actions={
-          <Button variant="outline" className="border-slate-200" onClick={exportToCSV}>
-            Export to CSV
-          </Button>
-        }
-      />
-
       <GlowCard>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -320,7 +294,17 @@ const HouseholdArchivedRegister = () => {
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-3">
-              <span className="text-xs font-black uppercase text-slate-400 whitespace-nowrap">District:</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-slate-200 text-slate-600 hover:text-primary transition-all"
+                onClick={exportToCSV}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+              <div className="h-8 w-px bg-slate-100 mx-1 hidden sm:block" />
+              <span className="text-xs font-black text-slate-400 whitespace-nowrap">District:</span>
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
@@ -345,7 +329,7 @@ const HouseholdArchivedRegister = () => {
 
         <CardContent className="space-y-6">
           {/* Filters Section */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
+          <div className="space-y-6">
             {/* Sub-population Filters */}
             <SubPopulationFilter
               filters={subPopulationFilters}
@@ -396,9 +380,9 @@ const HouseholdArchivedRegister = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px] hidden sm:table-cell">HH ID</TableHead>
-                  <TableHead className="min-w-[200px] hidden sm:table-cell">Household Details</TableHead>
-                  <TableHead className="w-[120px] hidden lg:table-cell">Archived On</TableHead>
+                  <TableHead className="w-[120px] hidden sm:table-cell">Hh id</TableHead>
+                  <TableHead className="min-w-[200px] hidden sm:table-cell">Household details</TableHead>
+                  <TableHead className="w-[120px] hidden lg:table-cell">Archived on</TableHead>
                   <TableHead className="w-[150px] hidden md:table-cell">Reason</TableHead>
                   <TableHead className="text-right w-[60px]">Action</TableHead>
                 </TableRow>

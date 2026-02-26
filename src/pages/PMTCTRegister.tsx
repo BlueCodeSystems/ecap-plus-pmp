@@ -7,11 +7,7 @@ import GlowCard from "@/components/aceternity/GlowCard";
 const PMTCTRegister = () => {
   return (
     <DashboardLayout subtitle="PMTCT Register">
-      <PageIntro
-        eyebrow="Clinical Management"
-        title="PMTCT"
-        description="Comprehensive management of Prevention of Mother-to-Child Transmission services."
-      />
+
 
       <div className="mt-8">
         <GlowCard className="p-8">

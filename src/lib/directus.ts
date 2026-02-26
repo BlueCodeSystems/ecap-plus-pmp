@@ -415,6 +415,24 @@ export const notifyUsersOfFlag = async (hhId: string, verifier: string, comment:
   );
 };
 
+export const notifyUsersOfFlagResolution = async (hhId: string, resolver: string, comment: string, vcaId?: string) => {
+  const users = await listUsers("active");
+  const entityId = vcaId && vcaId !== "Not Available" ? `VCA ${vcaId} (HH ${hhId})` : `Household ${hhId}`;
+  const subject = `Flag Resolved: ${entityId}`;
+  const message = `The flag for ${entityId} has been resolved by ${resolver}. \n\nResolution/Comment: ${comment}`;
+
+  return Promise.allSettled(
+    users.map((u: DirectusUser) =>
+      createNotification({
+        recipient: u.id,
+        subject,
+        message,
+        collection: "flagged_forms_ecapplus_pmp",
+      })
+    )
+  );
+};
+
 export type CalendarEvent = {
   id: string;
   title: string;

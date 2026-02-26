@@ -147,17 +147,17 @@ const Users = () => {
   return (
     <DashboardLayout subtitle="User Management">
       <PageIntro
-        eyebrow="User Management"
+        eyebrow="User management"
         title="Manage access with confidence."
         description="Create Directus accounts, assign roles, and monitor platform access."
         actions={
           <div className="flex items-center gap-3">
             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-              {activeCount} Active
+              {activeCount} active
             </Badge>
             {trashCount > 0 && (
               <Badge className="bg-amber-100 text-amber-700 border-amber-200">
-                {trashCount} in Trash
+                {trashCount} in trash
               </Badge>
             )}
             <Button
@@ -165,7 +165,7 @@ const Users = () => {
               onClick={() => navigate("/users/new")}
             >
               <UserPlus className="h-4 w-4" />
-              Add User
+              Add user
             </Button>
           </div>
         }
@@ -175,7 +175,7 @@ const Users = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
           <TabsList className="bg-slate-100/50 p-1">
             <TabsTrigger value="active" className="px-6 data-[state=active]:bg-white data-[state=active]:text-slate-900">
-              Active Users
+              Active users
             </TabsTrigger>
             <TabsTrigger value="trash" className="px-6 data-[state=active]:bg-white data-[state=active]:text-slate-900">
               Archived
@@ -199,17 +199,17 @@ const Users = () => {
           <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100/50">
             <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               {activeTab === "active" ? <Shield className="h-5 w-5 text-emerald-500" /> : <Trash2 className="h-5 w-5 text-amber-500" />}
-              {activeTab === "active" ? "Active Directory" : "Recycle Bin"}
+              {activeTab === "active" ? "Active directory" : "Recycle bin"}
             </h2>
             {usersQuery.isLoading && <LoadingDots className="text-slate-400" />}
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50/50 text-xs uppercase text-slate-500">
+              <thead className="bg-slate-50/50 text-xs text-slate-500">
                 <tr>
-                  <th className="py-3 px-6 font-semibold border-r border-slate-200">User Details</th>
-                  <th className="py-3 px-6 font-semibold border-r border-slate-200">Role & Permissions</th>
+                  <th className="py-3 px-6 font-semibold border-r border-slate-200">User details</th>
+                  <th className="py-3 px-6 font-semibold border-r border-slate-200">Role & permissions</th>
                   <th className="py-3 px-6 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -238,7 +238,7 @@ const Users = () => {
                     <td className="py-4 px-6 border-r border-slate-200">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-900 group-hover:text-amber-600 transition-colors">
-                          {[user.first_name, user.last_name].filter(Boolean).join(" ") || "Unnamed User"}
+                          {[user.first_name, user.last_name].filter(Boolean).join(" ") || "Unnamed user"}
                         </span>
                         <span className="flex items-center gap-1.5 text-xs text-slate-500">
                           <Mail className="h-3 w-3" />
@@ -251,7 +251,7 @@ const Users = () => {
                         <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 capitalize">
                           {typeof user.role === "string"
                             ? rolesById.get(user.role as string) ?? user.role
-                            : user.role?.name ?? "No Role"}
+                            : user.role?.name ?? "No role"}
                         </Badge>
                       </div>
                     </td>
@@ -318,9 +318,9 @@ const Users = () => {
           if (userToTrash) softDeleteMutation.mutate(userToTrash);
           setUserToTrash(null);
         }}
-        title="Move User to Trash?"
+        title="Move user to trash?"
         description="This user will be suspended and unable to log in. You can restore them later."
-        confirmText="Move to Trash"
+        confirmText="Move to trash"
         variant="destructive"
       />
 
@@ -331,9 +331,9 @@ const Users = () => {
           if (userToWipe) deleteMutation.mutate(userToWipe);
           setUserToWipe(null);
         }}
-        title="Permanently Delete User?"
+        title="Permanently delete user?"
         description="This action is irreversible. All data associated with this user account will be permanently removed."
-        confirmText="Wipe Permanently"
+        confirmText="Wipe permanently"
         variant="destructive"
       />
     </DashboardLayout>

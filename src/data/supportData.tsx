@@ -75,7 +75,7 @@ export const quickHelpLinks = [
         <p><strong>Admin:</strong> Full access to all modules, user management, and system settings.</p>
         <p><strong>Data Entrant:</strong> Can view and add records to Households and VCAs. Cannot delete records.</p>
         <p><strong>read-only:</strong> Can view reports and charts but cannot edit any data.</p>
-        <p><strong>Field Officer:</strong> Access limited to assigned districts and beneficiaries.</p>
+        <p><strong>Case Worker:</strong> Access limited to assigned districts and beneficiaries.</p>
       </div>
     )
   },

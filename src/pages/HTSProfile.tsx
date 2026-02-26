@@ -51,7 +51,7 @@ const InfoItem = ({
 
   return (
     <div className="space-y-1 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className="text-[10px] font-bold tracking-wider text-slate-400">{label}</p>
       <div className="flex items-center gap-2">
         {icon && <span className="text-slate-400">{icon}</span>}
         {(isPositive || isNegative) && value !== "N/A" ? (
@@ -92,10 +92,10 @@ const HTSProfile = () => {
 
   if (!record) {
     return (
-      <DashboardLayout subtitle="HTS Profile">
+      <DashboardLayout subtitle="Hts profile">
         <EmptyState
           icon={<TestTube2 className="h-7 w-7" />}
-          title="Record Not Found"
+          title="Record not found"
           description="The HTS record you're looking for could not be loaded."
           action={{ label: "Back to HTS Register", onClick: () => navigate("/hts-register") }}
           className="h-[50vh]"
@@ -115,7 +115,7 @@ const HTSProfile = () => {
     hivResult.toLowerCase().includes("reactive");
 
   return (
-    <DashboardLayout subtitle={`HTS Profile — ${ecapId}`}>
+    <DashboardLayout subtitle={`Hts profile — ${ecapId}`}>
       <div className="space-y-6 pb-20">
 
         {/* ── Banner ── */}
@@ -139,7 +139,7 @@ const HTSProfile = () => {
                     {isPositive ? "HIV Positive" : hivResult !== "N/A" ? "HIV Negative" : "Result Unknown"}
                   </Badge>
                   <Badge className="text-xs border-0 bg-white/20 text-white tracking-wider">
-                    HTS Record
+                    Hts record
                   </Badge>
                   {artNumber !== "N/A" && (
                     <Badge className="text-xs border-0 bg-white/20 text-white font-bold">
@@ -149,12 +149,12 @@ const HTSProfile = () => {
                 </div>
 
                 {/* Name + ID */}
-                <h1 className="text-3xl font-bold text-white lg:text-4xl">HTS Record {ecapId}</h1>
+                <h1 className="text-3xl font-bold text-white lg:text-4xl">Caregiver Name – Confidential</h1>
                 <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm">
                   {ecapId !== "N/A" && (
                     <span className="flex items-center gap-1.5">
                       <FileText className="h-3.5 w-3.5" />
-                      ECAP ID: {ecapId}
+                      ID: {ecapId}
                     </span>
                   )}
                   <span className="flex items-center gap-1.5">
@@ -182,14 +182,8 @@ const HTSProfile = () => {
           {/* White metadata strip */}
           <div className="bg-white border border-slate-200 border-t-0 rounded-b-2xl px-6 py-4 lg:px-8">
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <TestTube2 className="h-4 w-4 text-indigo-500" />
-                Entry Point: {p(record, ["entry_point"])}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Activity className="h-4 w-4 text-indigo-500" />
-                Modality: {p(record, ["testing_modality"])}
-              </span>
+
+
               <span className="flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-indigo-500" />
                 Date Created: {p(record, ["date_created"])}
@@ -207,17 +201,17 @@ const HTSProfile = () => {
           {[
             {
               icon: <TestTube2 className="h-4 w-4 text-slate-600" />,
-              label: "Date Tested (Contact)",
+              label: "Date tested (contact)",
               value: p(record, ["date_tested_contact"]),
             },
             {
               icon: <Calendar className="h-4 w-4 text-slate-600" />,
-              label: "Date Tested (Link)",
+              label: "Date tested (link)",
               value: p(record, ["date_tested_link"]),
             },
             {
               icon: <Link2 className="h-4 w-4 text-slate-600" />,
-              label: "Link Event ID",
+              label: "Link event id",
               value: p(record, ["link_event_id"]),
             },
           ].map((item, i) => (
@@ -241,31 +235,31 @@ const HTSProfile = () => {
             <TabsList className="h-auto flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/50 p-2">
               <TabsTrigger
                 value="clinical"
-                className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
-                Clinical Info
+                Clinical info
               </TabsTrigger>
               <TabsTrigger
                 value="individual"
-                className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 Individual
               </TabsTrigger>
               <TabsTrigger
                 value="contact"
-                className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
-                Contact & Location
+                Contact & location
               </TabsTrigger>
               <TabsTrigger
                 value="system"
-                className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
-                System & Case
+                System & case
               </TabsTrigger>
             </TabsList>
             <div className="hidden text-xs font-bold text-slate-400 md:block">
-              ECAP ID: <span className="text-slate-900">{ecapId}</span>
+              ID: <span className="text-slate-900">{ecapId}</span>
             </div>
           </div>
 
@@ -275,25 +269,25 @@ const HTSProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <HeartPulse className="h-5 w-5 text-slate-600" /> HIV TESTING RESULTS
+                    <HeartPulse className="h-5 w-5 text-slate-600" /> Hiv testing results
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoItem label="HIV Result" value={p(record, ["hiv_result"])} icon={<Activity className="h-3.5 w-3.5" />} />
-                  <InfoItem label="HIV Status" value={p(record, ["hiv_status"])} />
-                  <InfoItem label="Recent HIV Test" value={p(record, ["hiv_recent_test"])} />
-                  <InfoItem label="Date Tested (Contact)" value={p(record, ["date_tested_contact"])} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Date Tested (Link)" value={p(record, ["date_tested_link"])} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="ART Date" value={p(record, ["art_date"])} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="ART Date Initiated" value={p(record, ["art_date_initiated"])} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="ART Number" value={p(record, ["case_art_number"])} />
+                  <InfoItem label="Hiv result" value={p(record, ["hiv_result"])} icon={<Activity className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Hiv status" value={p(record, ["hiv_status"])} />
+                  <InfoItem label="Recent hiv test" value={p(record, ["hiv_recent_test"])} />
+                  <InfoItem label="Date tested (contact)" value={p(record, ["date_tested_contact"])} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Date tested (link)" value={p(record, ["date_tested_link"])} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Art date" value={p(record, ["art_date"])} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Art date initiated" value={p(record, ["art_date_initiated"])} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Art number" value={p(record, ["case_art_number"])} />
                 </CardContent>
               </Card>
 
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <TestTube2 className="h-5 w-5 text-slate-600" /> TESTING DETAILS
+                    <TestTube2 className="h-5 w-5 text-slate-600" /> Testing details
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -313,19 +307,19 @@ const HTSProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <User className="h-5 w-5 text-slate-600" /> INDIVIDUAL BEING TESTED
+                    <User className="h-5 w-5 text-slate-600" /> Individual being tested
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoItem label="Individual Tested" value="Anonymous" icon={<User className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Individual Tested" value="Caregiver Name – Confidential" icon={<User className="h-3.5 w-3.5" />} />
                   <InfoItem label="Age (Index/SNS)" value={p(record, ["age_index_sns"])} />
                   <InfoItem label="Individual Age" value={p(record, ["individual_age"])} />
-                  <InfoItem label="Gender (Case)" value={p(record, ["gender_case"])} />
-                  <InfoItem label="Gender (Linked)" value={p(record, ["gender_link"])} />
+                  <InfoItem label="Gender (case)" value={p(record, ["gender_case"])} />
+                  <InfoItem label="Gender (linked)" value={p(record, ["gender_link"])} />
                   <InfoItem label="Relationship" value={p(record, ["relationship"])} />
-                  <InfoItem label="Other Relationship" value={p(record, ["other_relationship"])} />
-                  <InfoItem label="Sub Population" value={p(record, ["sub_population"])} />
-                  <InfoItem label="Case Sub-Population" value={p(record, ["case_suppopulation"])} />
+                  <InfoItem label="Other relationship" value={p(record, ["other_relationship"])} />
+                  <InfoItem label="Sub population" value={p(record, ["sub_population"])} />
+                  <InfoItem label="Case sub-population" value={p(record, ["case_suppopulation"])} />
                 </CardContent>
               </Card>
             </div>
@@ -337,7 +331,7 @@ const HTSProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <Phone className="h-5 w-5 text-slate-600" /> CONTACT DETAILS
+                    <Phone className="h-5 w-5 text-slate-600" /> Contact details
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -351,7 +345,7 @@ const HTSProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <MapPin className="h-5 w-5 text-slate-600" /> LOCATION
+                    <MapPin className="h-5 w-5 text-slate-600" /> Location
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -369,15 +363,15 @@ const HTSProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <Briefcase className="h-5 w-5 text-slate-600" /> CASE & SYSTEM INFORMATION
+                    <Briefcase className="h-5 w-5 text-slate-600" /> Case & system information
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoItem label="Case UID" value={ecapId} icon={<User className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Client Number" value={p(record, ["client_number"])} />
-                  <InfoItem label="ECAP ID" value={p(record, ["ecap_id"])} />
+                  <InfoItem label="Case uid" value={ecapId} icon={<User className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Client number" value={p(record, ["client_number"])} />
+                  <InfoItem label="id" value={p(record, ["ecap_id"])} />
                   <InfoItem label="Caseworker" value={p(record, ["caseworker_name"])} icon={<User className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Date Created" value={p(record, ["date_created"])} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Date created" value={p(record, ["date_created"])} icon={<Calendar className="h-3.5 w-3.5" />} />
                 </CardContent>
               </Card>
 
@@ -385,12 +379,12 @@ const HTSProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <ShieldCheck className="h-5 w-5 text-slate-600" /> NOTES & COMMENTS
+                      <ShieldCheck className="h-5 w-5 text-slate-600" /> Notes & comments
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Comment</p>
+                      <p className="text-[10px] font-bold tracking-wider text-slate-400 mb-2">Comment</p>
                       <p className="text-sm text-slate-800 leading-relaxed">{p(record, ["comment"])}</p>
                     </div>
                   </CardContent>

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useMemo } from "react";
+import { toSentenceCase } from "@/lib/utils";
 
 const p = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
@@ -36,7 +37,7 @@ const InfoItem = ({
   icon?: React.ReactNode;
 }) => (
   <div className="space-y-1 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
-    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+    <p className="text-[10px] font-bold tracking-wider text-slate-400">{label}</p>
     <div className="flex items-center gap-2">
       {icon && <span className="text-slate-400">{icon}</span>}
       <p className="text-sm font-semibold text-slate-800">{value}</p>
@@ -144,11 +145,11 @@ const HouseholdServiceProfile = () => {
         {/* ── Tabs ── */}
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="mb-6 h-auto flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/50 p-2">
-            <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="details" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Full Record
+            <TabsTrigger value="details" className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Full record
             </TabsTrigger>
           </TabsList>
 
@@ -156,7 +157,7 @@ const HouseholdServiceProfile = () => {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Card className="border-slate-200">
                 <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Service Branding</CardTitle>
+                  <CardTitle className="text-sm font-bold tracking-wider text-slate-500">Service branding</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <InfoItem label="Service Item" value={serviceName} icon={<ClipboardList className="h-3.5 w-3.5" />} />
@@ -167,7 +168,7 @@ const HouseholdServiceProfile = () => {
 
               <Card className="border-slate-200">
                 <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Entity Details</CardTitle>
+                  <CardTitle className="text-sm font-bold tracking-wider text-slate-500">Entity details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <InfoItem label="Household ID" value={householdId} icon={<Home className="h-3.5 w-3.5" />} />
@@ -178,7 +179,7 @@ const HouseholdServiceProfile = () => {
 
               <Card className="border-slate-200">
                 <CardHeader>
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">Location</CardTitle>
+                  <CardTitle className="text-sm font-bold tracking-wider text-slate-500">Location</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <InfoItem label="District" value={district} icon={<MapPin className="h-3.5 w-3.5" />} />
@@ -193,13 +194,13 @@ const HouseholdServiceProfile = () => {
             <Card className="border-slate-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                  <Activity className="h-5 w-5 text-slate-600" /> SYSTEM AUDIT FIELDS
+                  <Activity className="h-5 w-5 text-slate-600" /> System audit fields
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {Object.entries(record).map(([key, value]) => {
                   if (typeof value === "string" && value !== "N/A" && value !== "" && value !== "null") {
-                    return <InfoItem key={key} label={key.replace(/_/g, " ").toUpperCase()} value={String(value)} />;
+                    return <InfoItem key={key} label={toSentenceCase(key.replace(/_/g, " "))} value={String(value)} />;
                   }
                   return null;
                 })}

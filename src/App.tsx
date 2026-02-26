@@ -17,7 +17,7 @@ import HouseholdServices from "./pages/HouseholdServices";
 import HouseholdServicesPage from "./pages/HouseholdServicesPage";
 import VcaServices from "./pages/VcaServicesDashboard";
 import CaregiverServices from "./pages/CaregiverServices";
-import CaseworkerServices from "./pages/CaseworkerServices";
+import Caseworkers from "./pages/CaseworkerServices";
 import HTSRegister from "./pages/HTSRegister";
 import PMTCTRegister from "./pages/PMTCTRegister";
 import Users from "./pages/Users";
@@ -28,9 +28,11 @@ import HTSProfile from "./pages/HTSProfile";
 import VcaServiceProfile from "./pages/VcaServiceProfile";
 import HouseholdServiceProfile from "./pages/HouseholdServiceProfile";
 import CaregiverServiceProfile from "./pages/CaregiverServiceProfile";
-import CaregiverRiskRegister from "@/pages/CaregiverRiskRegister";
-import VcaRiskRegister from "@/pages/VcaRiskRegister";
-import HouseholdRiskRegister from "@/pages/HouseholdRiskRegister";
+import CaregiverRiskRegister from "./pages/CaregiverRiskRegister";
+import VcaRiskRegister from "./pages/VcaRiskRegister";
+import HouseholdRiskRegister from "./pages/HouseholdRiskRegister";
+import HTSRiskRegister from "./pages/HTSRiskRegister";
+
 
 // --- SECONDARY / HEAVY PAGES (Lazy Loaded to keep initial bundle size optimized) ---
 const Districts = lazy(() => import("./pages/Districts"));
@@ -61,7 +63,7 @@ const PageLoader = () => (
   <div className="flex h-screen w-full items-center justify-center bg-slate-50/30 backdrop-blur-sm">
     <div className="flex flex-col items-center gap-3">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-primary" />
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Loading</p>
+      <p className="text-[10px] font-bold text-slate-400 tracking-widest pl-1">Loading</p>
     </div>
   </div>
 );
@@ -116,6 +118,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <HTSRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/registers/hts-risk"
+                  element={
+                    <ProtectedRoute>
+                      <HTSRiskRegister />
                     </ProtectedRoute>
                   }
                 />
@@ -177,10 +187,10 @@ const App = () => (
                   }
                 />
                 <Route
-                  path="/caseworker-services"
+                  path="/caseworkers"
                   element={
                     <ProtectedRoute>
-                      <CaseworkerServices />
+                      <Caseworkers />
                     </ProtectedRoute>
                   }
                 />

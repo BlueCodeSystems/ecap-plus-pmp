@@ -21,8 +21,8 @@ const Index = () => {
               ]}
             />
             <div className="absolute bottom-10 left-10 right-10 text-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-white/70">
-                ECAP+ Platform
+              <p className="text-xs font-semibold tracking-[0.4em] text-white/70">
+                ECAP+ platform
               </p>
               <h2 className="mt-3 text-2xl font-semibold">
                 Track progress across communities with confidence.

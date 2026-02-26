@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useMemo } from "react";
+import { toSentenceCase } from "@/lib/utils";
 
 const p = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
@@ -51,7 +52,7 @@ const InfoItem = ({
   icon?: React.ReactNode;
 }) => (
   <div className="space-y-1 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
-    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+    <p className="text-[10px] font-bold tracking-wider text-slate-400">{label}</p>
     <div className="flex items-center gap-2">
       {icon && <span className="text-slate-400">{icon}</span>}
       <p className="text-sm font-semibold text-slate-800">{value}</p>
@@ -158,14 +159,14 @@ const CaregiverServiceProfile = () => {
         {/* ── Tabs ── */}
         <Tabs defaultValue="domains" className="w-full">
           <TabsList className="mb-6 h-auto flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/50 p-2">
-            <TabsTrigger value="domains" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Service Domains
+            <TabsTrigger value="domains" className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Service domains
             </TabsTrigger>
-            <TabsTrigger value="clinical" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Clinical Data
+            <TabsTrigger value="clinical" className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Clinical data
             </TabsTrigger>
-            <TabsTrigger value="raw" className="rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              System Audit
+            <TabsTrigger value="raw" className="rounded-full px-5 py-2 text-xs font-black tracking-wider data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              System audit
             </TabsTrigger>
           </TabsList>
 
@@ -174,7 +175,7 @@ const CaregiverServiceProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <Stethoscope className="h-5 w-5 text-emerald-600" /> HEALTH & HIV
+                    <Stethoscope className="h-5 w-5 text-emerald-600" /> Health & hiv
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -188,7 +189,7 @@ const CaregiverServiceProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <School className="h-5 w-5 text-purple-600" /> SCHOOLED
+                    <School className="h-5 w-5 text-purple-600" /> Schooled
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -200,7 +201,7 @@ const CaregiverServiceProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <Lock className="h-5 w-5 text-amber-600" /> SAFE
+                    <Lock className="h-5 w-5 text-amber-600" /> Safe
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -212,7 +213,7 @@ const CaregiverServiceProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <Wallet className="h-5 w-5 text-blue-600" /> STABLE
+                    <Wallet className="h-5 w-5 text-blue-600" /> Stable
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -227,7 +228,7 @@ const CaregiverServiceProfile = () => {
             <Card className="border-slate-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                  <HeartPulse className="h-5 w-5 text-rose-600" /> CLINICAL PROFILE
+                  <HeartPulse className="h-5 w-5 text-rose-600" /> Clinical profile
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -244,13 +245,13 @@ const CaregiverServiceProfile = () => {
             <Card className="border-slate-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                  <ShieldCheck className="h-5 w-5 text-slate-600" /> SYSTEM AUDIT LOG
+                  <ShieldCheck className="h-5 w-5 text-slate-600" /> System audit log
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {Object.entries(record).map(([key, value]) => {
                   if (typeof value === "string" && value !== "N/A" && value !== "" && value !== "null") {
-                    return <InfoItem key={key} label={key.replace(/_/g, " ").toUpperCase()} value={String(value)} />;
+                    return <InfoItem key={key} label={toSentenceCase(key.replace(/_/g, " "))} value={String(value)} />;
                   }
                   return null;
                 })}
