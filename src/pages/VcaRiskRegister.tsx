@@ -19,7 +19,6 @@ import {
   getVcaServicesByDistrict,
 } from "@/lib/api";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
 import GlowCard from "@/components/aceternity/GlowCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +42,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TableSkeleton from "@/components/ui/TableSkeleton";
 import { format, subDays, parseISO, isAfter } from "date-fns";
 import { cn, toTitleCase, toSentenceCase } from "@/lib/utils";
+import { isCategoryProvided } from "@/lib/data-validation";
 
 const RISK_TYPES = {
   health_domain: { label: "Missing Health Services", icon: HeartPulse, color: "text-rose-600", bg: "bg-rose-50" },
@@ -50,33 +50,6 @@ const RISK_TYPES = {
   safe_domain: { label: "Missing Safe Services", icon: Shield, color: "text-orange-600", bg: "bg-orange-50" },
   stable_domain: { label: "Missing Stable Services", icon: Landmark, color: "text-amber-600", bg: "bg-amber-50" },
   graduation_path: { label: "Graduation Ready (All 4)", icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-50" },
-};
-
-const subPopulationFilterLabels = {
-  calhiv: 'C/ALHIV',
-  hei: 'HEI',
-  cwlhiv: 'C/WLHIV',
-  agyw: 'AGYW',
-  csv: 'C/SV',
-  cfsw: 'CFSW',
-  abym: 'ABYM',
-  caahh: 'CAAHH',
-  caichh: 'CAICHH',
-  caich: 'CAICH',
-  calwd: 'CALWD',
-  caifhh: 'CAIFHH',
-  muc: 'MUC',
-  pbfw: 'PBFW'
-};
-
-const filterKeyToDataKey: Record<string, string> = {
-  caahh: 'child_adolescent_in_aged_headed_household',
-  caichh: 'child_adolescent_in_chronically_ill_headed_household',
-  caich: 'child_adolescent_in_child_headed_household',
-  calwd: 'child_adolescent_living_with_disability',
-  caifhh: 'child_adolescent_in_female_headed_household',
-  muc: 'under_5_malnourished',
-  pbfw: 'pbfw'
 };
 
 const VcaRiskRegister = () => {
@@ -92,18 +65,8 @@ const VcaRiskRegister = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
-  const [subPopulationFilters, setSubPopulationFilters] = useState<Record<string, string>>(
-    Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-  );
-
-  const handleFilterChange = (key: string, value: string) => {
-    setSubPopulationFilters((prev) => ({ ...prev, [key]: value }));
-  };
 
   const handleClearFilters = () => {
-    setSubPopulationFilters(
-      Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-    );
     setSearchQuery("");
   };
 
@@ -165,14 +128,7 @@ const VcaRiskRegister = () => {
 
     const getVcaId = (v: any) => String(v.uid || v.unique_id || v.vca_id || v.child_id || v.id || "").trim();
 
-    const isCategoryProvided = (record: any, key: string): boolean => {
-      const val = record[key];
-      if (val === null || val === undefined) return false;
-      const sVal = String(val).trim();
-      if (sVal === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(sVal.toLowerCase())) return false;
-      if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal)) return false;
-      return true;
-    };
+
 
     // Build per-VCA service map
     const serviceMap = new Map<string, any[]>();
@@ -229,21 +185,8 @@ const VcaRiskRegister = () => {
       );
     }
 
-    // Apply Sub-population Filters
-    baseList = baseList.filter((vca: any) => {
-      return Object.entries(subPopulationFilters).every(([key, value]) => {
-        if (value === "all") return true;
-        let dataKey = key;
-        if (key in filterKeyToDataKey) dataKey = filterKeyToDataKey[key];
-        const recordValue = vca[dataKey];
-        return value === "yes"
-          ? recordValue === "1" || recordValue === "true" || recordValue === 1 || recordValue === true
-          : recordValue === "0" || recordValue === "false" || recordValue === 0 || recordValue === false;
-      });
-    });
-
     return baseList;
-  }, [type, vcasQuery.data, servicesQuery.data, searchQuery, subPopulationFilters]);
+  }, [type, vcasQuery.data, servicesQuery.data, searchQuery]);
 
   const handleExport = () => {
     if (!filteredData.length) return;
@@ -295,7 +238,7 @@ const VcaRiskRegister = () => {
                 {toSentenceCase(RISK_TYPES[type].label)} registry
               </h1>
               <p className="text-xs font-bold text-slate-400 tracking-widest mt-1">
-                {filteredData.length} children found in {selectedDistrict === "All" ? "Nationwide" : selectedDistrict}
+                {filteredData.length} children found{selectedDistrict !== "All" ? ` in ${selectedDistrict}` : ""}
               </p>
             </div>
           </div>
@@ -356,14 +299,6 @@ const VcaRiskRegister = () => {
             </AlertDescription>
           </Alert>
         )}
-
-        {/* Sub-population Filters */}
-        <SubPopulationFilter
-          filters={subPopulationFilters}
-          labels={subPopulationFilterLabels}
-          onChange={handleFilterChange}
-          onClear={handleClearFilters}
-        />
 
         {/* Search */}
         <div className="relative flex-1">

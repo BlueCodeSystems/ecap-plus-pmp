@@ -209,7 +209,7 @@ const HTSRiskRegister = () => {
                 {currentRisk.label} Registry
               </h1>
               <p className="text-xs font-bold tracking-wider text-muted-foreground mt-1">
-                {filteredData.length} records found in {selectedDistrict === "All" ? "Nationwide" : selectedDistrict}
+                {filteredData.length} records found{selectedDistrict !== "All" ? ` in ${selectedDistrict}` : ""}
               </p>
             </div>
           </div>
@@ -318,7 +318,7 @@ const HTSRiskRegister = () => {
                           className="text-primary font-bold text-xs"
                           onClick={() => {
                             const id = item.ecap_id || item.client_number;
-                            if (id) navigate(`/profile/hts-details?id=${id}`);
+                            if (id) navigate(`/profile/hts-details?id=${id}`, { state: { record: item } });
                           }}
                         >
                           Details

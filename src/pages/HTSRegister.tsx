@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { RefreshCcw, ChevronRight, AlertCircle, Users, TrendingUp, Info, Activity, ShieldAlert, MapPin, Download } from "lucide-react";
+import { downloadCsv } from "@/lib/exportUtils";
+import { format } from "date-fns";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import GlowCard from "@/components/aceternity/GlowCard";
 import { Button } from "@/components/ui/button";
@@ -26,7 +28,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { format, parseISO, isAfter, subDays } from "date-fns";
+import { parseISO, isAfter, subDays } from "date-fns";
 
 
 
@@ -196,6 +198,26 @@ const HTSRegister = () => {
       .slice(0, 10);
   }, [allRecords]);
 
+  const handleExportFacility = () => {
+    if (!facilityData.length) return;
+    const dateStr = format(new Date(), "yyyy-MM-dd");
+    downloadCsv(
+      ["Facility", "Positives", "Linked to ART"],
+      facilityData.map(f => [f.name, String(f.positive), String(f.linked)]),
+      `hts_facility_linkage_${selectedDistrict}_${dateStr}.csv`
+    );
+  };
+
+  const handleExportCaseworker = () => {
+    if (!caseworkerData.length) return;
+    const dateStr = format(new Date(), "yyyy-MM-dd");
+    downloadCsv(
+      ["Caseworker", "Positives Found"],
+      caseworkerData.map(w => [w.name, String(w.positive)]),
+      `hts_caseworker_yield_${selectedDistrict}_${dateStr}.csv`
+    );
+  };
+
   return (
     <DashboardLayout subtitle="HTS Register">
       {/* ── Banner ── */}
@@ -329,6 +351,16 @@ const HTSRegister = () => {
               <CardTitle className="text-base font-bold text-slate-900">Facility Linkage Gap</CardTitle>
               <p className="text-[10px] font-bold text-slate-400 tracking-wider">Comparing positives vs ART initiation</p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportFacility}
+              disabled={facilityData.length === 0}
+              className="h-8 px-3 text-xs font-bold border-slate-200 ml-auto"
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Export CSV
+            </Button>
           </CardHeader>
           <CardContent className="h-[250px] p-0 pb-4">
             <ResponsiveContainer width="100%" height="100%">
@@ -361,6 +393,16 @@ const HTSRegister = () => {
               <CardTitle className="text-base font-bold text-slate-900">Positive Yield by Caseworker</CardTitle>
               <p className="text-[10px] font-bold text-slate-400 tracking-wider">Top 10 performing staff by raw count</p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCaseworker}
+              disabled={caseworkerData.length === 0}
+              className="h-8 px-3 text-xs font-bold border-slate-200 ml-auto"
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Export CSV
+            </Button>
           </CardHeader>
           <CardContent className="h-[250px] p-0 pb-4">
             <ResponsiveContainer width="100%" height="100%">

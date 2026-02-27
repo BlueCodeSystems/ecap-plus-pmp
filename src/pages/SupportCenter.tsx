@@ -154,6 +154,10 @@ const SupportCenter = () => {
     // First, add all messages to conversation map
     allMessages.forEach((msg: any) => {
       const isOutbox = msg.collection === "support_chat_outbox";
+      const isInbox = msg.collection === "support_chat";
+
+      if (!isOutbox && !isInbox) return; // Only process chat-related notifications
+
       const partnerId = isOutbox ? msg.item : msg.sender;
 
 
@@ -217,6 +221,10 @@ const SupportCenter = () => {
     const filtered = allMessages
       .filter((msg: any) => {
         const isOutbox = msg.collection === "support_chat_outbox";
+        const isInbox = msg.collection === "support_chat";
+
+        if (!isOutbox && !isInbox) return false;
+
         if (isOutbox) {
           return msg.item === selectedUserId;
         } else {
@@ -659,18 +667,21 @@ const SupportCenter = () => {
                   onCancel={() => setShowFileAttachment(false)}
                 />
               ) : (
-                <div className="flex items-end gap-2">
-                  <VoiceRecorder
-                    onRecordingComplete={handleVoiceRecording}
-                    onCancel={() => setShowVoiceRecorder(false)}
-                  />
-                  <FileAttachment
-                    onFileSelect={handleFileSelect}
-                    onCancel={() => setShowFileAttachment(false)}
-                  />
-                  <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1">
+                    <VoiceRecorder
+                      onRecordingComplete={handleVoiceRecording}
+                      onCancel={() => setShowVoiceRecorder(false)}
+                    />
+                    <FileAttachment
+                      onFileSelect={handleFileSelect}
+                      onCancel={() => setShowFileAttachment(false)}
+                    />
+                    <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                  </div>
+
                   <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-                    <SelectTrigger className={`w-[110px] h-10 text-[10px] font-black tracking-tighter border-none shadow-none rounded-xl transition-all ${selectedPriority === "Critical" ? "bg-red-500 text-white" : selectedPriority === "Urgent" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-500"
+                    <SelectTrigger className={`w-[90px] h-9 text-[10px] font-black tracking-tighter border-none shadow-none rounded-xl transition-all ${selectedPriority === "Critical" ? "bg-red-500 text-white" : selectedPriority === "Urgent" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-500"
                       }`}>
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
@@ -680,19 +691,20 @@ const SupportCenter = () => {
                       <SelectItem value="Critical" className="text-[10px] font-bold tracking-widest text-red-600">Critical</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="flex-1 bg-white border border-slate-200 rounded-2xl flex items-center shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all px-3">
+
+                  <div className="flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl flex items-center shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all px-3 py-1">
                     <Input
                       placeholder="Type a message..."
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                      className="border-none shadow-none focus-visible:ring-0 px-0 h-11 text-sm bg-transparent"
+                      className="flex-1 border-none shadow-none focus-visible:ring-0 px-0 h-9 text-sm bg-transparent"
                     />
                     <Button
                       size="icon"
                       onClick={handleSendMessage}
                       disabled={!message.trim() || sendMutation.isPending}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] w-8 h-8 shrink-0"
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] w-8 h-8 shrink-0 ml-2"
                     >
                       {sendMutation.isPending ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />

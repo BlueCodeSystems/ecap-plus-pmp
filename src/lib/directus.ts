@@ -124,7 +124,8 @@ export const getChatMessages = async (userId: string) => {
     "limit": "500",
     "fields": "id,status,timestamp,sender,recipient,subject,message,collection,item",
     "filter[recipient][_eq]": userId,
-    "filter[sender][_nnull]": "true", // Only messages from someone
+    "filter[sender][_nnull]": "true",
+    "filter[collection][_in]": "support_chat,support_chat_outbox",
   });
 
   const data = await directusRequest(`/notifications?${params.toString()}`);

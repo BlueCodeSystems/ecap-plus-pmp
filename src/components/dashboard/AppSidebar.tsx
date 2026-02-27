@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useRef, useCallback } from "react";
 import {
   Archive,
   BarChart3,
@@ -101,6 +101,29 @@ export function AppSidebar() {
   const { logout, user } = useAuth();
   const currentPath = location.pathname;
 
+  // ── Preserve sidebar scroll position across navigations ──
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const SCROLL_KEY = "ecap_sidebar_scroll";
+
+  const saveScroll = useCallback(() => {
+    if (scrollRef.current) {
+      sessionStorage.setItem(SCROLL_KEY, String(scrollRef.current.scrollTop));
+    }
+  }, []);
+
+  // Restore scroll position when the location changes
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved) {
+      // Use rAF so the sidebar has finished rendering before we set scrollTop
+      requestAnimationFrame(() => {
+        el.scrollTop = Number(saved);
+      });
+    }
+  }, [location.pathname]);
+
   const filteredSections = useMemo(() => {
     if (!user) return [];
 
@@ -150,7 +173,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* Navigation */}
-      <SidebarContent className="px-3">
+      <SidebarContent className="px-3" ref={scrollRef} onScroll={saveScroll}>
         {filteredSections.map((section) => (
           <SidebarGroup key={section.label} className="pb-2 pt-3">
             <SidebarGroupLabel className="px-3 pb-2 text-[10px] font-bold tracking-wider text-muted-foreground/70">
