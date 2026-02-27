@@ -42,6 +42,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TableSkeleton from "@/components/ui/TableSkeleton";
 import { format, subDays, parseISO, isAfter } from "date-fns";
 import { cn, toTitleCase, toSentenceCase } from "@/lib/utils";
+import { isCategoryProvided } from "@/lib/data-validation";
 
 const RISK_TYPES = {
   health_domain: { label: "Missing Health Services", icon: HeartPulse, color: "text-rose-600", bg: "bg-rose-50", domainLabel: "Health" },
@@ -125,12 +126,6 @@ const CaregiverRiskRegister = () => {
 
     const getHhId = (h: any) => String(h.household_id || h.hh_id || "").trim();
 
-    const isCategoryProvided = (record: any, key: string): boolean => {
-      const val = record[key];
-      if (val === null || val === undefined || val === "") return false;
-      const sVal = String(val).toLowerCase().trim();
-      return !["not applicable", "n/a", "na", "none", "no", "[]"].includes(sVal);
-    };
 
     // Build per-HH service map
     const serviceMap = new Map<string, any[]>();
@@ -240,7 +235,7 @@ const CaregiverRiskRegister = () => {
                 {toSentenceCase(RISK_TYPES[type].label)} registry
               </h1>
               <p className="text-xs font-bold text-slate-400 tracking-widest mt-1">
-                {filteredData.length} records found in {selectedDistrict === "All" ? "Nationwide" : selectedDistrict}
+                {filteredData.length} records found{selectedDistrict !== "All" ? ` in ${selectedDistrict}` : ""}
               </p>
             </div>
           </div>

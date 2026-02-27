@@ -1,6 +1,6 @@
 import { CheckCircle2, Flag, ClipboardList, TrendingUp, Users, Activity, Target, Zap, Search, ChevronRight } from "lucide-react";
+import { parseISO, getMonth, getYear } from "date-fns";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
 import { Button } from "@/components/ui/button";
@@ -53,24 +53,14 @@ import {
   Legend
 } from "recharts";
 
-const subPopulationFilterLabels: Record<string, string> = {
-  calhiv: 'C/ALHIV',
-  hei: 'HEI',
-  cwlhiv: 'C/WLHIV',
-  agyw: 'AGYW',
-  csv: 'C/SV',
-  cfsw: 'CFSW',
-  abym: 'ABYM',
-  caahh: 'CAAHH',
-  caichh: 'CAICHH',
-  caich: 'CAICH',
-  calwd: 'CALWD',
-  caifhh: 'CAIFHH',
-  muc: 'MUC',
-  pbfw: 'PBFW'
-};
-
 const NOT_APPLICABLE = ["not applicable", "n/a", "na", "none", "no", "false", "0"];
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const YEARS = ["2024", "2025", "2026"];
 
 const parseHealthServices = (services: any): string[] => {
   if (!services) return [];
@@ -121,19 +111,9 @@ const VcaServices = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
-  const [subPopulationFilters, setSubPopulationFilters] = useState<Record<string, string>>(
-    Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-  );
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
 
-  const handleFilterChange = (key: string, value: string) => {
-    setSubPopulationFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleClearFilters = () => {
-    setSubPopulationFilters(
-      Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-    );
-  };
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
@@ -200,34 +180,19 @@ const VcaServices = () => {
       // Filter by district (handling variants)
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return false;
 
+      // Month/Year filter
+      const rawDate = service.service_date || service.visit_date || service.date || service.created_at;
+      const sDate = rawDate ? parseISO(String(rawDate)) : null;
+      const isValidDate = sDate && !isNaN(sDate.getTime());
+      if (isValidDate) {
+        const sMonthName = MONTHS[getMonth(sDate!)];
+        const sYearStr = getYear(sDate!).toString();
+        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
+        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
+      } else if (selectedYear !== "all" || selectedMonth !== "all") {
+        return false;
+      }
       const vcaData = vcaMap.get(vcaId);
-
-      // Sub-population Filters
-      const matchesSubPop = Object.entries(subPopulationFilters).every(([key, value]) => {
-        if (value === "all") return true;
-        if (!vcaData) return false; // If we have an active filter but no VCA data, exclude it
-
-        let dataKey = key;
-        const filterToData: Record<string, string> = {
-          caahh: 'child_adolescent_in_aged_headed_household',
-          caichh: 'child_adolescent_in_chronically_ill_headed_household',
-          caich: 'child_adolescent_in_child_headed_household',
-          calwd: 'child_adolescent_living_with_disability',
-          caifhh: 'child_adolescent_in_female_headed_household',
-          muc: 'under_5_malnourished',
-          pbfw: 'pbfw'
-        };
-        if (key in filterToData) {
-          dataKey = filterToData[key];
-        }
-
-        const recordValue = vcaData[dataKey];
-        return value === "yes"
-          ? recordValue === "1" || recordValue === "true" || recordValue === 1 || recordValue === true
-          : recordValue === "0" || recordValue === "false" || recordValue === 0 || recordValue === false;
-      });
-
-      if (!matchesSubPop) return false;
 
       // Search Query
       const query = searchQuery.toLowerCase();
@@ -236,8 +201,9 @@ const VcaServices = () => {
       const cw = String(vcaData?.caseworker_name || vcaData?.cwac_member_name || vcaData?.caseworker || "").toLowerCase();
       const district = String(service.district || "").toLowerCase();
       const serviceName = String(service.service || service.service_name || service.form_name || "").toLowerCase();
+      const vcaIdLc = vcaId.toLowerCase();
 
-      return vcaId.toLowerCase().includes(query) ||
+      return vcaIdLc.includes(query) ||
         cw.includes(query) ||
         district.includes(query) ||
         serviceName.includes(query);
@@ -247,11 +213,9 @@ const VcaServices = () => {
     return [...base].sort((a, b) => {
       const valA = (a.service_date || a.visit_date || a.date || a.created_at || 0) as any;
       const valB = (b.service_date || b.visit_date || b.date || b.created_at || 0) as any;
-      const dateA = new Date(valA).getTime();
-      const dateB = new Date(valB).getTime();
-      return dateB - dateA;
+      return new Date(valB).getTime() - new Date(valA).getTime();
     });
-  }, [services, vcaListQuery.data, subPopulationFilters, searchQuery]);
+  }, [services, vcaListQuery.data, searchQuery, selectedDistrict, discoveredDistrictsMap, selectedMonth, selectedYear]);
 
   const recentServices = filteredServices.slice(0, 10);
 
@@ -348,42 +312,66 @@ const VcaServices = () => {
 
   return (
     <DashboardLayout subtitle="Vca services dashboard">
-      <PageIntro
-        eyebrow="Intelligence dashboard"
-        title="Vca services insights"
-        description="Monitor service delivery trends, engagement depth, and operational performance across the district."
-        actions={
-          <div className="flex items-center gap-3">
-            <Select
-              value={selectedDistrict}
-              onValueChange={setSelectedDistrict}
-              disabled={user?.description === "District User"}
-            >
-              <SelectTrigger className="w-[180px] bg-white border-emerald-100 text-emerald-900 font-bold h-10 shadow-sm">
-                <SelectValue placeholder="Select district" />
-              </SelectTrigger>
-              <SelectContent className="font-bold border-emerald-100">
-                <SelectItem value="All">All districts</SelectItem>
-                {districts.map((d) => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Badge className="bg-emerald-100 text-emerald-700 font-bold py-1 px-3 h-10 flex items-center">
-              {servicesQuery.isLoading ? <LoadingDots /> : `${services.length} total services`}
-            </Badge>
-          </div>
-        }
-      />
+      {/* ── Banner ── */}
+      <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8">
+        <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 p-6 lg:p-8">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
 
-      <div className="mb-6">
-        <SubPopulationFilter
-          filters={subPopulationFilters}
-          labels={subPopulationFilterLabels}
-          onChange={handleFilterChange}
-          onClear={handleClearFilters}
-        />
+          <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.2em] text-white/60 uppercase mb-1">Intelligence dashboard</p>
+              <h1 className="text-3xl font-black text-white lg:text-4xl leading-tight">VCA Services</h1>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm font-medium">
+                <span className="flex items-center gap-1.5">
+                  <Users className="h-4 w-4" />
+                  {servicesQuery.isLoading ? "..." : `${filteredServices.length} services`}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Activity className="h-4 w-4" />
+                  {selectedDistrict === "All" ? "All districts" : selectedDistrict}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                value={selectedDistrict}
+                onValueChange={setSelectedDistrict}
+                disabled={user?.description === "District User"}
+              >
+                <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder="Select district" />
+                </SelectTrigger>
+                <SelectContent className="font-bold">
+                  <SelectItem value="All">All districts</SelectItem>
+                  {districts.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[140px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder="All months" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All months</SelectItem>
+                  {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[110px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder="All years" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All years</SelectItem>
+                  {YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
       </div>
+
 
       {/* KPI Section */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -680,7 +668,7 @@ const VcaServices = () => {
           </div>
         </CardContent>
       </GlowCard>
-    </DashboardLayout>
+    </DashboardLayout >
   );
 };
 

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { format, subMonths, isAfter, parseISO, subDays, getMonth, getYear } from "date-fns";
 import { cn, toTitleCase } from "@/lib/utils";
+import { isCategoryProvided } from "@/lib/data-validation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import GlowCard from "@/components/aceternity/GlowCard";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,6 @@ import {
   getHouseholdsByDistrict,
 } from "@/lib/api";
 import { useNavigate, Link } from "react-router-dom";
-import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
 import {
   ResponsiveContainer,
 } from "recharts";
@@ -128,20 +128,7 @@ const parseHealthServices = (services: any): string[] => {
   return String(services).split(",").map(s => s.trim().replace(/[\[\]"]/g, "")).filter(s => s && !NOT_APPLICABLE.includes(s.toLowerCase()));
 };
 
-const isNotApplicable = (val: unknown): boolean => {
-  if (val === null || val === undefined) return true;
-  const s = String(val).trim().toLowerCase();
-  return s === "" || NOT_APPLICABLE.includes(s);
-};
 
-const isCategoryProvided = (record: Record<string, unknown>, key: string): boolean => {
-  const val = record[key];
-  if (isNotApplicable(val)) return false;
-  const sVal = String(val).trim();
-  // Robust check for empty arrays/objects even with spaces
-  if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal) || sVal.toLowerCase() === "none" || sVal.toLowerCase() === "null") return false;
-  return true;
-};
 
 
 const DAY_MS = 1000 * 60 * 60 * 24;
@@ -623,8 +610,8 @@ const HouseholdServices = () => {
       </div>
 
       {/* ── Stability Insights ── */}
+      {/* 
       <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-        {/* Stability Warning Card - NOW FULL WIDTH */}
         <GlowCard className="border-slate-200 bg-white shadow-sm w-full overflow-hidden">
           <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/30">
             <div className="flex items-center gap-3">
@@ -662,7 +649,8 @@ const HouseholdServices = () => {
             </div>
           </CardContent>
         </GlowCard>
-      </div>
+      </div> 
+      */}
 
       {/* ── Household Audit Trail ── */}
       <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500">

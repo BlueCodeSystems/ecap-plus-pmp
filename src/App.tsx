@@ -32,6 +32,8 @@ import CaregiverRiskRegister from "./pages/CaregiverRiskRegister";
 import VcaRiskRegister from "./pages/VcaRiskRegister";
 import HouseholdRiskRegister from "./pages/HouseholdRiskRegister";
 import HTSRiskRegister from "./pages/HTSRiskRegister";
+import CaseworkerRegister from "./pages/CaseworkerRegister";
+import CaseworkerProfile from "./pages/CaseworkerProfile";
 
 
 // --- SECONDARY / HEAVY PAGES (Lazy Loaded to keep initial bundle size optimized) ---
@@ -191,6 +193,22 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Caseworkers />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/registers/caseworker-drilldown"
+                  element={
+                    <ProtectedRoute>
+                      <CaseworkerRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/caseworker-details"
+                  element={
+                    <ProtectedRoute>
+                      <CaseworkerProfile />
                     </ProtectedRoute>
                   }
                 />

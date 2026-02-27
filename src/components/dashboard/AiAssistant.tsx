@@ -113,27 +113,31 @@ export const AiAssistant = () => {
     }
   };
 
+  const storageKey = user?.id ? `ecap.chat_history.${user.id}` : "ecap.chat_history.guest";
+
   const clearChat = () => {
     setMessages([]);
-    localStorage.removeItem("ecap.chat_history");
+    localStorage.removeItem(storageKey);
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem("ecap.chat_history");
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         setMessages(JSON.parse(saved));
       } catch (e) {
         console.error("Failed to parse chat history");
       }
+    } else {
+      setMessages([]); // Clear if no history for this user
     }
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem("ecap.chat_history", JSON.stringify(messages));
+      localStorage.setItem(storageKey, JSON.stringify(messages));
     }
-  }, [messages]);
+  }, [messages, storageKey]);
 
   return (
     <div
@@ -164,6 +168,15 @@ export const AiAssistant = () => {
               </div>
             </div>
             <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                onClick={clearChat}
+                title="Start New Chat"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

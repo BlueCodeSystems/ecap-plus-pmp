@@ -19,7 +19,6 @@ import {
   getHouseholdServicesByDistrict
 } from "@/lib/api";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
 import GlowCard from "@/components/aceternity/GlowCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +42,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TableSkeleton from "@/components/ui/TableSkeleton";
 import { format, subDays, parseISO, isAfter } from "date-fns";
 import { cn, toTitleCase, toSentenceCase } from "@/lib/utils";
+import { isCategoryProvided } from "@/lib/data-validation";
 
 const RISK_TYPES = {
   health_domain: { label: "Missing Health Services", icon: HeartPulse, color: "text-rose-600", bg: "bg-rose-50", domain: "health_services", domainLabel: "Health" },
@@ -51,18 +51,6 @@ const RISK_TYPES = {
   stable_domain: { label: "Missing Stable Services", icon: Landmark, color: "text-amber-600", bg: "bg-amber-50", domain: "stable_services", domainLabel: "Stable" },
   graduation_path: { label: "Graduation Ready (All 4)", icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-50", domain: null, domainLabel: "All" },
 };
-
-const subPopulationFilterLabels = {
-  calhiv: 'CALHIV',
-  hei: 'HEI',
-  cwlhiv: 'CWLHIV',
-  agyw: 'AGYW',
-  csv: 'C/SV',
-  cfsw: 'CFSW',
-  abym: 'ABYM'
-};
-
-const filterKeyToDataKey: Record<string, string> = {};
 
 const HouseholdRiskRegister = () => {
   const navigate = useNavigate();
@@ -77,18 +65,8 @@ const HouseholdRiskRegister = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
-  const [subPopulationFilters, setSubPopulationFilters] = useState<Record<string, string>>(
-    Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-  );
-
-  const handleFilterChange = (key: string, value: string) => {
-    setSubPopulationFilters((prev) => ({ ...prev, [key]: value }));
-  };
 
   const handleClearFilters = () => {
-    setSubPopulationFilters(
-      Object.keys(subPopulationFilterLabels).reduce((acc, key) => ({ ...acc, [key]: "all" }), {})
-    );
     setSearchQuery("");
   };
 
@@ -135,17 +113,10 @@ const HouseholdRiskRegister = () => {
 
   const isLoading = servicesQuery.isLoading || hhListQuery.isLoading;
 
-  const isCategoryProvided = (record: any, key: string): boolean => {
-    const val = record[key];
-    if (val === null || val === undefined) return false;
-    const sVal = String(val).trim();
-    if (sVal === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(sVal.toLowerCase())) return false;
-    if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal)) return false;
-    return true;
-  };
+
 
   const filteredData = useMemo(() => {
-    const services = servicesQuery.data as any[];
+    const services = (servicesQuery.data ?? []) as any[];
     const householdsList = (hhListQuery.data ?? []) as any[];
     const now = new Date();
     const NINETY_DAYS_AGO = subDays(now, 90);
@@ -216,22 +187,6 @@ const HouseholdRiskRegister = () => {
       }
     });
 
-    // 4. Sub-population Filters
-    resultList = resultList.filter((item: any) => {
-      const hhData = item.raw_household;
-      return Object.entries(subPopulationFilters).every(([key, value]) => {
-        if (value === "all") return true;
-        if (!hhData) return false;
-
-        let dataKey = key;
-        const recordValue = hhData[dataKey];
-        const sVal = String(recordValue).toLowerCase().trim();
-        return value === "yes"
-          ? sVal === "1" || sVal === "true" || sVal === "yes"
-          : sVal === "0" || sVal === "false" || sVal === "no" || sVal === "";
-      });
-    });
-
     // Apply search query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -242,7 +197,7 @@ const HouseholdRiskRegister = () => {
     }
 
     return resultList;
-  }, [type, servicesQuery.data, searchQuery, subPopulationFilters, hhListQuery.data]);
+  }, [type, servicesQuery.data, searchQuery, hhListQuery.data]);
 
   const handleExport = () => {
     if (!filteredData.length) return;
@@ -294,7 +249,7 @@ const HouseholdRiskRegister = () => {
                 {toSentenceCase(RISK_TYPES[type].label)}
               </h1>
               <p className="text-xs font-bold text-slate-400 tracking-widest mt-1">
-                {filteredData.length} households · {selectedDistrict === "All" ? "Nationwide" : selectedDistrict}
+                {filteredData.length} households found{selectedDistrict !== "All" ? ` in ${selectedDistrict}` : ""}
               </p>
             </div>
           </div>
@@ -355,14 +310,6 @@ const HouseholdRiskRegister = () => {
             </AlertDescription>
           </Alert>
         )}
-
-        {/* Sub-population Filters */}
-        <SubPopulationFilter
-          filters={subPopulationFilters}
-          labels={subPopulationFilterLabels}
-          onChange={handleFilterChange}
-          onClear={handleClearFilters}
-        />
 
         {/* Search */}
         <div className="relative flex-1">
