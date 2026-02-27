@@ -60,8 +60,9 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { format, subMonths, isAfter, parseISO } from "date-fns";
+import { format, subMonths, isAfter, parseISO, getMonth, getYear } from "date-fns";
 import { cn, toTitleCase } from "@/lib/utils";
+import { isCategoryProvided } from "@/lib/data-validation";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,20 +76,15 @@ const SERVICE_CATEGORIES = [
 
 const NOT_APPLICABLE = ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}"];
 
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
-const isNotApplicable = (val: unknown): boolean => {
-  if (val === null || val === undefined) return true;
-  const s = String(val).trim().toLowerCase();
-  return s === "" || ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null"].includes(s);
-};
+const YEARS = ["2024", "2025", "2026"];
 
-const isCategoryProvided = (record: Record<string, unknown>, key: string): boolean => {
-  const val = record[key];
-  if (isNotApplicable(val)) return false;
-  const sVal = String(val).trim();
-  if (/^\[\s*\]$/.test(sVal) || /^\{\s*\}$/.test(sVal) || sVal.toLowerCase() === "none" || sVal.toLowerCase() === "null") return false;
-  return true;
-};
+
+
 
 
 const parseHealthServices = (services: any): string[] => {
@@ -174,6 +170,8 @@ const CaregiverServices = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
@@ -260,6 +258,19 @@ const CaregiverServices = () => {
       const sDistrict = String(service.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return false;
 
+      // Month/Year filter
+      const rawDate = service.service_date || service.visit_date || service.date;
+      const sDate = rawDate ? parseISO(String(rawDate)) : null;
+      const isValidDate = sDate && !isNaN(sDate.getTime());
+      if (isValidDate) {
+        const sMonthName = MONTHS[getMonth(sDate!)];
+        const sYearStr = getYear(sDate!).toString();
+        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
+        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
+      } else if (selectedYear !== "all" || selectedMonth !== "all") {
+        return false;
+      }
+
       const hhId = String(service.household_id || service.hh_id || "").toLowerCase();
       const query = searchQuery.toLowerCase();
       const cw = String(service.caseworker_name || householdCwMap[hhId] || "").toLowerCase();
@@ -267,15 +278,12 @@ const CaregiverServices = () => {
       return hhId.includes(query) || sDistrict.toLowerCase().includes(query) || cw.includes(query);
     });
 
-    // Sort by latest service date
     return [...base].sort((a, b) => {
       const valA = (a.service_date || a.date || 0) as any;
       const valB = (b.service_date || b.date || 0) as any;
-      const dateA = new Date(valA).getTime();
-      const dateB = new Date(valB).getTime();
-      return dateB - dateA;
+      return new Date(valB).getTime() - new Date(valA).getTime();
     });
-  }, [allServices, searchQuery, selectedDistrict, householdCwMap]);
+  }, [allServices, searchQuery, selectedDistrict, householdCwMap, discoveredDistrictsMap, selectedMonth, selectedYear]);
 
 
   // --- DATA AGGREGATION ---
@@ -288,6 +296,19 @@ const CaregiverServices = () => {
     const counts: Record<string, number> = {};
 
     allServices.forEach(svc => {
+      // Month/Year filter
+      const rawDate = svc.service_date || svc.visit_date || svc.date;
+      const sDate = rawDate ? parseISO(String(rawDate)) : null;
+      const isValidDate = sDate && !isNaN(sDate.getTime());
+      if (isValidDate) {
+        const sMonthName = MONTHS[getMonth(sDate!)];
+        const sYearStr = getYear(sDate!).toString();
+        if (selectedYear !== "all" && sYearStr !== selectedYear) return;
+        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return;
+      } else if (selectedYear !== "all" || selectedMonth !== "all") {
+        return;
+      }
+
       const services = parseHealthServices(svc.health_services);
       services.forEach(s => {
         counts[s] = (counts[s] || 0) + 1;
@@ -306,7 +327,7 @@ const CaregiverServices = () => {
     });
 
     return result;
-  }, [allServices]);
+  }, [allServices, selectedMonth, selectedYear]);
 
   const advancedStats = useMemo(() => {
     if (!households.length) return null;
@@ -371,6 +392,20 @@ const CaregiverServices = () => {
     const caregiverServiceMap = new Map<string, any[]>();
     allServices.forEach(s => {
       const hhId = String(s.household_id || s.hh_id || "");
+
+      // Month/Year filter
+      const rawDate = s.service_date || s.visit_date || s.date;
+      const sDate = rawDate ? parseISO(String(rawDate)) : null;
+      const isValidDate = sDate && !isNaN(sDate.getTime());
+      if (isValidDate) {
+        const sMonthName = MONTHS[getMonth(sDate!)];
+        const sYearStr = getYear(sDate!).toString();
+        if (selectedYear !== "all" && sYearStr !== selectedYear) return;
+        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return;
+      } else if (selectedYear !== "all" || selectedMonth !== "all") {
+        return;
+      }
+
       if (!caregiverServiceMap.has(hhId)) caregiverServiceMap.set(hhId, []);
       caregiverServiceMap.get(hhId)?.push(s);
     });
@@ -408,15 +443,30 @@ const CaregiverServices = () => {
     const hhsWithoutCasePlan = filteredHouseholds.filter((h: any) => !hhWithCasePlanIds.has(String(h.household_id || h.hh_id)));
 
     // 6. Referral Completion Rate
-    const totalReferrals = referrals.length;
-    const completedReferrals = referrals.filter((r: any) =>
+    const filteredReferrals = referrals.filter(r => {
+      // Month/Year filter
+      const rawDate = r.referral_date || r.date;
+      const sDate = rawDate ? parseISO(String(rawDate)) : null;
+      const isValidDate = sDate && !isNaN(sDate.getTime());
+      if (isValidDate) {
+        const sMonthName = MONTHS[getMonth(sDate!)];
+        const sYearStr = getYear(sDate!).toString();
+        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
+        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
+      } else if (selectedYear !== "all" || selectedMonth !== "all") {
+        return false;
+      }
+      return true;
+    });
+
+    const totalReferrals = filteredReferrals.length;
+    const completedReferrals = filteredReferrals.filter((r: any) =>
       String(r.status || "").toLowerCase() === "completed" ||
       String(r.referral_status || "").toLowerCase() === "completed"
     ).length;
     const referralCompletionRate = totalReferrals > 0 ? (completedReferrals / totalReferrals) * 100 : 0;
 
     return {
-      // Domain coverage
       healthDomainCount,
       healthDomainRate: totalHouseholds > 0 ? (healthDomainCount / totalHouseholds) * 100 : 0,
       schooledDomainCount,
@@ -440,7 +490,7 @@ const CaregiverServices = () => {
       totalVisits: allServices.length,
       posCount: hivPositiveHhs.length,
     };
-  }, [households, casePlans, referrals, allServices]);
+  }, [households, allServices, selectedDistrict, casePlans, referrals, discoveredDistrictsMap, selectedMonth, selectedYear]);
 
   const displayStats = advancedStats;
   const isRefreshing = servicesQuery.isFetching && displayStats?.totalVisits > 0;
@@ -471,7 +521,7 @@ const CaregiverServices = () => {
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
@@ -485,6 +535,24 @@ const CaregiverServices = () => {
                   {districts.map((d) => (
                     <SelectItem key={d} value={d}>{d}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[140px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder="All months" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All months</SelectItem>
+                  {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-[110px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder="All years" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All years</SelectItem>
+                  {YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Button

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 import { useAuth } from "@/context/AuthContext";
@@ -50,27 +50,29 @@ import { toast } from "sonner";
 
 const CHART_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#a855f7", "#ec4899", "#06b6d4", "#f43f5e", "#8b5cf6"];
 
-const RiskKpiCard = ({ label, count, icon: Icon, description, to, color = "emerald" }: any) => {
+const RiskKpiCard = ({ label, count, icon: Icon, description, to, color = "emerald", onClick, isActive }: any) => {
   const isCountValid = count !== null && count !== undefined;
   const value = isCountValid ? count.toLocaleString() : "0";
 
   const colorMap: any = {
-    emerald: { bg: "bg-emerald-50", text: "text-emerald-600" },
-    teal: { bg: "bg-teal-50", text: "text-teal-600" },
-    amber: { bg: "bg-amber-50", text: "text-amber-600" },
-    rose: { bg: "bg-rose-50", text: "text-rose-600" },
-    blue: { bg: "bg-blue-50", text: "text-blue-600" },
-    purple: { bg: "bg-purple-50", text: "text-purple-600" },
-    slate: { bg: "bg-slate-50", text: "text-slate-600" },
+    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", ring: "ring-emerald-400" },
+    teal: { bg: "bg-teal-50", text: "text-teal-600", ring: "ring-teal-400" },
+    amber: { bg: "bg-amber-50", text: "text-amber-600", ring: "ring-amber-400" },
+    rose: { bg: "bg-rose-50", text: "text-rose-600", ring: "ring-rose-400" },
+    blue: { bg: "bg-blue-50", text: "text-blue-600", ring: "ring-blue-400" },
+    purple: { bg: "bg-purple-50", text: "text-purple-600", ring: "ring-purple-400" },
+    slate: { bg: "bg-slate-50", text: "text-slate-600", ring: "ring-slate-400" },
   };
 
   const style = colorMap[color] || colorMap.slate;
 
   const content = (
     <div
+      onClick={onClick}
       className={cn(
         "p-4 rounded-xl border bg-white shadow-sm transition-all hover:shadow-md active:scale-95 border-slate-100 h-full flex flex-col justify-between",
-        to && "cursor-pointer"
+        (to || onClick) && "cursor-pointer",
+        isActive && `ring-2 ${style.ring} shadow-lg`
       )}
     >
       <div>
@@ -85,7 +87,7 @@ const RiskKpiCard = ({ label, count, icon: Icon, description, to, color = "emera
         </div>
       </div>
       <p className="text-[10px] text-slate-500 mt-1">
-        {to ? "Click to view" : description}
+        {(to || onClick) ? "Click to view" : description}
       </p>
     </div>
   );
@@ -109,6 +111,8 @@ const Caseworkers = () => {
   const { user } = useAuth();
   const [selectedDistrict, setSelectedDistrict] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedKpi, setSelectedKpi] = useState<"services" | "caseworkers" | "district" | null>(null);
+  const drilldownRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = async () => {
     await Promise.all([
@@ -316,6 +320,59 @@ const Caseworkers = () => {
       .slice(0, 20);
   }, [allServices, searchQuery, householdCwMap]);
 
+  // ── Drilldown records per KPI card
+  const drilldownRecords = useMemo(() => {
+    if (!selectedKpi) return [];
+
+    if (selectedKpi === "services") {
+      return allServices.slice(0, 500);
+    }
+    if (selectedKpi === "caseworkers") {
+      // Unique caseworkers with their counts
+      const workerMap: Record<string, { name: string; district: string; count: number }> = {};
+      allServices.forEach(s => {
+        const hhId = String(s.household_id || s.hh_id || "");
+        const cw = s.caseworker_name || s.caseworkerName || s.cwac_member_name || s.caseworker || householdCwMap[hhId] || "Unknown";
+        const dist = s.district || "Unknown";
+        if (cw === "Unknown" || cw === "") return;
+        if (!workerMap[cw]) workerMap[cw] = { name: cw, district: dist, count: 0 };
+        workerMap[cw].count++;
+      });
+      return Object.values(workerMap).sort((a, b) => b.count - a.count);
+    }
+    if (selectedKpi === "district") {
+      const topDistrict = stats?.mostPerformingDistrict;
+      if (!topDistrict) return [];
+      return allServices.filter(s => String(s.district || "") === topDistrict);
+    }
+    return [];
+  }, [selectedKpi, allServices, householdCwMap, stats]);
+
+  const handleKpiClick = (kpi: "services" | "caseworkers" | "district") => {
+    setSelectedKpi(prev => prev === kpi ? null : kpi);
+    setTimeout(() => drilldownRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+  };
+
+  const handleDrilldownExport = () => {
+    if (!selectedKpi || drilldownRecords.length === 0) return;
+
+    if (selectedKpi === "caseworkers") {
+      const headers = ["Caseworker", "District", "Total Services"];
+      const rows = (drilldownRecords as any[]).map(r => [r.name, r.district, r.count]);
+      downloadCsv(headers, rows, `ECAP_Caseworkers_${new Date().toISOString().split('T')[0]}.csv`);
+    } else {
+      const headers = ["Household ID", "Caseworker", "Service Date", "District", "Type"];
+      const rows = (drilldownRecords as any[]).map(s => {
+        const hhId = String(s.household_id || s.hh_id || "");
+        const cw = s.caseworker_name || s.caseworkerName || s.cwac_member_name || s.caseworker || householdCwMap[hhId] || "N/A";
+        const type = s.vca_id || s.child_id ? "VCA" : hhId ? "Household" : "Caregiver";
+        return [hhId || "N/A", cw, s.service_date || s.visit_date || "N/A", s.district || "N/A", type];
+      });
+      downloadCsv(headers, rows, `ECAP_${selectedKpi}_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+    toast.success(`Exported ${drilldownRecords.length} records`);
+  };
+
   return (
     <DashboardLayout subtitle="Caseworker performance & impact">
       {/* ── Banner ── */}
@@ -376,24 +433,24 @@ const Caseworkers = () => {
           label="Services"
           icon={Trophy}
           count={stats?.totalServices || 0}
-          description="Click to view"
           color="emerald"
+          onClick={() => navigate(`/registers/caseworker-drilldown?type=services&district=${selectedDistrict}`)}
         />
 
         <RiskKpiCard
           label="Caseworkers"
           icon={Users}
           count={stats?.activeWorkers || 0}
-          description="Click to view"
           color="teal"
+          onClick={() => navigate(`/registers/caseworker-drilldown?type=caseworkers&district=${selectedDistrict}`)}
         />
 
         <RiskKpiCard
           label="Top performing district"
           icon={Star}
           count={stats?.districtServiceCount || 0}
-          description="Click to view"
           color="amber"
+          onClick={() => navigate(`/registers/caseworker-drilldown?type=district&district=${selectedDistrict}`)}
         />
       </div>
 
@@ -416,7 +473,11 @@ const Caseworkers = () => {
             ) : (
               <div className="space-y-4">
                 {stats?.topCaseworkers.map((worker, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50 transition-colors group">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100 hover:bg-slate-50 transition-colors group cursor-pointer"
+                    onClick={() => navigate("/profile/caseworker-details", { state: { name: worker.name } })}
+                  >
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "flex h-10 w-10 items-center justify-center rounded-full font-bold text-xs shadow-sm",
@@ -555,34 +616,41 @@ const Caseworkers = () => {
                   <TableCell colSpan={4} className="py-20 text-center text-slate-400">No records found</TableCell>
                 </TableRow>
               ) : (
-                filteredAuditLog.map((s, i) => (
-                  <TableRow key={i} className="hover:bg-slate-50/50 transition-colors">
-                    <TableCell className="pl-8 py-5">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 text-sm">
-                          {s.caseworker_name ||
-                            s.caseworkerName ||
-                            s.cwac_member_name ||
-                            s.caseworker ||
-                            householdCwMap[String(s.household_id || s.hh_id || "")] ||
-                            "N/A"}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-bold">Case Worker</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-slate-600">
-                      {s.household_id || s.hh_id || "N/A"}
-                    </TableCell>
-                    <TableCell className="text-xs font-bold text-slate-500">
-                      {s.service_date || s.date || "N/A"}
-                    </TableCell>
-                    <TableCell className="text-right pr-8">
-                      <Badge variant="outline" className="text-[10px] font-bold border-slate-200 bg-white">
-                        {s.district || "N/A"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
+                filteredAuditLog.map((s, i) => {
+                  const cwName = s.caseworker_name ||
+                    s.caseworkerName ||
+                    s.cwac_member_name ||
+                    s.caseworker ||
+                    householdCwMap[String(s.household_id || s.hh_id || "")] ||
+                    "N/A";
+                  return (
+                    <TableRow
+                      key={i}
+                      className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                      onClick={() => cwName !== "N/A" && navigate("/profile/caseworker-details", { state: { name: cwName } })}
+                    >
+                      <TableCell className="pl-8 py-5">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 text-sm">
+                            {cwName}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold">Case Worker</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-slate-600">
+                        {s.household_id || s.hh_id || "N/A"}
+                      </TableCell>
+                      <TableCell className="text-xs font-bold text-slate-500">
+                        {s.service_date || s.date || "N/A"}
+                      </TableCell>
+                      <TableCell className="text-right pr-8">
+                        <Badge variant="outline" className="text-[10px] font-bold border-slate-200 bg-white">
+                          {s.district || "N/A"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

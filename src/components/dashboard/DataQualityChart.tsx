@@ -180,7 +180,7 @@ const DataQualityChart = () => {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="font-bold">Services & Referrals Trend</CardTitle>
+              <CardTitle className="font-black text-xl tracking-tight">Services & Referrals Trend</CardTitle>
               <CardDescription>Monthly breakdown of services and referrals for {selectedYear}</CardDescription>
             </div>
             <div className="flex gap-2">

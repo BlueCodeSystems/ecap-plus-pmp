@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getHouseholdsByDistrict, getHouseholdArchivedRegister, DEFAULT_DISTRICT, getCaregiverServicesByHousehold, getCaregiverReferralsByMonth, getFlaggedRecords, getChildrenByDistrict, getCaregiverCasePlansByDistrict, getCaregiverCasePlansByHousehold, getHouseholdReferralsById, getHouseholdMembers, updateFlagStatus } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -57,16 +57,17 @@ const safeParseDate = (dateStr: any) => {
 const HouseholdProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  // Retrieve ID from location state or sessionStorage fallback
+  // Retrieve ID from location state or search params or sessionStorage fallback
   const id = useMemo(() => {
-    const stateId = location.state?.id;
+    const stateId = location.state?.id || searchParams.get("id");
     if (stateId) {
       sessionStorage.setItem('ecap_last_household_id', stateId);
       return stateId;
     }
     return sessionStorage.getItem('ecap_last_household_id');
-  }, [location.state?.id]);
+  }, [location.state?.id, searchParams]);
 
   const { user } = useAuth();
   const isDistrictUser = user?.description === "District User";
@@ -431,13 +432,13 @@ const HouseholdProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoItem label="Caregiver name" value={String(household.caregiver_name || "N/A")} icon={<User className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Caregiver name" value="Caregiver Name – Confidential" icon={<User className="h-3.5 w-3.5" />} />
                   <InfoItem label="Caregiver sex" value={String(household.caregiver_sex || household.sex || household.gender || "N/A")} />
                   <InfoItem label="Date of birth" value={String(household.caregiver_birthdate || household.caregiver_birth_date || household.dob || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
                   <InfoItem label="Hiv status" value={String(household.caregiver_hiv_status || household.hiv_status || "N/A")} icon={<Activity className="h-3.5 w-3.5" />} />
                   <InfoItem label="Marital status" value={String(household.marital_status || "N/A")} />
                   <InfoItem label="Relation" value={String(household.caregiver_relation || household.relation || "N/A")} />
-                  <InfoItem label="Phone number" value={String(household.caregiver_phone || household.phone || "N/A")} />
+                  <InfoItem label="Phone number" value="Phone – Confidential" />
                 </CardContent>
               </Card>
 
@@ -785,7 +786,7 @@ const HouseholdProfile = () => {
                                 </div>
                               </TableCell>
                               <TableCell className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors">
-                                {String(item.date_created || item.created_at || "N/A") && format(new Date(item.date_created || item.created_at), "dd MMM yyyy") || "N/A"}
+                                {item.date_created || item.created_at ? format(new Date(item.date_created || item.created_at), "dd MMM yyyy") : "N/A"}
                               </TableCell>
                               <TableCell className="text-xs text-slate-600 max-w-md italic leading-relaxed">
                                 {String(item.comment || item.description || item.reason || "No description provided")}

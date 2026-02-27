@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,9 +17,13 @@ import {
   Link2,
   ShieldCheck,
   FileText,
+  RefreshCcw,
 } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getHTSRegisterByDistrict } from "@/lib/api";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 
 const p = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
@@ -28,7 +32,6 @@ const p = (record: Record<string, unknown>, keys: string[]): string => {
   }
   return "N/A";
 };
-
 const InfoItem = ({
   label,
   value,
@@ -74,21 +77,60 @@ const InfoItem = ({
 const HTSProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const idFromUrl = searchParams.get("id");
 
-  // Record passed via navigation state from HTSRegister
-  const record: Record<string, unknown> = useMemo(() => {
-    const r = location.state?.record;
-    if (r) {
-      sessionStorage.setItem("ecap_last_hts_record", JSON.stringify(r));
-      return r;
+  // Fallback: Fetch all HTS records if state is missing
+  const htsQuery = useQuery({
+    queryKey: ["hts-register", "All"],
+    queryFn: () => getHTSRegisterByDistrict("*"),
+    staleTime: 1000 * 60 * 10,
+    enabled: !location.state?.record && !!idFromUrl,
+  });
+
+  // Record passed via navigation state from HTSRegister or found via fallback
+  const record: Record<string, unknown> | null = useMemo(() => {
+    // 1. Try state
+    const stateRecord = location.state?.record;
+    if (stateRecord) {
+      sessionStorage.setItem("ecap_last_hts_record", JSON.stringify(stateRecord));
+      return stateRecord;
     }
+
+    // 2. Try Fallback Query
+    if (idFromUrl && htsQuery.data) {
+      const found = (htsQuery.data as any[]).find(
+        r => String(r.ecap_id || r.client_number) === idFromUrl
+      );
+      if (found) {
+        sessionStorage.setItem("ecap_last_hts_record", JSON.stringify(found));
+        return found;
+      }
+    }
+
+    // 3. Last resort: Session Storage
     try {
       const stored = sessionStorage.getItem("ecap_last_hts_record");
-      return stored ? JSON.parse(stored) : null;
+      const r = stored ? JSON.parse(stored) : null;
+      // Basic validation that it's the right ID profile
+      if (r && idFromUrl && String(r.ecap_id || r.client_number) === idFromUrl) {
+        return r;
+      }
+      return null;
     } catch {
       return null;
     }
-  }, [location.state?.record]);
+  }, [location.state?.record, htsQuery.data, idFromUrl]);
+
+  if (htsQuery.isLoading && !record) {
+    return (
+      <DashboardLayout subtitle="Loading profile...">
+        <div className="flex h-[50vh] items-center justify-center">
+          <LoadingDots />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!record) {
     return (
@@ -96,8 +138,8 @@ const HTSProfile = () => {
         <EmptyState
           icon={<TestTube2 className="h-7 w-7" />}
           title="Record not found"
-          description="The HTS record you're looking for could not be loaded."
-          action={{ label: "Back to HTS Register", onClick: () => navigate("/hts-register") }}
+          description={idFromUrl ? `Profile with ID ${idFromUrl} could not be loaded.` : "The HTS record you're looking for could not be loaded."}
+          action={{ label: "Back to HTS Register", onClick: () => navigate("/registers/hts") }}
           className="h-[50vh]"
         />
       </DashboardLayout>
@@ -335,9 +377,9 @@ const HTSProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2">
-                  <InfoItem label="Phone" value={p(record, ["phone"])} icon={<Phone className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Contact Phone" value={p(record, ["contact_phone"])} />
-                  <InfoItem label="Address" value={p(record, ["address"])} icon={<MapPin className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Phone" value="Phone – Confidential" icon={<Phone className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Contact Phone" value="Phone – Confidential" />
+                  <InfoItem label="Address" value="Address – Confidential" icon={<MapPin className="h-3.5 w-3.5" />} />
                   <InfoItem label="Landmark" value={p(record, ["landmark"])} />
                 </CardContent>
               </Card>
