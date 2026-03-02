@@ -22,7 +22,7 @@ import {
   Landmark,
   GraduationCap,
 } from "lucide-react";
-import { format, subMonths, isAfter, parseISO, subDays, getMonth, getYear } from "date-fns";
+import { format, subMonths, isAfter, parseISO, parse, subDays, getMonth, getYear } from "date-fns";
 import { cn, toTitleCase } from "@/lib/utils";
 import { isCategoryProvided } from "@/lib/data-validation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -189,8 +189,6 @@ const VcaServicesDashboard = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState("all");
-  const [selectedYear, setSelectedYear] = useState("all");
 
 
   // SECURITY: Enforce district lock for District Users
@@ -288,18 +286,6 @@ const VcaServicesDashboard = () => {
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return false;
       if (!vcaMap.has(vId)) return false;
 
-      // Month/Year filter
-      const rawDate = service.service_date || service.visit_date || service.date || service.created_at;
-      const sDate = rawDate ? parseISO(String(rawDate)) : null;
-      const isValidDate = sDate && !isNaN(sDate.getTime());
-      if (isValidDate) {
-        const sMonthName = MONTHS[getMonth(sDate!)];
-        const sYearStr = getYear(sDate!).toString();
-        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
-        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
-      } else if (selectedYear !== "all" || selectedMonth !== "all") {
-        return false;
-      }
 
       // Filter by search query
       const serviceName = String(service.service || service.service_name || service.form_name || "").toLowerCase();
@@ -313,13 +299,43 @@ const VcaServicesDashboard = () => {
         sDistrict.toLowerCase().includes(query);
     });
 
-    // Sort by latest service date
-    return [...base].sort((a, b) => {
-      const valA = (a.service_date || a.visit_date || a.date || a.created_at || 0) as any;
-      const valB = (b.service_date || b.visit_date || b.date || b.created_at || 0) as any;
-      return new Date(valB).getTime() - new Date(valA).getTime();
-    });
-  }, [allServices, selectedDistrict, searchQuery, discoveredDistrictsMap, vcasQuery.data, selectedMonth, selectedYear]);
+    // Sort by latest service date (newest first)
+    const getTimestamp = (record: any) => {
+      const raw =
+        record.service_date ||
+        record.visit_date ||
+        record.date ||
+        record.created_at ||
+        record.service_month ||
+        record.referral_month;
+
+      if (!raw) return 0;
+
+      const rawStr = String(raw).trim();
+      let dateObj: Date | null = null;
+
+      // ISO-like formats (e.g. 2025-02-19 or with time)
+      if (/^\d{4}-\d{2}-\d{2}/.test(rawStr) || rawStr.includes("T")) {
+        dateObj = parseISO(rawStr);
+      }
+      // Day-first format (e.g. 19-02-2024)
+      else if (/^\d{2}-\d{2}-\d{4}$/.test(rawStr)) {
+        dateObj = parse(rawStr, "dd-MM-yyyy", new Date());
+      }
+      // Common alternative with slashes
+      else if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawStr)) {
+        dateObj = parse(rawStr, "dd/MM/yyyy", new Date());
+      } else {
+        // Fallback – let JS try to parse
+        dateObj = new Date(rawStr);
+      }
+
+      const time = dateObj.getTime();
+      return isNaN(time) ? 0 : time;
+    };
+
+    return [...base].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+  }, [allServices, selectedDistrict, searchQuery, discoveredDistrictsMap, vcasQuery.data]);
 
   const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
     for (const key of keys) {
@@ -340,19 +356,6 @@ const VcaServicesDashboard = () => {
     const services = ((servicesQuery.data ?? []) as any[]).filter(s => {
       const sDist = String(s.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return false;
-
-      // Month/Year filter
-      const rawDate = s.service_date || s.visit_date || s.date || s.created_at;
-      const sDate = rawDate ? parseISO(String(rawDate)) : null;
-      const isValidDate = sDate && !isNaN(sDate.getTime());
-      if (isValidDate) {
-        const sMonthName = MONTHS[getMonth(sDate!)];
-        const sYearStr = getYear(sDate!).toString();
-        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
-        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
-      } else if (selectedYear !== "all" || selectedMonth !== "all") {
-        return false;
-      }
       return true;
     });
 
@@ -360,19 +363,6 @@ const VcaServicesDashboard = () => {
     const referrals = ((referralsQuery.data ?? []) as any[]).filter(r => {
       const rDist = String(r.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(rDist)) return false;
-
-      // Month/Year filter
-      const rawDate = r.referral_date || r.date || r.date_created || r.created_at;
-      const sDate = rawDate ? parseISO(String(rawDate)) : null;
-      const isValidDate = sDate && !isNaN(sDate.getTime());
-      if (isValidDate) {
-        const sMonthName = MONTHS[getMonth(sDate!)];
-        const sYearStr = getYear(sDate!).toString();
-        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
-        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
-      } else if (selectedYear !== "all" || selectedMonth !== "all") {
-        return false;
-      }
       return true;
     });
 
@@ -603,7 +593,7 @@ const VcaServicesDashboard = () => {
       districtRiskData,
       healthServiceStats: healthServiceStatsFinal,
     };
-  }, [vcasQuery.data, servicesQuery.data, casePlansQuery.data, referralsQuery.data, selectedDistrict, vcaListQuery.data, selectedMonth, selectedYear]);
+  }, [vcasQuery.data, servicesQuery.data, casePlansQuery.data, referralsQuery.data, selectedDistrict, vcaListQuery.data, discoveredDistrictsMap]);
 
   const displayStats = selectedDistrict === "All" ? (dashboardStats || cachedNationwideStats) : dashboardStats;
   const isRefreshing = servicesQuery.isFetching && (displayStats?.totalVcas > 0);
@@ -653,24 +643,6 @@ const VcaServicesDashboard = () => {
                   {districts.map((d) => (
                     <SelectItem key={d} value={d}>{d}</SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[140px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="All months" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All months</SelectItem>
-                  {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[110px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="All years" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All years</SelectItem>
-                  {YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Button
