@@ -1,9 +1,13 @@
 import { getStoredToken } from "@/lib/auth";
+import { getCacheEntry, setCacheEntry } from "@/lib/indexedDbCache";
 
 const DQA_BASE_URL =
   import.meta.env.VITE_DQA_BASE_URL;
 
 export const DEFAULT_DISTRICT = import.meta.env.VITE_DEFAULT_DISTRICT;
+const SERVICES_CACHE_TTL_MS = 1000 * 60 * 5;
+const LIST_CACHE_TTL_MS = 1000 * 60 * 10;
+const DEBUG_API = import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === "true";
 
 const safeJson = async (response: Response) => {
   try {
@@ -177,8 +181,10 @@ const dqaGet = async (path: string) => {
   if (!token) {
     throw new Error("Not authenticated.");
   }
-  console.log("[DQA] Request", `${DQA_BASE_URL}${path}`);
-  console.log("[DQA] Access token present:", Boolean(token));
+  if (DEBUG_API) {
+    console.log("[DQA] Request", `${DQA_BASE_URL}${path}`);
+    console.log("[DQA] Access token present:", Boolean(token));
+  }
   const response = await fetch(`${DQA_BASE_URL}${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -186,13 +192,41 @@ const dqaGet = async (path: string) => {
   });
 
   const data = await safeJson(response);
-  console.log("[DQA] Response", data);
+  if (DEBUG_API) {
+    console.log("[DQA] Response", data);
+  }
 
   if (!response.ok) {
     throw new Error(data?.message ?? "DQA request failed");
   }
 
   return data;
+};
+
+const getListFromApiWithCache = async (
+  cacheKey: string,
+  path: string,
+  ttlMs: number
+): Promise<Array<Record<string, unknown>>> => {
+  const now = Date.now();
+  const cached = await getCacheEntry<Array<Record<string, unknown>>>(cacheKey);
+
+  if (cached && now - cached.updatedAt <= ttlMs) {
+    return cached.value;
+  }
+
+  try {
+    const data = await dqaGet(path);
+    const list = getListValue(data);
+    void setCacheEntry(cacheKey, list);
+    return list;
+  } catch (error) {
+    if (cached) {
+      console.warn(`[DQA] Using stale IndexedDB cache for ${cacheKey} after fetch error.`);
+      return cached.value;
+    }
+    throw error;
+  }
 };
 
 export const getTotalVcasCount = async (district?: string) => {
@@ -235,8 +269,12 @@ export const getVcaCountByDistrict = async (district: string) => {
 };
 
 export const getHouseholdsByDistrict = async (district: string) => {
-  const data = await dqaGet(`/household/all-households/${encodeURIComponent(district)}`);
-  return getListValue(data);
+  const normalizedDistrict = district || "ALL";
+  return getListFromApiWithCache(
+    `households_by_district:${normalizedDistrict}`,
+    `/household/all-households/${encodeURIComponent(district)}`,
+    LIST_CACHE_TTL_MS
+  );
 };
 
 export const getHouseholdMembers = async (hhId: string) => {
@@ -267,8 +305,12 @@ export const getMothersByDistrict = async (district: string) => {
 };
 
 export const getChildrenByDistrict = async (district: string) => {
-  const data = await dqaGet(`/child/vcas-assessed-register/${encodeURIComponent(district)}`);
-  return getListValue(data);
+  const normalizedDistrict = district || "ALL";
+  return getListFromApiWithCache(
+    `children_by_district:${normalizedDistrict}`,
+    `/child/vcas-assessed-register/${encodeURIComponent(district)}`,
+    LIST_CACHE_TTL_MS
+  );
 };
 
 export const getVcaProfileById = async (uniqueId: string) => {
@@ -294,22 +336,29 @@ export const getChildrenArchivedRegister = async (
 };
 
 export const getCaregiverServicesByDistrict = async (district: string) => {
-  // Backend route: /household/caregiver-services-by-district/:district(*)
-  // district(*) means district can contain slashes — always requires a district value
-  const data = await dqaGet(`/household/caregiver-services-by-district/${encodeURIComponent(district)}`);
-  return getListValue(data);
+  const normalizedDistrict = district || "ALL";
+  return getListFromApiWithCache(
+    `caregiver_services_by_district:${normalizedDistrict}`,
+    `/household/caregiver-services-by-district/${encodeURIComponent(district)}`,
+    SERVICES_CACHE_TTL_MS
+  );
 };
 
 export const getHouseholdServicesByDistrict = async (district: string) => {
-  // Backend route: /household/household-services-by-district/:district(*)
-  const data = await dqaGet(`/household/household-services-by-district/${encodeURIComponent(district)}`);
-  return getListValue(data);
+  const normalizedDistrict = district || "ALL";
+  return getListFromApiWithCache(
+    `household_services_by_district:${normalizedDistrict}`,
+    `/household/household-services-by-district/${encodeURIComponent(district)}`,
+    SERVICES_CACHE_TTL_MS
+  );
 };
 
 export const getHTSRegisterByDistrict = async (district: string) => {
   // Backend route: /household/hts-register-by-district/:district(*)
   const data = await dqaGet(`/household/hts-register-by-district/${encodeURIComponent(district)}`);
-  console.log("[HTS] Raw API response for district:", district, data);
+  if (DEBUG_API) {
+    console.log("[HTS] Raw API response for district:", district, data);
+  }
   return getListValue(data);
 };
 
@@ -319,10 +368,12 @@ export const getCaregiverServicesByHousehold = async (hhId: string) => {
 };
 
 export const getVcaServicesByDistrict = async (district: string) => {
-  // Backend route: /child/vca-services-by-district/:district(*)
-  const data = await dqaGet(`/child/vca-services-by-district/${encodeURIComponent(district)}`);
-  console.log("meeeeeee", data)
-  return getListValue(data);
+  const normalizedDistrict = district || "ALL";
+  return getListFromApiWithCache(
+    `vca_services_by_district:${normalizedDistrict}`,
+    `/child/vca-services-by-district/${encodeURIComponent(district)}`,
+    SERVICES_CACHE_TTL_MS
+  );
 };
 
 export const getVcaServicesByChildId = async (childId: string) => {
@@ -460,3 +511,4 @@ export const updateFlagStatus = async (flagId: string, status: string) => {
 
   return safeJson(response);
 };
+

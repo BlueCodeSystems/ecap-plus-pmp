@@ -283,7 +283,7 @@ const HTSRegister = () => {
             <div className="p-2 bg-rose-50 rounded-lg text-rose-600">
               <AlertCircle className="h-4 w-4" />
             </div>
-            <span className="text-xs font-bold tracking-wider text-muted-foreground"></span>
+            <span className="text-xs font-bold tracking-wider text-muted-foreground">Positives not on ART</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900">{displayStats?.unlinked || 0}</span>

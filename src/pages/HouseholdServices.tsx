@@ -146,6 +146,37 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
 
 const filterKeyToDataKey: Record<string, string> = {};
 
+const parseServiceRecordDate = (record: Record<string, unknown>): Date | null => {
+  const raw =
+    record.service_date ||
+    record.visit_date ||
+    record.date ||
+    record.created_at ||
+    record.service_month ||
+    record.referral_month;
+
+  if (!raw) return null;
+
+  const rawStr = String(raw).trim();
+  let dateObj: Date;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(rawStr) || rawStr.includes("T")) {
+    dateObj = parseISO(rawStr);
+  } else if (/^\d{2}-\d{2}-\d{4}$/.test(rawStr)) {
+    dateObj = parse(rawStr, "dd-MM-yyyy", new Date());
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawStr)) {
+    dateObj = parse(rawStr, "dd/MM/yyyy", new Date());
+  } else {
+    dateObj = new Date(rawStr);
+  }
+
+  return isNaN(dateObj.getTime()) ? null : dateObj;
+};
+
+const getJuneReportingYear = (referenceDate: Date): number => {
+  return referenceDate.getMonth() >= 5 ? referenceDate.getFullYear() : referenceDate.getFullYear() - 1;
+};
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -160,6 +191,7 @@ const HouseholdServices = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedJuneYear, setSelectedJuneYear] = useState<string>(() => String(getJuneReportingYear(new Date())));
 
 
   // SECURITY: Enforce district lock for District Users
@@ -206,6 +238,47 @@ const HouseholdServices = () => {
   });
 
   const allServices: Record<string, unknown>[] = servicesQuery.data ?? [];
+  const isSyncing = servicesQuery.isFetching;
+
+  const availableJuneYears = useMemo(() => {
+    const years = new Set<number>();
+
+    allServices.forEach((service) => {
+      const d = parseServiceRecordDate(service);
+      if (!d) return;
+      years.add(getJuneReportingYear(d));
+    });
+
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    if (sortedYears.length === 0) {
+      sortedYears.push(getJuneReportingYear(new Date()));
+    }
+    return sortedYears;
+  }, [allServices]);
+
+  useEffect(() => {
+    const selected = Number(selectedJuneYear);
+    if (availableJuneYears.includes(selected)) return;
+
+    const currentJuneYear = getJuneReportingYear(new Date());
+    const fallbackYear = availableJuneYears.includes(currentJuneYear)
+      ? currentJuneYear
+      : availableJuneYears[0];
+
+    setSelectedJuneYear(String(fallbackYear));
+  }, [availableJuneYears, selectedJuneYear]);
+
+  const juneWindowServices = useMemo(() => {
+    const selectedYear = Number(selectedJuneYear);
+    const reportingYear = Number.isFinite(selectedYear) ? selectedYear : getJuneReportingYear(new Date());
+    const juneStart = new Date(reportingYear, 5, 1);
+    const nextJuneStart = new Date(reportingYear + 1, 5, 1);
+
+    return allServices.filter((service) => {
+      const d = parseServiceRecordDate(service);
+      return !!d && d >= juneStart && d < nextJuneStart;
+    });
+  }, [allServices, selectedJuneYear]);
 
   // ── KPI Computation ────────────────────────────────────────────────────────
 
@@ -221,17 +294,12 @@ const HouseholdServices = () => {
   }, [householdsListQuery.data]);
 
   const dashboardStats = useMemo(() => {
-    const services = allServices;
+    const services = juneWindowServices;
     const now = new Date();
     const NINETY_DAYS_AGO = subDays(now, 90);
 
     const households = (householdsListQuery.data ?? []) as any[];
-    const hhDataMap = new Map();
-    households.forEach(h => {
-      hhDataMap.set(String(h.household_id || h.hhid || h.id).trim(), h);
-    });
 
-    // 2. Map services per household for easier lookup
     const hhServiceMap = new Map<string, any[]>();
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
@@ -239,14 +307,12 @@ const HouseholdServices = () => {
       const hhId = String(s.household_id || s.hh_id || s.hhid || s.id || "unknown").trim();
       const sDistrict = String(s.district || "");
 
-      // Filter by district (handling variants)
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return;
 
       if (!hhServiceMap.has(hhId)) hhServiceMap.set(hhId, []);
       hhServiceMap.get(hhId)?.push(s);
     });
 
-    // 3. Filter registered households for the selected district
     const registeredHhs = households.filter(h => {
       const hDistrict = String(h.district || "");
       return selectedDistrict === "All" || selectedVariants.includes(hDistrict);
@@ -273,9 +339,8 @@ const HouseholdServices = () => {
       let isActive = false;
 
       hhServices.forEach(s => {
-        const rawDate = s.service_date || s.visit_date || s.date || s.created_at || s.service_month || s.referral_month;
-        const sDate = rawDate ? parseISO(String(rawDate)) : null;
-        if (sDate && !isNaN(sDate.getTime()) && isAfter(sDate, NINETY_DAYS_AGO)) isActive = true;
+        const sDate = parseServiceRecordDate(s);
+        if (sDate && isAfter(sDate, NINETY_DAYS_AGO)) isActive = true;
 
         if (isCategoryProvided(s, "health_services")) hasHealth = true;
         if (isCategoryProvided(s, "schooled_services")) hasSchooled = true;
@@ -307,21 +372,15 @@ const HouseholdServices = () => {
       stableCount,
       allDomainsCount,
       activeHHCount,
-      totalVisits: services.length,
+      totalVisits: Array.from(hhServiceMap.values()).reduce((sum, records) => sum + records.length, 0),
     };
-  }, [allServices, selectedDistrict, householdsListQuery.data, discoveredDistrictsMap]);
+  }, [juneWindowServices, selectedDistrict, householdsListQuery.data, discoveredDistrictsMap]);
 
   // ── Filtered audit log
   const filteredAuditLog = useMemo(() => {
-    const households = (householdsListQuery.data ?? []) as any[];
-    const hhDataMap = new Map();
-    households.forEach(h => {
-      hhDataMap.set(String(h.household_id || h.hhid || h.id).trim(), h);
-    });
-
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
-    const base = allServices.filter((s) => {
+    const base = juneWindowServices.filter((s) => {
       const sDistrict = String(s.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return false;
 
@@ -371,7 +430,7 @@ const HouseholdServices = () => {
     };
 
     return [...base].sort((a, b) => getTimestamp(b) - getTimestamp(a));
-  }, [allServices, selectedDistrict, searchQuery, householdsListQuery.data, householdCwMap]);
+  }, [juneWindowServices, selectedDistrict, searchQuery, householdCwMap, discoveredDistrictsMap]);
 
   const isLoading = servicesQuery.isLoading;
 
@@ -448,6 +507,21 @@ const HouseholdServices = () => {
 
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <Select
+                value={selectedJuneYear}
+                onValueChange={setSelectedJuneYear}
+              >
+                <SelectTrigger className="w-[220px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder="Select June Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableJuneYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      June {year} - May {year + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
                 disabled={user?.description === "District User"}
@@ -462,13 +536,20 @@ const HouseholdServices = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                onClick={() => servicesQuery.refetch()}
-                className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
-              >
-                <RefreshCcw className={`h-4 w-4 mr-2 ${servicesQuery.isFetching ? "animate-spin" : ""}`} />
-                Sync
-              </Button>
+              <div className="flex flex-col items-center gap-1">
+                <Button
+                  onClick={() => servicesQuery.refetch()}
+                  className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
+                >
+                  <RefreshCcw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                  Sync
+                </Button>
+                {isSyncing && (
+                  <p className="text-[10px] font-bold text-white/90 tracking-wide">
+                    Syncing data, please be patient...
+                  </p>
+                )}
+              </div>
             </div>
 
           </div>
