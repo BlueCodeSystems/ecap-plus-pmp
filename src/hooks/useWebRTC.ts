@@ -8,9 +8,11 @@ export const useWebRTC = (userId: string | undefined) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   const peerRef = useRef<Peer | null>(null);
   const callRef = useRef<MediaConnection | null>(null);
+  const cameraVideoTrackRef = useRef<MediaStreamTrack | null>(null);
 
   const cleanup = useCallback(() => {
     if (callRef.current) {
@@ -24,6 +26,8 @@ export const useWebRTC = (userId: string | undefined) => {
     setRemoteStream(null);
     setState("idle");
     setPartnerId(null);
+    setIsScreenSharing(false);
+    cameraVideoTrackRef.current = null;
   }, [localStream]);
 
   // Initialize PeerJS
@@ -81,6 +85,8 @@ export const useWebRTC = (userId: string | undefined) => {
         audio: true,
       });
       setLocalStream(stream);
+      const videoTrack = stream.getVideoTracks()[0] || null;
+      cameraVideoTrackRef.current = videoTrack;
       setPartnerId(targetId);
       setState("outgoing");
 
@@ -118,6 +124,8 @@ export const useWebRTC = (userId: string | undefined) => {
         audio: true
       });
       setLocalStream(stream);
+      const videoTrack = stream.getVideoTracks()[0] || null;
+      cameraVideoTrackRef.current = videoTrack;
       setState("connecting");
 
       console.log("PeerJS: Answering call with local stream");
@@ -133,6 +141,74 @@ export const useWebRTC = (userId: string | undefined) => {
     cleanup();
   }, [cleanup]);
 
+  const startScreenShare = async () => {
+    if (!callRef.current) return;
+    try {
+      const screenStream = await (navigator.mediaDevices as any).getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+
+      const screenTrack: MediaStreamTrack | undefined = screenStream.getVideoTracks()[0];
+      if (!screenTrack) {
+        return;
+      }
+
+      // Preserve original camera track for later
+      if (!cameraVideoTrackRef.current && localStream) {
+        cameraVideoTrackRef.current = localStream.getVideoTracks()[0] || null;
+      }
+
+      const connection: any = callRef.current;
+      const sender = connection?.peerConnection
+        ?.getSenders()
+        ?.find((s: RTCRtpSender) => s.track && s.track.kind === "video");
+
+      if (sender && screenTrack) {
+        await sender.replaceTrack(screenTrack);
+
+        const audioTracks = localStream?.getAudioTracks() || [];
+        const combined = new MediaStream([screenTrack, ...audioTracks]);
+        setLocalStream(combined);
+        setIsScreenSharing(true);
+
+        screenTrack.onended = () => {
+          // When user stops share from browser UI
+          stopScreenShare();
+        };
+      }
+    } catch (err) {
+      console.error("PeerJS: Failed to start screen share", err);
+    }
+  };
+
+  const stopScreenShare = async () => {
+    if (!callRef.current || !cameraVideoTrackRef.current) {
+      setIsScreenSharing(false);
+      return;
+    }
+    try {
+      const cameraTrack = cameraVideoTrackRef.current;
+
+      const connection: any = callRef.current;
+      const sender = connection?.peerConnection
+        ?.getSenders()
+        ?.find((s: RTCRtpSender) => s.track && s.track.kind === "video");
+
+      if (sender && cameraTrack) {
+        await sender.replaceTrack(cameraTrack);
+
+        const audioTracks = localStream?.getAudioTracks() || [];
+        const combined = new MediaStream([cameraTrack, ...audioTracks]);
+        setLocalStream(combined);
+      }
+    } catch (err) {
+      console.error("PeerJS: Failed to stop screen share", err);
+    } finally {
+      setIsScreenSharing(false);
+    }
+  };
+
   return {
     state,
     localStream,
@@ -141,5 +217,8 @@ export const useWebRTC = (userId: string | undefined) => {
     startCall,
     acceptCall,
     endCall,
+    startScreenShare,
+    stopScreenShare,
+    isScreenSharing,
   };
 };

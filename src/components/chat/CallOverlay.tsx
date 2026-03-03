@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff } from "lucide-react";
+import { Phone, PhoneOff, Video, VideoOff, Mic, MicOff, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CallState } from "@/hooks/useWebRTC";
@@ -14,6 +14,8 @@ interface CallOverlayProps {
   onAccept: () => void;
   onDecline: () => void;
   onEnd: () => void;
+  onToggleScreenShare: () => void;
+  isScreenSharing: boolean;
 }
 
 export const CallOverlay = ({
@@ -23,7 +25,9 @@ export const CallOverlay = ({
   partner,
   onAccept,
   onDecline,
-  onEnd
+  onEnd,
+  onToggleScreenShare,
+  isScreenSharing
 }: CallOverlayProps) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -31,12 +35,20 @@ export const CallOverlay = ({
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
+      // Ensure playback starts reliably
+      localVideoRef.current.play().catch(() => {
+        // Autoplay might be blocked; ignore silently
+      });
     }
   }, [localStream]);
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+      // Ensure playback starts reliably
+      remoteVideoRef.current.play().catch(() => {
+        // Autoplay might be blocked; ignore silently
+      });
     }
   }, [remoteStream]);
 
@@ -87,11 +99,13 @@ export const CallOverlay = ({
         </div>
 
         {/* Remote Placeholder */}
-        {!remoteStream && (state === "active" || state === "connecting") && (
+        {!remoteStream && (state === "active" || state === "connecting" || state === "outgoing") && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-800">
             <div className="text-center">
               <LoaderCircle className="h-12 w-12 text-emerald-500 animate-spin mx-auto mb-4" />
-              <p className="text-slate-400 font-medium">Establishing secure connection...</p>
+              <p className="text-slate-400 font-medium">
+                {state === "outgoing" ? "Calling, waiting for video..." : "Establishing secure connection..."}
+              </p>
             </div>
           </div>
         )}
@@ -132,6 +146,18 @@ export const CallOverlay = ({
               className="h-14 w-14 rounded-full text-white hover:bg-white/10"
             >
               <Video className="h-6 w-6" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onToggleScreenShare}
+              className={cn(
+                "h-14 w-14 rounded-full text-white hover:bg-white/10",
+                isScreenSharing && "bg-emerald-500/20 ring-2 ring-emerald-400/80"
+              )}
+              title={isScreenSharing ? "Stop screen sharing" : "Share screen"}
+            >
+              <Monitor className="h-6 w-6" />
             </Button>
             <Button
               size="lg"

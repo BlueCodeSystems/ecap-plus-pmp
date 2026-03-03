@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle, MoreVertical, Plus, ArrowRight, Loader2 } from "lucide-react";
+import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle, MoreVertical, Plus, ArrowRight, Loader2, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listUsers, getChatMessages, sendChatMessage, uploadFile, getFileUrl, DirectusUser } from "@/lib/directus";
+import { listUsers, getChatMessages, sendChatMessage, uploadFile, getFileUrl, DirectusUser, deleteChatMessage } from "@/lib/directus";
 import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
@@ -290,7 +290,10 @@ const SupportCenter = () => {
     partnerId: callPartnerId,
     startCall: initiateWebRTC,
     acceptCall,
-    endCall
+    endCall,
+    startScreenShare,
+    stopScreenShare,
+    isScreenSharing
   } = useWebRTC(user?.id);
 
   const startCall = (type: "audio" | "video") => {
@@ -332,21 +335,48 @@ const SupportCenter = () => {
   };
 
   const formatMessageDate = (timestamp: string) => {
-    const date = new Date(timestamp);
-    if (isToday(date)) return format(date, "HH:mm");
-    if (isYesterday(date)) return "Yesterday";
-    return format(date, "MMM d");
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) return "";
+      if (isToday(date)) return format(date, "HH:mm");
+      if (isYesterday(date)) return "Yesterday";
+      return format(date, "MMM d");
+    } catch {
+      return "";
+    }
+  };
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteChatMessage(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-messages"] });
+      toast.success("Message deleted");
+    },
+    onError: () => {
+      toast.error("Failed to delete message");
+    },
+  });
+
+  const handleDeleteMessage = (id: string) => {
+    if (!id || deleteMessageMutation.isPending) return;
+    const confirmed = window.confirm("Delete this message just for you? This cannot be undone.");
+    if (!confirmed) return;
+    deleteMessageMutation.mutate(id);
   };
 
   const renderMessageContent = (msg: any) => {
+    const rawMessage = typeof msg.message === "string" ? msg.message : "";
+
     // Check if the message is purely emojis (Jumboji)
-    const isJumboji = EMOJI_REGEX.test(msg.message.trim());
+    const isJumboji = rawMessage ? EMOJI_REGEX.test(rawMessage.trim()) : false;
 
     if (msg.item && msg.collection === "support_chat") {
       const fileUrl = getFileUrl(msg.item);
 
       // Voice message
-      if (msg.message.includes("🎤")) {
+      if (rawMessage.includes("🎤")) {
         return (
           <div className="flex items-center gap-3 bg-white/40 backdrop-blur-md rounded-xl p-3 border border-white/20 shadow-sm">
             <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
@@ -359,19 +389,19 @@ const SupportCenter = () => {
       }
 
       // Image
-      if (msg.message.includes("📷")) {
+      if (rawMessage.includes("📷")) {
         return (
           <div className="space-y-2 group relative">
             <div className="overflow-hidden rounded-2xl border border-white/40 shadow-lg transition-transform duration-500 group-hover:scale-[1.02]">
               <img src={fileUrl} alt="Shared image" className="max-w-xs object-cover" />
             </div>
-            <p className="text-[10px] font-bold tracking-widest text-slate-400 pl-1">{msg.message.replace("📷 ", "") || "Shared image"}</p>
+            <p className="text-[10px] font-bold tracking-widest text-slate-400 pl-1">{rawMessage.replace("📷 ", "") || "Shared image"}</p>
           </div>
         );
       }
 
       // File
-      if (msg.message.includes("📎")) {
+      if (rawMessage.includes("📎")) {
         return (
           <a
             href={fileUrl}
@@ -382,7 +412,7 @@ const SupportCenter = () => {
               <Download className="h-5 w-5 text-slate-600" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{msg.message.replace("📎 ", "")}</span>
+              <span className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{rawMessage.replace("📎 ", "")}</span>
               <span className="text-[9px] font-black tracking-tighter text-slate-400">Download file</span>
             </div>
           </a>
@@ -412,7 +442,9 @@ const SupportCenter = () => {
             {msg.subject}
           </Badge>
         )}
-        <p className="whitespace-pre-wrap break-words leading-relaxed text-[15px] font-medium tracking-tight">{msg.message}</p>
+        <p className="whitespace-pre-wrap break-words leading-relaxed text-[15px] font-medium tracking-tight">
+          {rawMessage || <span className="italic text-slate-400 text-[11px]">Empty message</span>}
+        </p>
       </div>
     );
   };
@@ -598,7 +630,7 @@ const SupportCenter = () => {
 
             {/* Messages */}
             <ScrollArea
-              className="flex-1 p-4 relative"
+              className="flex-1 p-4 relative overflow-x-auto"
               ref={scrollRef}
               style={{
                 backgroundImage: `radial-gradient(circle at 2px 2px, rgba(148, 163, 184, 0.05) 1px, transparent 0)`,
@@ -613,10 +645,11 @@ const SupportCenter = () => {
                 ))}
               </div>
 
-              <div className="space-y-6 relative z-10">
+              <div className="space-y-6 relative z-10 overflow-x-auto">
                 {selectedMessages.map((msg: any) => {
                   const isOutbox = msg.collection === "support_chat_outbox";
                   const isMine = isOutbox;
+              const rawMessage = typeof msg.message === "string" ? msg.message : "";
 
                   return (
                     <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
@@ -624,7 +657,7 @@ const SupportCenter = () => {
                         <div
                           className={cn(
                             "px-4 py-2.5 shadow-sm transition-all hover:shadow-md",
-                            EMOJI_REGEX.test(msg.message.trim())
+                            rawMessage && EMOJI_REGEX.test(rawMessage.trim())
                               ? "bg-transparent shadow-none px-0"
                               : isMine
                                 ? "bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-[24px] rounded-br-[4px] shadow-emerald-500/10 border-t border-white/10"
@@ -633,19 +666,39 @@ const SupportCenter = () => {
                         >
                           {renderMessageContent(msg)}
                         </div>
-                        <div className={cn(
-                          "flex items-center gap-1.5 px-2",
-                          isMine ? "justify-end" : "justify-start"
-                        )}>
-                          <p className="text-[10px] font-bold tracking-tighter text-slate-400">
-                            {format(new Date(msg.timestamp), "HH:mm")}
-                          </p>
-                          {isMine && (
-                            <div className="flex gap-0.5">
-                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 opacity-50" />
-                            </div>
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5 px-2",
+                            isMine ? "justify-end" : "justify-start"
                           )}
+                        >
+                          <p className="text-[10px] font-bold tracking-tighter text-slate-400">
+                            {(() => {
+                              try {
+                                const d = new Date(msg.timestamp);
+                                return isNaN(d.getTime()) ? "" : format(d, "HH:mm");
+                              } catch {
+                                return "";
+                              }
+                            })()}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            {isMine && (
+                              <div className="flex gap-0.5">
+                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 opacity-50" />
+                              </div>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 ml-1"
+                              title="Delete message"
+                              onClick={() => handleDeleteMessage(msg.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -761,7 +814,7 @@ const SupportCenter = () => {
         state={callState}
         localStream={localStream}
         remoteStream={remoteStream}
-        partner={users.find(u => u.id === callPartnerId) || {
+        partner={users.find((u) => u.id === callPartnerId) || {
           id: callPartnerId,
           first_name: "Remote",
           last_name: "User",
@@ -769,6 +822,14 @@ const SupportCenter = () => {
         onAccept={acceptCall}
         onDecline={endCall}
         onEnd={endCall}
+        onToggleScreenShare={() => {
+          if (isScreenSharing) {
+            stopScreenShare();
+          } else {
+            startScreenShare();
+          }
+        }}
+        isScreenSharing={isScreenSharing}
       />
     </DashboardLayout>
   );
