@@ -15,7 +15,7 @@ import {
   GraduationCap,
   ShieldCheck,
 } from "lucide-react";
-import { format, subMonths, isAfter, parseISO, subDays, getMonth, getYear } from "date-fns";
+import { format, subMonths, isAfter, parseISO, parse, subDays, getMonth, getYear } from "date-fns";
 import { cn, toTitleCase } from "@/lib/utils";
 import { isCategoryProvided } from "@/lib/data-validation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -146,6 +146,37 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
 
 const filterKeyToDataKey: Record<string, string> = {};
 
+const parseServiceRecordDate = (record: Record<string, unknown>): Date | null => {
+  const raw =
+    record.service_date ||
+    record.visit_date ||
+    record.date ||
+    record.created_at ||
+    record.service_month ||
+    record.referral_month;
+
+  if (!raw) return null;
+
+  const rawStr = String(raw).trim();
+  let dateObj: Date;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(rawStr) || rawStr.includes("T")) {
+    dateObj = parseISO(rawStr);
+  } else if (/^\d{2}-\d{2}-\d{4}$/.test(rawStr)) {
+    dateObj = parse(rawStr, "dd-MM-yyyy", new Date());
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawStr)) {
+    dateObj = parse(rawStr, "dd/MM/yyyy", new Date());
+  } else {
+    dateObj = new Date(rawStr);
+  }
+
+  return isNaN(dateObj.getTime()) ? null : dateObj;
+};
+
+const getJuneReportingYear = (referenceDate: Date): number => {
+  return referenceDate.getMonth() >= 5 ? referenceDate.getFullYear() : referenceDate.getFullYear() - 1;
+};
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -160,8 +191,7 @@ const HouseholdServices = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
-  const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [selectedJuneYear, setSelectedJuneYear] = useState<string>(() => String(getJuneReportingYear(new Date())));
 
 
   // SECURITY: Enforce district lock for District Users
@@ -208,6 +238,47 @@ const HouseholdServices = () => {
   });
 
   const allServices: Record<string, unknown>[] = servicesQuery.data ?? [];
+  const isSyncing = servicesQuery.isFetching;
+
+  const availableJuneYears = useMemo(() => {
+    const years = new Set<number>();
+
+    allServices.forEach((service) => {
+      const d = parseServiceRecordDate(service);
+      if (!d) return;
+      years.add(getJuneReportingYear(d));
+    });
+
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    if (sortedYears.length === 0) {
+      sortedYears.push(getJuneReportingYear(new Date()));
+    }
+    return sortedYears;
+  }, [allServices]);
+
+  useEffect(() => {
+    const selected = Number(selectedJuneYear);
+    if (availableJuneYears.includes(selected)) return;
+
+    const currentJuneYear = getJuneReportingYear(new Date());
+    const fallbackYear = availableJuneYears.includes(currentJuneYear)
+      ? currentJuneYear
+      : availableJuneYears[0];
+
+    setSelectedJuneYear(String(fallbackYear));
+  }, [availableJuneYears, selectedJuneYear]);
+
+  const juneWindowServices = useMemo(() => {
+    const selectedYear = Number(selectedJuneYear);
+    const reportingYear = Number.isFinite(selectedYear) ? selectedYear : getJuneReportingYear(new Date());
+    const juneStart = new Date(reportingYear, 5, 1);
+    const nextJuneStart = new Date(reportingYear + 1, 5, 1);
+
+    return allServices.filter((service) => {
+      const d = parseServiceRecordDate(service);
+      return !!d && d >= juneStart && d < nextJuneStart;
+    });
+  }, [allServices, selectedJuneYear]);
 
   // ── KPI Computation ────────────────────────────────────────────────────────
 
@@ -223,17 +294,12 @@ const HouseholdServices = () => {
   }, [householdsListQuery.data]);
 
   const dashboardStats = useMemo(() => {
-    const services = allServices;
+    const services = juneWindowServices;
     const now = new Date();
     const NINETY_DAYS_AGO = subDays(now, 90);
 
     const households = (householdsListQuery.data ?? []) as any[];
-    const hhDataMap = new Map();
-    households.forEach(h => {
-      hhDataMap.set(String(h.household_id || h.hhid || h.id).trim(), h);
-    });
 
-    // 2. Map services per household for easier lookup
     const hhServiceMap = new Map<string, any[]>();
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
@@ -241,14 +307,12 @@ const HouseholdServices = () => {
       const hhId = String(s.household_id || s.hh_id || s.hhid || s.id || "unknown").trim();
       const sDistrict = String(s.district || "");
 
-      // Filter by district (handling variants)
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return;
 
       if (!hhServiceMap.has(hhId)) hhServiceMap.set(hhId, []);
       hhServiceMap.get(hhId)?.push(s);
     });
 
-    // 3. Filter registered households for the selected district
     const registeredHhs = households.filter(h => {
       const hDistrict = String(h.district || "");
       return selectedDistrict === "All" || selectedVariants.includes(hDistrict);
@@ -275,50 +339,13 @@ const HouseholdServices = () => {
       let isActive = false;
 
       hhServices.forEach(s => {
-        // --- Enhanced Month/Year Filtering ---
-        const rawDate = s.service_date || s.visit_date || s.date || s.created_at || s.service_month || s.referral_month;
-        const sDate = rawDate ? parseISO(String(rawDate)) : null;
-        const isValidDate = sDate && !isNaN(sDate.getTime());
-
-        if (isValidDate) {
-          const sMonthName = MONTHS[getMonth(sDate!)];
-          const sYearStr = getYear(sDate!).toString();
-
-          if (selectedYear !== "all" && sYearStr !== selectedYear) return;
-          if (selectedMonth !== "all" && sMonthName !== selectedMonth) return;
-        } else {
-          // Check for string-based date formats (e.g., YYYY-MM) if parseISO failed
-          const dateStr = String(rawDate || "");
-          const parts = dateStr.split("-");
-          let yearStr = "";
-          let monthStr = "";
-
-          if (parts[0]?.length === 4) {
-            yearStr = parts[0];
-            monthStr = parts[1];
-          } else if (parts.length >= 2) {
-            monthStr = parts[0];
-            yearStr = parts[parts.length - 1];
-          }
-
-          if (yearStr && monthStr) {
-            const mIdx = parseInt(monthStr) - 1;
-            const mName = MONTHS[mIdx] || "";
-            if (selectedYear !== "all" && yearStr !== selectedYear) return;
-            if (selectedMonth !== "all" && mName !== selectedMonth) return;
-          } else if (selectedYear !== "all" || selectedMonth !== "all") {
-            // If a filter is active and we can't determine the date, skip this record
-            return;
-          }
-        }
-        // -----------------------------------
+        const sDate = parseServiceRecordDate(s);
+        if (sDate && isAfter(sDate, NINETY_DAYS_AGO)) isActive = true;
 
         if (isCategoryProvided(s, "health_services")) hasHealth = true;
         if (isCategoryProvided(s, "schooled_services")) hasSchooled = true;
         if (isCategoryProvided(s, "safe_services")) hasSafe = true;
         if (isCategoryProvided(s, "stable_services")) hasStable = true;
-
-        if (sDate && isAfter(sDate, NINETY_DAYS_AGO)) isActive = true;
       });
 
       if (hasHealth) healthCount++;
@@ -334,71 +361,29 @@ const HouseholdServices = () => {
       // Domain coverage
       healthCount,
       healthRate: registrationCount > 0 ? (healthCount / registrationCount) * 100 : 0,
-      schooledCount,
       schooledRate: registrationCount > 0 ? (schooledCount / registrationCount) * 100 : 0,
-      safeCount,
       safeRate: registrationCount > 0 ? (safeCount / registrationCount) * 100 : 0,
-      stableCount,
       stableRate: registrationCount > 0 ? (stableCount / registrationCount) * 100 : 0,
-      // Derived
-      allDomainsCount,
       allDomainsRate: registrationCount > 0 ? (allDomainsCount / registrationCount) * 100 : 0,
+      registrationCount,
+      healthCount,
+      schooledCount,
+      safeCount,
+      stableCount,
+      allDomainsCount,
       activeHHCount,
-      activeRate: registrationCount > 0 ? (activeHHCount / registrationCount) * 100 : 0,
-      totalVisits: Array.from(hhServiceMap.values()).flat().length,
+      totalVisits: Array.from(hhServiceMap.values()).reduce((sum, records) => sum + records.length, 0),
     };
-
-  }, [allServices, selectedDistrict, householdsListQuery.data, selectedMonth, selectedYear]);
+  }, [juneWindowServices, selectedDistrict, householdsListQuery.data, discoveredDistrictsMap]);
 
   // ── Filtered audit log
   const filteredAuditLog = useMemo(() => {
-    const households = (householdsListQuery.data ?? []) as any[];
-    const hhDataMap = new Map();
-    households.forEach(h => {
-      hhDataMap.set(String(h.household_id || h.hhid || h.id).trim(), h);
-    });
-
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
-    const base = allServices.filter((s) => {
+    const base = juneWindowServices.filter((s) => {
       const sDistrict = String(s.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return false;
 
-      // --- Enhanced Month/Year Filtering ---
-      const rawDate = s.service_date || s.visit_date || s.date || s.created_at || s.service_month || s.referral_month;
-      const sDate = rawDate ? parseISO(String(rawDate)) : null;
-      const isValidDate = sDate && !isNaN(sDate.getTime());
-
-      if (isValidDate) {
-        const sMonthName = MONTHS[getMonth(sDate!)];
-        const sYearStr = getYear(sDate!).toString();
-
-        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
-        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
-      } else {
-        const dateStr = String(rawDate || "");
-        const parts = dateStr.split("-");
-        let yearStr = "";
-        let monthStr = "";
-
-        if (parts[0]?.length === 4) {
-          yearStr = parts[0];
-          monthStr = parts[1];
-        } else if (parts.length >= 2) {
-          monthStr = parts[0];
-          yearStr = parts[parts.length - 1];
-        }
-
-        if (yearStr && monthStr) {
-          const mIdx = parseInt(monthStr) - 1;
-          const mName = MONTHS[mIdx] || "";
-          if (selectedYear !== "all" && yearStr !== selectedYear) return false;
-          if (selectedMonth !== "all" && mName !== selectedMonth) return false;
-        } else if (selectedYear !== "all" || selectedMonth !== "all") {
-          return false;
-        }
-      }
-      // -----------------------------------
 
       const query = searchQuery.toLowerCase();
       const hhId = String(s.household_id || s.hh_id || s.hhid || s.id || "").trim();
@@ -409,15 +394,43 @@ const HouseholdServices = () => {
         caseworker.includes(query);
     });
 
-    // Sort by latest service date
-    return [...base].sort((a, b) => {
-      const valA = (a.service_date || a.visit_date || a.date || a.created_at || 0) as any;
-      const valB = (b.service_date || b.visit_date || b.date || b.created_at || 0) as any;
-      const dateA = new Date(valA).getTime();
-      const dateB = new Date(valB).getTime();
-      return dateB - dateA;
-    });
-  }, [allServices, selectedDistrict, searchQuery, householdsListQuery.data, householdCwMap, selectedMonth, selectedYear]);
+    // Sort by latest service date (most recent first)
+    const getTimestamp = (record: any) => {
+      const raw =
+        record.service_date ||
+        record.visit_date ||
+        record.date ||
+        record.created_at ||
+        record.service_month ||
+        record.referral_month;
+
+      if (!raw) return 0;
+
+      const rawStr = String(raw).trim();
+      let dateObj: Date | null = null;
+
+      // ISO-like formats (e.g. 2025-02-19 or with time)
+      if (/^\d{4}-\d{2}-\d{2}/.test(rawStr) || rawStr.includes("T")) {
+        dateObj = parseISO(rawStr);
+      }
+      // Day-first format used in your table (e.g. 19-02-2024)
+      else if (/^\d{2}-\d{2}-\d{4}$/.test(rawStr)) {
+        dateObj = parse(rawStr, "dd-MM-yyyy", new Date());
+      }
+      // Common alternative with slashes
+      else if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawStr)) {
+        dateObj = parse(rawStr, "dd/MM/yyyy", new Date());
+      } else {
+        // Fallback – let JS try to parse
+        dateObj = new Date(rawStr);
+      }
+
+      const time = dateObj.getTime();
+      return isNaN(time) ? 0 : time;
+    };
+
+    return [...base].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+  }, [juneWindowServices, selectedDistrict, searchQuery, householdCwMap, discoveredDistrictsMap]);
 
   const isLoading = servicesQuery.isLoading;
 
@@ -493,30 +506,21 @@ const HouseholdServices = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[100px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="Year" />
+              <Select
+                value={selectedJuneYear}
+                onValueChange={setSelectedJuneYear}
+              >
+                <SelectTrigger className="w-[220px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder="Select June Year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {["2023", "2024", "2025", "2026"].map(y => (
-                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                  {availableJuneYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      June {year} - May {year + 1}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[130px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Months</SelectItem>
-                  {MONTHS.map(m => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
@@ -532,13 +536,20 @@ const HouseholdServices = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                onClick={() => servicesQuery.refetch()}
-                className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
-              >
-                <RefreshCcw className={`h-4 w-4 mr-2 ${servicesQuery.isFetching ? "animate-spin" : ""}`} />
-                Sync
-              </Button>
+              <div className="flex flex-col items-center gap-1">
+                <Button
+                  onClick={() => servicesQuery.refetch()}
+                  className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
+                >
+                  <RefreshCcw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                  Sync
+                </Button>
+                {isSyncing && (
+                  <p className="text-[10px] font-bold text-white/90 tracking-wide">
+                    Syncing data, please be patient...
+                  </p>
+                )}
+              </div>
             </div>
 
           </div>

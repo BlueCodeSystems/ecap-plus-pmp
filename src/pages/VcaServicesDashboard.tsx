@@ -22,7 +22,7 @@ import {
   Landmark,
   GraduationCap,
 } from "lucide-react";
-import { format, subMonths, isAfter, parseISO, subDays, getMonth, getYear } from "date-fns";
+import { format, isAfter, parseISO, parse, getMonth, getYear } from "date-fns";
 import { cn, toTitleCase } from "@/lib/utils";
 import { isCategoryProvided } from "@/lib/data-validation";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -53,8 +53,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getVcaServicesByDistrict,
   getChildrenByDistrict,
-  getVcaCasePlansByDistrict,
-  getVcaReferralsByMonth
 } from "@/lib/api";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -95,6 +93,37 @@ const parseHealthServices = (services: any): string[] => {
   } catch (e) {
   }
   return String(services).split(",").map(s => s.trim().replace(/[\[\]"]/g, "")).filter(s => s && !NOT_APPLICABLE.includes(s.toLowerCase()));
+};
+
+const parseServiceRecordDate = (record: Record<string, unknown>): Date | null => {
+  const raw =
+    record.service_date ||
+    record.visit_date ||
+    record.date ||
+    record.created_at ||
+    record.service_month ||
+    record.referral_month;
+
+  if (!raw) return null;
+
+  const rawStr = String(raw).trim();
+  let dateObj: Date;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(rawStr) || rawStr.includes("T")) {
+    dateObj = parseISO(rawStr);
+  } else if (/^\d{2}-\d{2}-\d{4}$/.test(rawStr)) {
+    dateObj = parse(rawStr, "dd-MM-yyyy", new Date());
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawStr)) {
+    dateObj = parse(rawStr, "dd/MM/yyyy", new Date());
+  } else {
+    dateObj = new Date(rawStr);
+  }
+
+  return isNaN(dateObj.getTime()) ? null : dateObj;
+};
+
+const getJuneReportingYear = (referenceDate: Date): number => {
+  return referenceDate.getMonth() >= 5 ? referenceDate.getFullYear() : referenceDate.getFullYear() - 1;
 };
 
 const SERVICE_CATEGORIES = [
@@ -189,8 +218,7 @@ const VcaServicesDashboard = () => {
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState("all");
-  const [selectedYear, setSelectedYear] = useState("all");
+  const [selectedJuneYear, setSelectedJuneYear] = useState<string>(() => String(getJuneReportingYear(new Date())));
 
 
   // SECURITY: Enforce district lock for District Users
@@ -242,20 +270,6 @@ const VcaServicesDashboard = () => {
     retry: false,
   });
 
-  // 2. Fetch Case Plans
-  const casePlansQuery = useQuery({
-    queryKey: ["vca-case-plans-all"],
-    queryFn: () => getVcaCasePlansByDistrict(""), // Fetches all as per API limitation
-    staleTime: 1000 * 60 * 30,
-  });
-
-  // 3. Fetch Referrals
-  const referralsQuery = useQuery({
-    queryKey: ["vca-referrals-all", "All"], // Fetch all for local filtering
-    queryFn: () => getVcaReferralsByMonth(""),
-    staleTime: 1000 * 60 * 30,
-  });
-
   const [cachedNationwideStats, setCachedNationwideStats] = useState<any>(() => {
     try {
       const saved = localStorage.getItem("ecap_cache_nationwide_vca");
@@ -270,6 +284,43 @@ const VcaServicesDashboard = () => {
     return (servicesQuery.data ?? []) as any[];
   }, [servicesQuery.data]);
 
+  const availableJuneYears = useMemo(() => {
+    const years = new Set<number>();
+    allServices.forEach((service) => {
+      const d = parseServiceRecordDate(service);
+      if (!d) return;
+      years.add(getJuneReportingYear(d));
+    });
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    if (sortedYears.length === 0) {
+      sortedYears.push(getJuneReportingYear(new Date()));
+    }
+    return sortedYears;
+  }, [allServices]);
+
+  useEffect(() => {
+    const selected = Number(selectedJuneYear);
+    if (availableJuneYears.includes(selected)) return;
+
+    const currentJuneYear = getJuneReportingYear(new Date());
+    const fallbackYear = availableJuneYears.includes(currentJuneYear)
+      ? currentJuneYear
+      : availableJuneYears[0];
+    setSelectedJuneYear(String(fallbackYear));
+  }, [availableJuneYears, selectedJuneYear]);
+
+  const juneWindowServices = useMemo(() => {
+    const selectedYear = Number(selectedJuneYear);
+    const reportingYear = Number.isFinite(selectedYear) ? selectedYear : getJuneReportingYear(new Date());
+    const juneStart = new Date(reportingYear, 5, 1);
+    const nextJuneStart = new Date(reportingYear + 1, 5, 1);
+
+    return allServices.filter((service) => {
+      const d = parseServiceRecordDate(service);
+      return !!d && d >= juneStart && d < nextJuneStart;
+    });
+  }, [allServices, selectedJuneYear]);
+
   const filteredServices = useMemo(() => {
     const vcas = (vcasQuery.data ?? []) as any[];
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
@@ -280,7 +331,7 @@ const VcaServicesDashboard = () => {
       vcaMap.set(id, v);
     });
 
-    const base = allServices.filter((service: any) => {
+    const base = juneWindowServices.filter((service: any) => {
       const vId = String(service.vca_id || service.vcaid || service.child_id || "").trim();
       const sDistrict = String(service.district || "");
 
@@ -288,18 +339,6 @@ const VcaServicesDashboard = () => {
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return false;
       if (!vcaMap.has(vId)) return false;
 
-      // Month/Year filter
-      const rawDate = service.service_date || service.visit_date || service.date || service.created_at;
-      const sDate = rawDate ? parseISO(String(rawDate)) : null;
-      const isValidDate = sDate && !isNaN(sDate.getTime());
-      if (isValidDate) {
-        const sMonthName = MONTHS[getMonth(sDate!)];
-        const sYearStr = getYear(sDate!).toString();
-        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
-        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
-      } else if (selectedYear !== "all" || selectedMonth !== "all") {
-        return false;
-      }
 
       // Filter by search query
       const serviceName = String(service.service || service.service_name || service.form_name || "").toLowerCase();
@@ -313,13 +352,43 @@ const VcaServicesDashboard = () => {
         sDistrict.toLowerCase().includes(query);
     });
 
-    // Sort by latest service date
-    return [...base].sort((a, b) => {
-      const valA = (a.service_date || a.visit_date || a.date || a.created_at || 0) as any;
-      const valB = (b.service_date || b.visit_date || b.date || b.created_at || 0) as any;
-      return new Date(valB).getTime() - new Date(valA).getTime();
-    });
-  }, [allServices, selectedDistrict, searchQuery, discoveredDistrictsMap, vcasQuery.data, selectedMonth, selectedYear]);
+    // Sort by latest service date (newest first)
+    const getTimestamp = (record: any) => {
+      const raw =
+        record.service_date ||
+        record.visit_date ||
+        record.date ||
+        record.created_at ||
+        record.service_month ||
+        record.referral_month;
+
+      if (!raw) return 0;
+
+      const rawStr = String(raw).trim();
+      let dateObj: Date | null = null;
+
+      // ISO-like formats (e.g. 2025-02-19 or with time)
+      if (/^\d{4}-\d{2}-\d{2}/.test(rawStr) || rawStr.includes("T")) {
+        dateObj = parseISO(rawStr);
+      }
+      // Day-first format (e.g. 19-02-2024)
+      else if (/^\d{2}-\d{2}-\d{4}$/.test(rawStr)) {
+        dateObj = parse(rawStr, "dd-MM-yyyy", new Date());
+      }
+      // Common alternative with slashes
+      else if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawStr)) {
+        dateObj = parse(rawStr, "dd/MM/yyyy", new Date());
+      } else {
+        // Fallback – let JS try to parse
+        dateObj = new Date(rawStr);
+      }
+
+      const time = dateObj.getTime();
+      return isNaN(time) ? 0 : time;
+    };
+
+    return [...base].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+  }, [juneWindowServices, selectedDistrict, searchQuery, discoveredDistrictsMap, vcasQuery.data]);
 
   const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
     for (const key of keys) {
@@ -331,173 +400,25 @@ const VcaServicesDashboard = () => {
 
   const dashboardStats = useMemo(() => {
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
-
-    let vcas = ((vcasQuery.data ?? []) as any[]).filter(v => {
+    const vcas = ((vcasQuery.data ?? []) as any[]).filter(v => {
       const vDist = String(v.district || "");
       return selectedDistrict === "All" || selectedVariants.includes(vDist);
     });
 
-    const services = ((servicesQuery.data ?? []) as any[]).filter(s => {
+    const services = juneWindowServices.filter(s => {
       const sDist = String(s.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return false;
-
-      // Month/Year filter
-      const rawDate = s.service_date || s.visit_date || s.date || s.created_at;
-      const sDate = rawDate ? parseISO(String(rawDate)) : null;
-      const isValidDate = sDate && !isNaN(sDate.getTime());
-      if (isValidDate) {
-        const sMonthName = MONTHS[getMonth(sDate!)];
-        const sYearStr = getYear(sDate!).toString();
-        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
-        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
-      } else if (selectedYear !== "all" || selectedMonth !== "all") {
-        return false;
-      }
-      return true;
-    });
-
-    const casePlans = (casePlansQuery.data ?? []) as any[];
-    const referrals = ((referralsQuery.data ?? []) as any[]).filter(r => {
-      const rDist = String(r.district || "");
-      if (selectedDistrict !== "All" && !selectedVariants.includes(rDist)) return false;
-
-      // Month/Year filter
-      const rawDate = r.referral_date || r.date || r.date_created || r.created_at;
-      const sDate = rawDate ? parseISO(String(rawDate)) : null;
-      const isValidDate = sDate && !isNaN(sDate.getTime());
-      if (isValidDate) {
-        const sMonthName = MONTHS[getMonth(sDate!)];
-        const sYearStr = getYear(sDate!).toString();
-        if (selectedYear !== "all" && sYearStr !== selectedYear) return false;
-        if (selectedMonth !== "all" && sMonthName !== selectedMonth) return false;
-      } else if (selectedYear !== "all" || selectedMonth !== "all") {
-        return false;
-      }
       return true;
     });
 
     if (!vcas.length && !services.length) return null;
 
-
-
-    if (!vcas.length && !services.length) return null;
-
-    const SIX_MONTHS_AGO = subMonths(new Date(), 6);
-    const NINETY_DAYS_AGO = subDays(new Date(), 90);
-    const THIRTY_DAYS_AGO = subDays(new Date(), 30);
-
-    // 1. HIV+ without VL in 6 months
-    const hivPositiveVcas = vcas.filter((v: any) =>
-      String(v.hiv_status || v.is_hiv_positive || "").toLowerCase().includes("positive") ||
-      String(v.hiv_status || v.is_hiv_positive) === "1" ||
-      v.is_hiv_positive === true
-    );
-
-    const hivWithoutVL = hivPositiveVcas.filter((v: any) => {
-      const vlDateStr = v.date_last_vl || v.last_vl_date;
-      if (!vlDateStr) return true;
-      try {
-        const vlDate = parseISO(vlDateStr);
-        return vlDate < SIX_MONTHS_AGO;
-      } catch { return true; }
-    });
-
-    const hivWithoutVLRate = hivPositiveVcas.length > 0
-      ? (hivWithoutVL.length / hivPositiveVcas.length) * 100
-      : 0;
-
-    // 2. Unsuppressed VL Rate (>= 1000)
-    const unsuppressedVcas = hivPositiveVcas.filter((v: any) => {
-      const vlResult = parseFloat(String(v.vl_last_result || 0));
-      return vlResult >= 1000;
-    });
-
-    const unsuppressedRate = hivPositiveVcas.length > 0
-      ? (unsuppressedVcas.length / hivPositiveVcas.length) * 100
-      : 0;
-
-    // 3. Out-of-School VCAs
-    const schooledVcaIds = new Set(
-      services
-        .filter(s => s.schooled_services && s.schooled_services !== "None" && s.schooled_services !== "[]")
-        .map(s => String(s.vca_id || s.vcaid || s.child_id))
-    );
-
-    const outOfSchoolVcas = vcas.filter((v: any) => {
-      const vId = String(v.uid || v.unique_id || v.vca_id);
-      const isNotEnrolled = String(v.school_status || "").toLowerCase().includes("not_enrolled");
-      return isNotEnrolled || !schooledVcaIds.has(vId);
-    });
-
-    const outOfSchoolRate = vcas.length > 0
-      ? (outOfSchoolVcas.length / vcas.length) * 100
-      : 0;
-
-    // 4. Case Plan Stagnation (> 90 days)
-    const casePlanVcas = vcas.filter((v: any) => {
-      const vId = String(v.uid || v.unique_id || v.vca_id);
-      const plans = casePlans.filter(p => String(p.vca_id || p.child_id) === vId);
-      if (plans.length === 0) return false;
-      const lastUpdateStr = plans[0].date_created || plans[0].case_plan_date || plans[0].date;
-      if (!lastUpdateStr) return true;
-      try {
-        const lastDate = parseISO(lastUpdateStr);
-        return lastDate < NINETY_DAYS_AGO;
-      } catch { return true; }
-    });
-
-    // 5. Referral Completion Failure (> 30 days and !completed)
-    const pendingReferrals = referrals.filter((r: any) => {
-      const status = String(r.status || "").toLowerCase();
-      const refDateStr = r.referral_date || r.date;
-      if (!refDateStr || status === "completed") return false;
-      try {
-        const refDate = parseISO(refDateStr);
-        return refDate < THIRTY_DAYS_AGO;
-      } catch { return false; }
-    });
-
-    const referralFailureRate = referrals.length > 0
-      ? (pendingReferrals.length / referrals.length) * 100
-      : 0;
-
-    // 6. High-Risk Composite Metric
-    const riskServiceMap = new Map<string, any[]>();
-    services.forEach(s => {
-      const vId = String(s.vca_id || s.vcaid || s.child_id);
-      if (!riskServiceMap.has(vId)) riskServiceMap.set(vId, []);
-      riskServiceMap.get(vId)?.push(s);
-    });
-
-    const highRiskVcas = vcas.filter((v: any) => {
-      const vId = String(v.uid || v.unique_id || v.vca_id);
-      const isHivPos = hivPositiveVcas.some(h => String(h.uid || h.unique_id) === vId);
-      const isNoVl = hivWithoutVL.some(h => String(h.uid || h.unique_id) === vId);
-      const isUnsuppressed = unsuppressedVcas.some(h => String(h.uid || h.unique_id) === vId);
-      const isOutOfSchool = outOfSchoolVcas.some(h => String(h.uid || h.unique_id) === vId);
-
-      const vServices = riskServiceMap.get(vId) || [];
-      const noService90d = vServices.length === 0 || vServices.every(s => {
-        const sDate = parseISO(s.service_date || s.visit_date || s.date);
-        return sDate < NINETY_DAYS_AGO;
-      });
-
-      const plans = casePlans.filter(p => String(p.vca_id || p.child_id) === vId);
-      const noActiveCasePlan = plans.length === 0;
-
-      return (isHivPos && (isNoVl || isUnsuppressed)) || isOutOfSchool || noService90d || noActiveCasePlan;
-    });
-
-    // 6. Per-VCA domain    // Build per-VCA service map
     const serviceMap = new Map<string, any[]>();
     services.forEach(s => {
       const vId = String(s.vca_id || s.vcaid || s.child_id || s.uid || s.id || "").trim();
       if (!serviceMap.has(vId)) serviceMap.set(vId, []);
       serviceMap.get(vId)?.push(s);
     });
-
-
-
 
     let healthDomainCount = 0;
     let schooledDomainCount = 0;
@@ -508,13 +429,18 @@ const VcaServicesDashboard = () => {
     vcas.forEach((v: any) => {
       const vId = String(v.uid || v.unique_id || v.vca_id || v.child_id || v.id || "").trim();
       const vServices = serviceMap.get(vId) || [];
-      let hasHealth = false, hasSchooled = false, hasSafe = false, hasStable = false;
+      let hasHealth = false;
+      let hasSchooled = false;
+      let hasSafe = false;
+      let hasStable = false;
+
       vServices.forEach(s => {
         if (isCategoryProvided(s, "health_services")) hasHealth = true;
         if (isCategoryProvided(s, "schooled_services")) hasSchooled = true;
         if (isCategoryProvided(s, "safe_services")) hasSafe = true;
         if (isCategoryProvided(s, "stable_services")) hasStable = true;
       });
+
       if (hasHealth) healthDomainCount++;
       if (hasSchooled) schooledDomainCount++;
       if (hasSafe) safeDomainCount++;
@@ -522,19 +448,15 @@ const VcaServicesDashboard = () => {
       if (hasHealth && hasSchooled && hasSafe && hasStable) allFourDomainsCount++;
     });
 
-    const totalVcas = vcas.length;
-
-    // 7. Health Services Analytics
     const healthServiceCounts: Record<string, number> = {};
     const parseServices = (val: any) => {
       if (!val) return [];
       try {
-        if (typeof val === 'string') {
-          const cleaned = val.replace(/^\[+/, '[').replace(/\]+$/, ']');
-          return JSON.parse(cleaned);
-        }
+        if (typeof val === "string") return JSON.parse(val);
         return Array.isArray(val) ? val : [];
-      } catch { return []; }
+      } catch {
+        return [];
+      }
     };
 
     services.forEach(s => {
@@ -542,43 +464,21 @@ const VcaServicesDashboard = () => {
       const hivSvc = parseServices(s.hiv_services);
       const otherSvc = parseServices(s.other_health_services);
       [...hSvc, ...hivSvc, ...otherSvc].forEach(svc => {
-        if (svc && svc !== "None") {
-          const name = String(svc).trim();
-          healthServiceCounts[name] = (healthServiceCounts[name] || 0) + 1;
-        }
+        if (!svc || svc === "None") return;
+        const name = String(svc).trim();
+        healthServiceCounts[name] = (healthServiceCounts[name] || 0) + 1;
       });
     });
 
-    // 8. District Risk Comparison (BENCHMARKING: ALWAYS USE NATIONWIDE DATA)
-    const nationwideVcas = (vcaListQuery.data ?? []) as any[];
-    const distSet = new Set(nationwideVcas.map((v: any) => v.district).filter(Boolean));
-    const districtRiskData = Array.from(distSet).map(dist => {
-      const distVcas = nationwideVcas.filter((v: any) => v.district === dist);
-      const distHivPos = distVcas.filter((v: any) =>
-        String(v.hiv_status || v.is_hiv_positive || "").toLowerCase().includes("positive") ||
-        String(v.hiv_status || v.is_hiv_positive) === "1"
-      );
-      const distUnsuppressed = distHivPos.filter((v: any) => {
-        const vlResult = parseFloat(String(v.vl_last_result || 0));
-        return vlResult >= 1000;
-      });
-      return {
-        name: dist,
-        value: distHivPos.length > 0 ? (distUnsuppressed.length / distHivPos.length) * 100 : 0,
-        unsuppressed: distUnsuppressed.length,
-        totalHiv: distHivPos.length
-      };
-    }).sort((a, b) => b.value - a.value);
-
-    const healthServiceStatsFinal = Object.entries(healthServiceCounts)
+    const healthServiceStats = Object.entries(healthServiceCounts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10);
 
+    const totalVcas = vcas.length;
     return {
       totalVcas,
       totalServices: services.length,
-      // Domain coverage
       healthDomainCount,
       healthDomainRate: totalVcas > 0 ? (healthDomainCount / totalVcas) * 100 : 0,
       schooledDomainCount,
@@ -589,21 +489,9 @@ const VcaServicesDashboard = () => {
       stableDomainRate: totalVcas > 0 ? (stableDomainCount / totalVcas) * 100 : 0,
       allFourDomainsCount,
       allFourDomainsRate: totalVcas > 0 ? (allFourDomainsCount / totalVcas) * 100 : 0,
-      // Legacy stats (kept for other sections)
-      hivWithoutVL: hivWithoutVL.length,
-      hivWithoutVLRate,
-      unsuppressedCount: unsuppressedVcas.length,
-      unsuppressedRate,
-      outOfSchoolCount: outOfSchoolVcas.length,
-      outOfSchoolRate,
-      stagnantCasePlans: casePlanVcas.length,
-      referralFailureRate,
-      highRiskCount: highRiskVcas.length,
-      highRiskRate: totalVcas > 0 ? (highRiskVcas.length / totalVcas) * 100 : 0,
-      districtRiskData,
-      healthServiceStats: healthServiceStatsFinal,
+      healthServiceStats,
     };
-  }, [vcasQuery.data, servicesQuery.data, casePlansQuery.data, referralsQuery.data, selectedDistrict, vcaListQuery.data, selectedMonth, selectedYear]);
+  }, [vcasQuery.data, juneWindowServices, selectedDistrict, discoveredDistrictsMap]);
 
   const displayStats = selectedDistrict === "All" ? (dashboardStats || cachedNationwideStats) : dashboardStats;
   const isRefreshing = servicesQuery.isFetching && (displayStats?.totalVcas > 0);
@@ -641,6 +529,21 @@ const VcaServicesDashboard = () => {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Select
+                value={selectedJuneYear}
+                onValueChange={setSelectedJuneYear}
+              >
+                <SelectTrigger className="w-[220px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                  <SelectValue placeholder="Select June year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableJuneYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      June {year} - May {year + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
                 disabled={user?.description === "District User"}
@@ -655,31 +558,20 @@ const VcaServicesDashboard = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[140px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="All months" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All months</SelectItem>
-                  {MONTHS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[110px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="All years" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All years</SelectItem>
-                  {YEARS.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => servicesQuery.refetch()}
-                className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
-              >
-                <RefreshCcw className={`h-4 w-4 mr-2 ${servicesQuery.isFetching ? "animate-spin" : ""}`} />
-                Sync
-              </Button>
+              <div className="flex flex-col items-center gap-1">
+                <Button
+                  onClick={() => servicesQuery.refetch()}
+                  className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
+                >
+                  <RefreshCcw className={`h-4 w-4 mr-2 ${servicesQuery.isFetching ? "animate-spin" : ""}`} />
+                  Sync
+                </Button>
+                {servicesQuery.isFetching && (
+                  <p className="text-[10px] font-bold text-white/90 tracking-wide">
+                    Syncing data, please be patient...
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

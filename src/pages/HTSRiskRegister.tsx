@@ -41,10 +41,10 @@ import { cn, toTitleCase } from "@/lib/utils";
 import { downloadCsv } from "@/lib/exportUtils";
 
 const RISK_TYPES = {
-  unlinked: { label: "Unlinked Positives", icon: AlertCircle, color: "text-rose-600", bg: "bg-rose-50", description: "Positive cases not yet linked to ART" },
+  unlinked: { label: "Positives Not On ART  ", icon: AlertCircle, color: "text-rose-600", bg: "bg-rose-50", description: "Positive cases not yet linked to ART" },
   pending: { label: "Pending Outcomes", icon: Clock, color: "text-amber-600", bg: "bg-amber-50", description: "Tests with unknown results" },
   new: { label: "New Positives", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50", description: "Positive results found in the last 7 days" },
-  all: { label: "All Records", icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50", description: "Full HTS register" }
+  all: { label: "All Records", icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50", description: "Full HTS Register" }
 };
 
 const PROFILE_FIELDS: { label: string; keys: string[] }[] = [

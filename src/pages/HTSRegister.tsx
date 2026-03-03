@@ -229,7 +229,7 @@ const HTSRegister = () => {
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h1 className="text-3xl font-black text-white lg:text-4xl leading-tight">
-                Hts register
+                HTS Register
               </h1>
 
               <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm font-medium">
@@ -283,7 +283,7 @@ const HTSRegister = () => {
             <div className="p-2 bg-rose-50 rounded-lg text-rose-600">
               <AlertCircle className="h-4 w-4" />
             </div>
-            <span className="text-xs font-bold tracking-wider text-muted-foreground">Unlinked Positives</span>
+            <span className="text-xs font-bold tracking-wider text-muted-foreground">Positives not on ART</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900">{displayStats?.unlinked || 0}</span>

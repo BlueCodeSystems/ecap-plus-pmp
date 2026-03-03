@@ -174,6 +174,14 @@ export const sendChatMessage = async (recipientId: string, message: string, prio
   return sent;
 };
 
+// Delete a single chat notification (inbox or outbox) that the current user owns
+export const deleteChatMessage = async (id: string) => {
+  if (!id) return;
+  await directusRequest(`/notifications/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+};
+
 // File Upload to Directus
 export const uploadFile = async (file: File) => {
   const formData = new FormData();

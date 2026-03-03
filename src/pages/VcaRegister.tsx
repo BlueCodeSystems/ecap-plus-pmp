@@ -342,7 +342,7 @@ const VcaRegister = () => {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div>
-              <CardTitle>Vca register</CardTitle>
+              <CardTitle>VCA Register</CardTitle>
               <div className="mt-2 text-sm text-amber-600 font-medium">
                 Note: Only active VCAs are shown.
               </div>
