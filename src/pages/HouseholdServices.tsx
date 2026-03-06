@@ -359,7 +359,6 @@ const HouseholdServices = () => {
     return {
       totalHouseholds: registrationCount,
       // Domain coverage
-      healthCount,
       healthRate: registrationCount > 0 ? (healthCount / registrationCount) * 100 : 0,
       schooledRate: registrationCount > 0 ? (schooledCount / registrationCount) * 100 : 0,
       safeRate: registrationCount > 0 ? (safeCount / registrationCount) * 100 : 0,
