@@ -28,16 +28,8 @@ const WelcomeBanner = () => {
 
       <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="mb-1 flex overflow-hidden text-xs font-bold tracking-wider text-emerald-100/80">
-            {getGreeting().split("").map((char, index) => (
-              <span
-                key={index}
-                className="animate-bounce-in-up opacity-0 inline-block"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                {char === " " ? "\u00A0" : char}
-              </span>
-            ))}
+          <div className="mb-1 text-xs font-bold tracking-wider text-emerald-100/80">
+            {getGreeting()}
           </div>
           <h1 className="text-3xl font-black sm:text-4xl leading-tight">
             {isFirstLogin ? `Welcome, ${firstName}` : `Welcome back, ${firstName}`}
