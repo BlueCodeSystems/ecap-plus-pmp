@@ -133,8 +133,8 @@ export function GlobalSearch() {
                     onSelect={() => runCommand(() => navigate(`/profile/vca-details`, { state: { id } }))}
                     className="flex items-center gap-3 px-4 py-3"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-                      <Users className="h-4 w-4 text-blue-600" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+                      <Users className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div className="flex flex-col">
                       <span className="font-bold text-foreground">{name}</span>
@@ -181,8 +181,8 @@ export function GlobalSearch() {
                 onSelect={() => runCommand(() => navigate("/support-center"))}
                 className="flex items-center gap-3 px-4 py-3"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
-                  <Book className="h-4 w-4 text-indigo-600" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+                  <Book className="h-4 w-4 text-emerald-600" />
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-foreground">{item.title}</span>

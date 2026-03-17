@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Flag, ArrowLeft, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Flag, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createFlaggedRecord } from "@/lib/api";
@@ -207,7 +208,7 @@ const FlaggedRecordForm = () => {
                   >
                     {mutation.isPending ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <LoadingDots className="h-4" />
                         Submitting...
                       </>
                     ) : (

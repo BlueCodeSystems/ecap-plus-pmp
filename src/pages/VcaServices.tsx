@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import LoadingDots from "@/components/aceternity/LoadingDots";
-import TableSkeleton from "@/components/ui/TableSkeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -103,9 +102,12 @@ const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
 
 const VcaServices = () => {
   const { user } = useAuth();
+  const isDistrictUser = user?.description === "District User";
+  const isProvincialUser = user?.description === "Provincial User";
+  const userProvince = user?.title;
 
   // Initial state logic for district security
-  const initialDistrict = (user?.description === "District User" && user?.location)
+  const initialDistrict = (isDistrictUser && user?.location)
     ? user.location
     : "All";
 
@@ -117,10 +119,10 @@ const VcaServices = () => {
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
-    if (user?.description === "District User" && user?.location && selectedDistrict !== user.location) {
+    if (isDistrictUser && user?.location && selectedDistrict !== user.location) {
       setSelectedDistrict(user.location);
     }
-  }, [user, selectedDistrict]);
+  }, [user, selectedDistrict, isDistrictUser]);
 
   // Discover districts
   const hhListQuery = useQuery({
@@ -133,6 +135,7 @@ const VcaServices = () => {
     const groups = new Map<string, string[]>();
     if (hhListQuery.data) {
       (hhListQuery.data as any[]).forEach((h: any) => {
+        if (isProvincialUser && userProvince && h.province !== userProvince) return;
         const raw = h.district;
         if (raw) {
           const normalized = toTitleCase(raw.trim());
@@ -143,7 +146,7 @@ const VcaServices = () => {
       });
     }
     return groups;
-  }, [hhListQuery.data]);
+  }, [hhListQuery.data, isProvincialUser, userProvince]);
 
   const districts = useMemo(() => {
     return Array.from(discoveredDistrictsMap.keys()).sort();
@@ -174,6 +177,7 @@ const VcaServices = () => {
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
     const base = services.filter((service: any) => {
+      if (isProvincialUser && userProvince && service.province !== userProvince) return false;
       const vcaId = String(service.vca_id || service.vcaid || service.child_id || "").trim();
       const sDistrict = String(service.district || "");
 
@@ -215,7 +219,7 @@ const VcaServices = () => {
       const valB = (b.service_date || b.visit_date || b.date || b.created_at || 0) as any;
       return new Date(valB).getTime() - new Date(valA).getTime();
     });
-  }, [services, vcaListQuery.data, searchQuery, selectedDistrict, discoveredDistrictsMap, selectedMonth, selectedYear]);
+  }, [services, vcaListQuery.data, searchQuery, selectedDistrict, discoveredDistrictsMap, selectedMonth, selectedYear, isProvincialUser, userProvince]);
 
   const recentServices = filteredServices.slice(0, 10);
 
@@ -337,7 +341,7 @@ const VcaServices = () => {
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
-                disabled={user?.description === "District User"}
+                disabled={isDistrictUser}
               >
                 <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
                   <SelectValue placeholder="Select district" />
@@ -376,10 +380,10 @@ const VcaServices = () => {
       {/* KPI Section */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total services", value: dashboardStats?.total || 0, icon: ClipboardList, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Total services", value: dashboardStats?.total || 0, icon: ClipboardList, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Unique Vcas", value: dashboardStats?.uniqueVcas || 0, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Completion rate", value: `${dashboardStats?.completionRate || 0}%`, icon: Target, color: "text-amber-600", bg: "bg-amber-50" },
-          { label: "Avg engagement", value: dashboardStats?.avgEngagement || 0, icon: Activity, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "Avg engagement", value: dashboardStats?.avgEngagement || 0, icon: Activity, color: "text-emerald-600", bg: "bg-emerald-50" },
         ].map((kpi, idx) => (
           <GlowCard key={idx} className="p-0 border-0 overflow-hidden">
             <div className="p-6 flex items-center justify-between">
@@ -579,8 +583,10 @@ const VcaServices = () => {
                 <TableBody>
                   {servicesQuery.isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="p-0">
-                        <TableSkeleton rows={5} columns={4} />
+                      <TableCell colSpan={4}>
+                        <div className="flex items-center justify-center py-12">
+                          <LoadingDots />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : recentServices.length === 0 ? (

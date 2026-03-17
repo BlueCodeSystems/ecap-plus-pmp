@@ -39,17 +39,17 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import { format, subDays, parseISO, isAfter } from "date-fns";
 import { cn, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { isCategoryProvided } from "@/lib/data-validation";
 
 const RISK_TYPES = {
   health_domain: { label: "Missing Health Services", icon: HeartPulse, color: "text-rose-600", bg: "bg-rose-50", domain: "health_services", domainLabel: "Health" },
-  schooled_domain: { label: "Missing Schooled Services", icon: BookOpen, color: "text-indigo-600", bg: "bg-indigo-50", domain: "schooled_services", domainLabel: "Schooled" },
-  safe_domain: { label: "Missing Safe Services", icon: Shield, color: "text-orange-600", bg: "bg-orange-50", domain: "safe_services", domainLabel: "Safe" },
+  schooled_domain: { label: "Missing Schooled Services", icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50", domain: "schooled_services", domainLabel: "Schooled" },
+  safe_domain: { label: "Missing Safe Services", icon: Shield, color: "text-emerald-600", bg: "bg-emerald-50", domain: "safe_services", domainLabel: "Safe" },
   stable_domain: { label: "Missing Stable Services", icon: Landmark, color: "text-amber-600", bg: "bg-amber-50", domain: "stable_services", domainLabel: "Stable" },
-  graduation_path: { label: "Graduation Ready (All 4)", icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-50", domain: null, domainLabel: "All" },
+  graduation_path: { label: "Graduation Ready (All 4)", icon: GraduationCap, color: "text-emerald-600", bg: "bg-emerald-50", domain: null, domainLabel: "All" },
 };
 
 const HouseholdRiskRegister = () => {
@@ -326,8 +326,8 @@ const HouseholdRiskRegister = () => {
         <GlowCard className="border-slate-200 overflow-hidden">
           <div className="p-0 overflow-x-auto">
             {isLoading ? (
-              <div className="p-8">
-                <TableSkeleton columns={6} rows={10} />
+              <div className="flex items-center justify-center py-12">
+                <LoadingDots />
               </div>
             ) : filteredData.length > 0 ? (
               <Table>
@@ -359,10 +359,10 @@ const HouseholdRiskRegister = () => {
                       <TableCell className="text-xs">
                         <div className="flex flex-wrap gap-1">
                           {item.has_health && <Badge className="bg-rose-100 text-rose-700 border-0 text-[9px] font-black">Health</Badge>}
-                          {item.has_schooled && <Badge className="bg-indigo-100 text-indigo-700 border-0 text-[9px] font-black">Schooled</Badge>}
-                          {item.has_safe && <Badge className="bg-orange-100 text-orange-700 border-0 text-[9px] font-black">Safe</Badge>}
+                          {item.has_schooled && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] font-black">Schooled</Badge>}
+                          {item.has_safe && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] font-black">Safe</Badge>}
                           {item.has_stable && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] font-black">Stable</Badge>}
-                          {item.domain_count === 4 && <Badge className="bg-blue-100 text-blue-700 border-0 text-[9px] font-black">Grad-ready</Badge>}
+                          {item.domain_count === 4 && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[9px] font-black">Grad-ready</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>

@@ -40,6 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+
 import { useQuery } from "@tanstack/react-query";
 import {
   getHouseholdServicesByDistrict,
@@ -48,6 +49,13 @@ import {
 import { useNavigate, Link } from "react-router-dom";
 import {
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Cell,
 } from "recharts";
 
 const RiskKpiCard = ({ label, count, percent, thresholds, icon: Icon, description, to }: any) => {
@@ -108,7 +116,7 @@ const RiskKpiCard = ({ label, count, percent, thresholds, icon: Icon, descriptio
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const SERVICE_CATEGORIES = ["health_services", "schooled_services", "safe_services", "stable_services", "hh_level_services"] as const;
+const SERVICE_CATEGORIES = ["health_services", "other_health_services", "schooled_services", "other_schooled_services", "safe_services", "other_safe_services", "stable_services", "other_stable_services", "hh_level_services", "other_hh_level_services"] as const;
 const NOT_APPLICABLE = ["not applicable", "n/a", "na", "none", "no", "false", "0", "[]", "{}", "null", ""];
 
 const MONTHS = [
@@ -134,7 +142,7 @@ const parseHealthServices = (services: any): string[] => {
 const DAY_MS = 1000 * 60 * 60 * 24;
 const NINETY_DAYS_MS = 90 * DAY_MS;
 
-const CHART_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#f87171", "#a855f7", "#ec4899"];
+const CHART_COLORS = ["#059669", "#0891b2", "#7c3aed", "#db2777", "#ea580c", "#ca8a04", "#16a34a", "#2563eb", "#9333ea", "#e11d48"];
 
 const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
   for (const key of keys) {
@@ -183,9 +191,12 @@ const getJuneReportingYear = (referenceDate: Date): number => {
 const HouseholdServices = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isDistrictUser = user?.description === "District User";
+  const isProvincialUser = user?.description === "Provincial User";
+  const userProvince = user?.title;
 
   // Initial state logic for district security
-  const initialDistrict = (user?.description === "District User" && user?.location)
+  const initialDistrict = (isDistrictUser && user?.location)
     ? user.location
     : "All";
 
@@ -196,10 +207,10 @@ const HouseholdServices = () => {
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
-    if (user?.description === "District User" && user?.location && selectedDistrict !== user.location) {
+    if (isDistrictUser && user?.location && selectedDistrict !== user.location) {
       setSelectedDistrict(user.location);
     }
-  }, [user, selectedDistrict]);
+  }, [user, selectedDistrict, isDistrictUser]);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -213,6 +224,7 @@ const HouseholdServices = () => {
     const groups = new Map<string, string[]>();
     if (householdsListQuery.data) {
       householdsListQuery.data.forEach((h: any) => {
+        if (isProvincialUser && userProvince && h.province !== userProvince) return;
         const raw = h.district;
         if (raw) {
           const normalized = toTitleCase(raw.trim());
@@ -223,7 +235,7 @@ const HouseholdServices = () => {
       });
     }
     return groups;
-  }, [householdsListQuery.data]);
+  }, [householdsListQuery.data, isProvincialUser, userProvince]);
 
   const districts = useMemo(() => {
     return Array.from(discoveredDistrictsMap.keys()).sort();
@@ -239,6 +251,12 @@ const HouseholdServices = () => {
 
   const allServices: Record<string, unknown>[] = servicesQuery.data ?? [];
   const isSyncing = servicesQuery.isFetching;
+
+  // DEBUG: Log first 3 records to inspect API fields
+  if (allServices.length > 0) {
+    console.log("HouseholdServices API fields:", Object.keys(allServices[0]));
+    console.log("HouseholdServices sample records:", allServices.slice(0, 3));
+  }
 
   const availableJuneYears = useMemo(() => {
     const years = new Set<number>();
@@ -380,6 +398,7 @@ const HouseholdServices = () => {
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
     const base = juneWindowServices.filter((s) => {
+      if (isProvincialUser && userProvince && s.province !== userProvince) return false;
       const sDistrict = String(s.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDistrict)) return false;
 
@@ -429,7 +448,86 @@ const HouseholdServices = () => {
     };
 
     return [...base].sort((a, b) => getTimestamp(b) - getTimestamp(a));
-  }, [juneWindowServices, selectedDistrict, searchQuery, householdCwMap, discoveredDistrictsMap]);
+  }, [juneWindowServices, selectedDistrict, searchQuery, householdCwMap, discoveredDistrictsMap, isProvincialUser, userProvince]);
+
+  const healthServiceStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const parseServices = (val: any): string[] => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val.map(String);
+      try {
+        const parsed = typeof val === "string" && (val.startsWith("[") || val.startsWith("{")) ? JSON.parse(val) : val;
+        if (Array.isArray(parsed)) return parsed.map(String);
+      } catch {}
+      return String(val).split(",").map(s => s.trim().replace(/[\[\]"]/g, "")).filter(s => s && s.toLowerCase() !== "not applicable" && s.toLowerCase() !== "n/a" && s !== "none" && s !== "");
+    };
+
+    (juneWindowServices || []).forEach((s: any) => {
+      ["health_services", "other_health_services"].forEach(field => {
+        parseServices(s[field]).forEach(name => {
+          counts[name] = (counts[name] || 0) + 1;
+        });
+      });
+    });
+
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+  }, [juneWindowServices]);
+
+  const filteredHouseholds = useMemo(() => {
+    const households = (householdsListQuery.data ?? []) as any[];
+    if (selectedDistrict === "All") return households;
+    const selectedVariants = discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict];
+    return households.filter(h => selectedVariants.includes(String(h.district || "")));
+  }, [householdsListQuery.data, selectedDistrict, discoveredDistrictsMap]);
+
+  const [dqFilter, setDqFilter] = useState<string | null>(null);
+
+  const insights = useMemo(() => {
+    const base = juneWindowServices;
+    const now = new Date();
+    const isEmpty = (v: unknown) => !v || v === "" || v === "not applicable" || v === "N/A" || v === "[]" || v === "none";
+
+    const noServiceDate = base.filter(r => isEmpty(r.service_date));
+    const noHealth = base.filter(r => isEmpty(r.health_services) && isEmpty(r.other_health_services));
+    const noSchooled = base.filter(r => isEmpty(r.schooled_services) && isEmpty(r.other_schooled_services));
+    const noSafe = base.filter(r => isEmpty(r.safe_services) && isEmpty(r.other_safe_services));
+    const noStable = base.filter(r => isEmpty(r.stable_services) && isEmpty(r.other_stable_services));
+    const noHhServices = base.filter(r => isEmpty(r.hh_level_services) && isEmpty(r.other_hh_level_services));
+    const incomplete = base.filter(r =>
+      (isEmpty(r.health_services) && isEmpty(r.other_health_services)) ||
+      (isEmpty(r.schooled_services) && isEmpty(r.other_schooled_services)) ||
+      (isEmpty(r.safe_services) && isEmpty(r.other_safe_services)) ||
+      (isEmpty(r.stable_services) && isEmpty(r.other_stable_services))
+    );
+
+    const futureDated = base.filter(r => { const d = new Date(r.service_date as string); return !isNaN(d.getTime()) && d > now; });
+    const seen = new Set<string>();
+    const duplicates: any[] = [];
+    base.forEach(r => { const key = `${r.household_id}|${r.service_date}|${r.health_services}`; if (seen.has(key)) duplicates.push(r); else seen.add(key); });
+
+    return [
+      { key: "no_date", label: "Missing service date", count: noServiceDate.length, records: noServiceDate },
+      { key: "no_health", label: "No health services", count: noHealth.length, records: noHealth },
+      { key: "no_schooled", label: "No education services", count: noSchooled.length, records: noSchooled },
+      { key: "no_safe", label: "No safety services", count: noSafe.length, records: noSafe },
+      { key: "no_stable", label: "No stability services", count: noStable.length, records: noStable },
+      { key: "no_hh", label: "No HH level services", count: noHhServices.length, records: noHhServices },
+      { key: "incomplete", label: "Incomplete coverage", count: incomplete.length, records: incomplete },
+      { key: "future", label: "Future-dated", count: futureDated.length, records: futureDated },
+      { key: "duplicates", label: "Duplicate records", count: duplicates.length, records: duplicates },
+    ];
+  }, [juneWindowServices]);
+
+  const displayedServices = useMemo(() => {
+    if (!dqFilter) return filteredAuditLog;
+    const insight = insights.find(i => i.key === dqFilter);
+    if (!insight) return filteredAuditLog;
+    const dqSet = new Set(insight.records);
+    return filteredAuditLog.filter(r => dqSet.has(r));
+  }, [filteredAuditLog, dqFilter, insights]);
 
   const isLoading = servicesQuery.isLoading;
 
@@ -478,13 +576,14 @@ const HouseholdServices = () => {
 
       {/* ── Banner ── */}
       <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8">
-        <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 p-6 lg:p-8">
+        <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 px-4 py-12 sm:px-12 sm:py-16">
           <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
 
+              <span className="inline-block text-[10px] font-bold tracking-widest text-emerald-200 bg-white/10 px-3 py-1 rounded-full mb-2 uppercase">Registry overview</span>
               <h1 className="text-3xl font-black text-white lg:text-4xl leading-tight">
                 Household Services
               </h1>
@@ -493,10 +592,10 @@ const HouseholdServices = () => {
                   <Home className="h-3.5 w-3.5 text-emerald-200" />
                   {(dashboardStats?.totalHouseholds ?? 0).toLocaleString()} Households
                 </span>
-                {/* <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5">
                   <Activity className="h-3.5 w-3.5 text-emerald-200" />
-                  {(dashboardStats?.totalVisits ?? 0).toLocaleString()} Interactions
-                </span> */}
+                  {(dashboardStats?.totalVisits ?? 0).toLocaleString()} Service events
+                </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-emerald-200" />
                   {selectedDistrict === "All" ? "All Districts" : selectedDistrict}
@@ -509,46 +608,44 @@ const HouseholdServices = () => {
                 value={selectedJuneYear}
                 onValueChange={setSelectedJuneYear}
               >
-                <SelectTrigger className="w-[220px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="Select June Year" />
+                <SelectTrigger className="w-[220px] bg-emerald-800/40 border-emerald-400/30 text-white h-12 rounded-2xl font-bold focus:ring-white/20">
+                  <SelectValue placeholder="Select June year" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-2xl border-emerald-100 shadow-2xl">
                   {availableJuneYears.map((year) => (
-                    <SelectItem key={year} value={String(year)}>
+                    <SelectItem key={year} value={String(year)} className="rounded-xl focus:bg-emerald-50">
                       June {year} - May {year + 1}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={selectedDistrict}
-                onValueChange={setSelectedDistrict}
-                disabled={user?.description === "District User"}
-              >
-                <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder={householdsListQuery.isLoading ? "Loading..." : "Select District"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Districts</SelectItem>
-                  {districts.map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex flex-col items-center gap-1">
-                <Button
-                  onClick={() => servicesQuery.refetch()}
-                  className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
+              {isDistrictUser ? (
+                <div className="h-12 px-5 rounded-2xl bg-white/10 border border-white/20 text-white/70 flex items-center text-sm font-medium">
+                  {selectedDistrict}
+                </div>
+              ) : (
+                <Select
+                  value={selectedDistrict}
+                  onValueChange={setSelectedDistrict}
                 >
-                  <RefreshCcw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-                  Sync
-                </Button>
-                {isSyncing && (
-                  <p className="text-[10px] font-bold text-white/90 tracking-wide">
-                    Syncing data, please be patient...
-                  </p>
-                )}
-              </div>
+                  <SelectTrigger className="w-[180px] bg-emerald-800/40 border-emerald-400/30 text-white h-12 rounded-2xl font-bold focus:ring-white/20">
+                    <SelectValue placeholder="Select district" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-emerald-100 shadow-2xl">
+                    <SelectItem value="All" className="rounded-xl focus:bg-emerald-50">All districts</SelectItem>
+                    {districts.map((d) => (
+                      <SelectItem key={d} value={d} className="rounded-xl focus:bg-emerald-50">{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                onClick={() => servicesQuery.refetch()}
+                className="h-12 px-6 rounded-2xl bg-white text-[#00a67e] hover:bg-emerald-50 font-bold transition-all active:scale-95 shadow-lg shadow-black/5"
+              >
+                <RefreshCcw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                Sync
+              </Button>
             </div>
 
           </div>
@@ -559,64 +656,126 @@ const HouseholdServices = () => {
 
 
 
-      {/* ── Domain Coverage KPIs ── */}
-      <div className="space-y-2 mb-1">
+      {/* ── Domain Coverage KPIs + Health Services Chart ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        {/* Left: Coverage KPI Cards */}
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-4 grid-cols-2">
+            {/* Health Domain */}
+            <RiskKpiCard
+              label="Health"
+              percent={dashboardStats?.healthRate}
+              count={dashboardStats?.healthCount}
+              thresholds={{ yellow: 60, red: 40, inverse: true }}
+              icon={HeartPulse}
+              description="Click to view households missing health services"
+              to={`/registers/household-risk?type=health_domain&district=${selectedDistrict}`}
+            />
+            {/* Schooled Domain */}
+            <RiskKpiCard
+              label="Schooled"
+              percent={dashboardStats?.schooledRate}
+              count={dashboardStats?.schooledCount}
+              thresholds={{ yellow: 60, red: 40, inverse: true }}
+              icon={BookOpen}
+              description="Click to view households missing school services"
+              to={`/registers/household-risk?type=schooled_domain&district=${selectedDistrict}`}
+            />
+            {/* Safe Domain */}
+            <RiskKpiCard
+              label="Safe"
+              percent={dashboardStats?.safeRate}
+              count={dashboardStats?.safeCount}
+              thresholds={{ yellow: 60, red: 40, inverse: true }}
+              icon={Shield}
+              description="Click to view households missing safety services"
+              to={`/registers/household-risk?type=safe_domain&district=${selectedDistrict}`}
+            />
+            {/* Stable Domain */}
+            <RiskKpiCard
+              label="Stable"
+              percent={dashboardStats?.stableRate}
+              count={dashboardStats?.stableCount}
+              thresholds={{ yellow: 60, red: 40, inverse: true }}
+              icon={Landmark}
+              description="Click to view households missing stability services"
+              to={`/registers/household-risk?type=stable_domain&district=${selectedDistrict}`}
+            />
+          </div>
+          {/* Graduation Readiness */}
+          <RiskKpiCard
+            label="Graduation Readiness (All 4 Domains)"
+            percent={dashboardStats?.allDomainsRate}
+            count={dashboardStats?.allDomainsCount}
+            thresholds={{ yellow: 15, red: 5, inverse: true }}
+            icon={GraduationCap}
+            description="HHs covered across Health, Schooled, Safe & Stable"
+            to={`/registers/household-risk?type=graduation_path&district=${selectedDistrict}`}
+          />
+        </div>
 
-      </div>
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        {/* Health Domain */}
-        <RiskKpiCard
-          label="Health Coverage"
-          percent={dashboardStats?.healthRate}
-          count={dashboardStats?.healthCount}
-          thresholds={{ yellow: 60, red: 40, inverse: true }}
-          icon={HeartPulse}
-          description="Click to view households missing health services"
-          to={`/registers/household-risk?type=health_domain&district=${selectedDistrict}`}
-        />
-        {/* Schooled Domain */}
-        <RiskKpiCard
-          label="Schooled Coverage"
-          percent={dashboardStats?.schooledRate}
-          count={dashboardStats?.schooledCount}
-          thresholds={{ yellow: 60, red: 40, inverse: true }}
-          icon={BookOpen}
-          description="Click to view households missing school services"
-          to={`/registers/household-risk?type=schooled_domain&district=${selectedDistrict}`}
-        />
-        {/* Safe Domain */}
-        <RiskKpiCard
-          label="Safe Coverage"
-          percent={dashboardStats?.safeRate}
-          count={dashboardStats?.safeCount}
-          thresholds={{ yellow: 60, red: 40, inverse: true }}
-          icon={Shield}
-          description="Click to view households missing safety services"
-          to={`/registers/household-risk?type=safe_domain&district=${selectedDistrict}`}
-        />
-        {/* Stable Domain */}
-        <RiskKpiCard
-          label="Stable Coverage"
-          percent={dashboardStats?.stableRate}
-          count={dashboardStats?.stableCount}
-          thresholds={{ yellow: 60, red: 40, inverse: true }}
-          icon={Landmark}
-          description="Click to view households missing stability services"
-          to={`/registers/household-risk?type=stable_domain&district=${selectedDistrict}`}
-        />
+        {/* Right: Most common health services chart */}
+        <GlowCard className="overflow-hidden border-slate-200 shadow-sm h-full">
+          <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/30">
+            <CardTitle className="text-lg font-black text-slate-900">Most common health services</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            {healthServiceStats.length === 0 ? (
+              <div className="h-[300px] flex flex-col items-center justify-center text-slate-400 gap-3 border-2 border-dashed border-slate-100 rounded-2xl">
+                <p className="text-sm font-bold">No health services found</p>
+              </div>
+            ) : (
+              <div className="h-[350px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={healthServiceStats} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={150} tick={{ fill: "#64748b", fontSize: 10, fontWeight: 800 }} />
+                    <Tooltip cursor={{ fill: "#f8fafc" }} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                      {healthServiceStats.map((_: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </GlowCard>
       </div>
 
-      {/* ── Graduation Readiness Callout ── */}
-      <div className="mt-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        <RiskKpiCard
-          label="Graduation Readiness (All 4 Domains)"
-          percent={dashboardStats?.allDomainsRate}
-          count={dashboardStats?.allDomainsCount}
-          thresholds={{ yellow: 15, red: 5, inverse: true }}
-          icon={GraduationCap}
-          description="HHs covered across Health, Schooled, Safe & Stable"
-          to={`/registers/household-risk?type=graduation_path&district=${selectedDistrict}`}
-        />
+      {/* ── Data Quality & Insights ── */}
+      <div className="mb-8 mt-6">
+        <h3 className="text-sm font-bold text-slate-500 mb-3 tracking-wide">Data quality & insights</h3>
+        <p className="text-xs text-slate-400 mb-4">Click a card to filter records</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
+          {insights.map((item) => (
+            <div
+              key={item.key}
+              onClick={() => { setDqFilter(dqFilter === item.key ? null : item.key); }}
+              className={cn(
+                "cursor-pointer rounded-2xl border p-4 transition-all hover:shadow-md",
+                dqFilter === item.key
+                  ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                  : "border-slate-100 bg-white hover:border-slate-200"
+              )}
+            >
+              <p className="text-2xl font-extrabold text-slate-900">{item.count}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">{item.label}</p>
+            </div>
+          ))}
+        </div>
+        {dqFilter && (
+          <div className="mt-3 flex items-center gap-2">
+            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs font-bold">
+              Filtered: {insights.find(i => i.key === dqFilter)?.label}
+            </Badge>
+            <button onClick={() => setDqFilter(null)} className="text-xs text-slate-400 hover:text-slate-600 font-bold">
+              Clear filter
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Stability Insights ── */}
@@ -638,8 +797,8 @@ const HouseholdServices = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {([
                 { label: "Health Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.healthCount ?? 0), rate: dashboardStats?.healthRate ?? 0, color: "bg-rose-50 border-rose-100", textColor: "text-rose-600", desc: "No health services recorded" },
-                { label: "Schooled Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.schooledCount ?? 0), rate: dashboardStats?.schooledRate ?? 0, color: "bg-indigo-50 border-indigo-100", textColor: "text-indigo-600", desc: "No schooled services recorded" },
-                { label: "Safe Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.safeCount ?? 0), rate: dashboardStats?.safeRate ?? 0, color: "bg-orange-50 border-orange-100", textColor: "text-orange-600", desc: "No safe services recorded" },
+                { label: "Schooled Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.schooledCount ?? 0), rate: dashboardStats?.schooledRate ?? 0, color: "bg-emerald-50 border-emerald-100", textColor: "text-emerald-600", desc: "No schooled services recorded" },
+                { label: "Safe Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.safeCount ?? 0), rate: dashboardStats?.safeRate ?? 0, color: "bg-emerald-50 border-emerald-100", textColor: "text-emerald-600", desc: "No safe services recorded" },
                 { label: "Stable Gap", count: (dashboardStats?.totalHouseholds ?? 0) - (dashboardStats?.stableCount ?? 0), rate: dashboardStats?.stableRate ?? 0, color: "bg-emerald-50 border-emerald-100", textColor: "text-emerald-600", desc: "No stable services recorded" },
               ]).map(({ label, count, rate, color, textColor, desc }) => (
                 <div key={label} className={`flex items-center justify-between p-5 rounded-xl border transition-all hover:brightness-95 ${color}`}>
@@ -673,7 +832,7 @@ const HouseholdServices = () => {
 
                 </h3>
                 <p className="text-[10px] text-slate-400 font-bold tracking-widest mt-1">
-                  Showing {filteredAuditLog.length} most recent interventions
+                  Showing {displayedServices.length} most recent interventions
                 </p>
               </div>
               <div className="relative w-full md:w-[400px] group">
@@ -696,26 +855,27 @@ const HouseholdServices = () => {
                   <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">District</TableHead>
                   <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Date of service</TableHead>
                   <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Service provided</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">HH level services</TableHead>
                   <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 text-right pr-8 h-14">Caseworker</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-20">
+                    <TableCell colSpan={8} className="text-center py-20">
                       <LoadingDots className="h-3 w-3" />
                     </TableCell>
                   </TableRow>
-                ) : filteredAuditLog.length === 0 ? (
+                ) : displayedServices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-20">
+                    <TableCell colSpan={6} className="text-center py-20">
                       <div className="flex flex-col items-center gap-2 opacity-20">
                         <Search className="h-10 w-10 text-slate-400" />
                         <p className="text-sm font-black tracking-widest text-slate-500">No records matched your search</p>
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : filteredAuditLog.slice(0, 50).map((s, idx) => {
+                ) : displayedServices.slice(0, 50).map((s, idx) => {
                   const record = s as Record<string, unknown>;
                   const hhId = String(s.household_id || s.hhid || "N/A");
                   const dateStr = pickValue(record, ["service_date", "visit_date", "date"]);
@@ -757,23 +917,32 @@ const HouseholdServices = () => {
                       <TableCell className="text-xs font-bold text-slate-500">
                         {dateStr}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1.5 max-w-[400px]">
+                      <TableCell className="max-w-[250px] lg:max-w-[350px]">
+                        <div className="flex flex-wrap gap-1 overflow-hidden">
                           {providedServices.length > 0 ? (
                             providedServices.slice(0, 3).map((svc, i) => (
-                              <Badge key={i} variant="outline" className="text-[9px] font-black border-slate-200 bg-white h-6 px-2.5 rounded-md tracking-tighter">
+                              <Badge key={i} variant="outline" className="text-[8px] sm:text-[9px] font-bold border-slate-200 bg-white h-5 sm:h-6 px-1.5 sm:px-2.5 rounded-md truncate max-w-[120px] sm:max-w-[160px]" title={svc}>
                                 {svc}
                               </Badge>
                             ))
                           ) : (
-                            <span className="text-[10px] text-slate-300 font-bold italic">No specific service logged</span>
+                            <span className="text-[10px] text-slate-300 font-bold italic">No service logged</span>
                           )}
                           {providedServices.length > 3 && (
-                            <Badge variant="outline" className="text-[9px] font-black border-emerald-100 bg-emerald-50 text-emerald-700 h-6 px-2.5 rounded-md">
-                              +{providedServices.length - 3} More
+                            <Badge variant="outline" className="text-[8px] sm:text-[9px] font-bold border-emerald-100 bg-emerald-50 text-emerald-700 h-5 sm:h-6 px-1.5 sm:px-2.5 rounded-md shrink-0">
+                              +{providedServices.length - 3}
                             </Badge>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-xs font-bold text-slate-500">
+                        {(() => {
+                          const hhServices = [
+                            ...(record.hh_level_services ? String(record.hh_level_services).split(",").map(s => s.trim()).filter(Boolean) : []),
+                            ...(record.other_hh_level_services ? String(record.other_hh_level_services).split(",").map(s => s.trim()).filter(Boolean) : []),
+                          ];
+                          return hhServices.length > 0 ? hhServices.join(", ") : "N/A";
+                        })()}
                       </TableCell>
                       <TableCell className="text-right pr-8 py-5">
                         <div className="flex flex-col items-end">

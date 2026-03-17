@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import { cn, toTitleCase } from "@/lib/utils";
 import { downloadCsv } from "@/lib/exportUtils";
 import { toast } from "sonner";
@@ -62,11 +62,14 @@ const VIEW_TYPES = {
 const CaseworkerRegister = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isDistrictUser = user?.description === "District User";
+  const isProvincialUser = user?.description === "Provincial User";
+  const userProvince = user?.title;
   const [searchParams] = useSearchParams();
   const type = (searchParams.get("type") || "services") as keyof typeof VIEW_TYPES;
 
   const initialDistrict =
-    user?.description === "District User" && user?.location
+    isDistrictUser && user?.location
       ? user.location
       : searchParams.get("district") || "All";
 
@@ -74,10 +77,10 @@ const CaseworkerRegister = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (user?.description === "District User" && user?.location) {
+    if (isDistrictUser && user?.location) {
       setSelectedDistrict(user.location);
     }
-  }, [user]);
+  }, [user, isDistrictUser]);
 
   // ── Data Queries
   const hhListQuery = useQuery({
@@ -114,6 +117,7 @@ const CaseworkerRegister = () => {
   const discoveredDistrictsMap = useMemo(() => {
     const groups = new Map<string, string[]>();
     (hhListQuery.data as any[] ?? []).forEach((h: any) => {
+      if (isProvincialUser && userProvince && h.province !== userProvince) return;
       const raw = h.district;
       if (raw) {
         const normalized = toTitleCase(raw.trim());
@@ -123,7 +127,7 @@ const CaseworkerRegister = () => {
       }
     });
     return groups;
-  }, [hhListQuery.data]);
+  }, [hhListQuery.data, isProvincialUser, userProvince]);
 
   const districts = useMemo(() => Array.from(discoveredDistrictsMap.keys()).sort(), [discoveredDistrictsMap]);
 
@@ -143,13 +147,17 @@ const CaseworkerRegister = () => {
     const cg = (cgServicesQuery.data ?? []) as any[];
     const vca = (vcaServicesQuery.data ?? []) as any[];
     const hh = (hhServicesQuery.data ?? []) as any[];
-    const total = [...cg, ...vca, ...hh];
+    let total = [...cg, ...vca, ...hh];
+
+    if (isProvincialUser && userProvince) {
+      total = total.filter(s => s.province === userProvince);
+    }
 
     if (selectedDistrict === "All") return total;
 
     const selectedVariants = discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict];
     return total.filter(s => selectedVariants.includes(String(s.district || "")));
-  }, [cgServicesQuery.data, vcaServicesQuery.data, hhServicesQuery.data, selectedDistrict, discoveredDistrictsMap]);
+  }, [cgServicesQuery.data, vcaServicesQuery.data, hhServicesQuery.data, selectedDistrict, discoveredDistrictsMap, isProvincialUser, userProvince]);
 
   // ── Stats for "district" type
   const topDistrict = useMemo(() => {
@@ -207,6 +215,10 @@ const CaseworkerRegister = () => {
       ).toLowerCase();
       const dist = String(s.district || "").toLowerCase();
       return hhId.includes(q) || cw.includes(q) || dist.includes(q);
+    }).sort((a: any, b: any) => {
+      const idA = a.household_id || a.vca_id || a.id || "";
+      const idB = b.household_id || b.vca_id || b.id || "";
+      return String(idB).localeCompare(String(idA));
     });
   }, [rawRecords, searchQuery, type, householdCwMap]);
 
@@ -282,7 +294,7 @@ const CaseworkerRegister = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-3">
-                {user?.description !== "District User" && (
+                {!isDistrictUser && (
                   <Select
                     value={selectedDistrict}
                     onValueChange={setSelectedDistrict}
@@ -367,7 +379,11 @@ const CaseworkerRegister = () => {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4}><TableSkeleton rows={8} columns={4} /></TableCell>
+                      <TableCell colSpan={4}>
+                        <div className="flex items-center justify-center py-12">
+                          <LoadingDots />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ) : filteredRecords.length === 0 ? (
                     <TableRow>

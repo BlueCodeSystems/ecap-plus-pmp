@@ -95,6 +95,8 @@ const MetricCard = ({
 const MetricsGrid = () => {
   const { user } = useAuth();
   const district = user?.location ?? "";
+  const isProvincialUser = user?.description === "Provincial User";
+  const userProvince = user?.title;
 
   const totalVcasQuery = useQuery({
     queryKey: ["metrics", "total-vcas", district],
@@ -115,15 +117,35 @@ const MetricsGrid = () => {
     enabled: !!district,
   });
 
-  const caseworkersCount = useMemo(() => {
+  // For Provincial Users, filter households to their province
+  const filteredHouseholdsData = useMemo(() => {
     if (!householdsDataQuery.data) return null;
+    if (isProvincialUser && userProvince && userProvince !== "All") {
+      return householdsDataQuery.data.filter((h: any) => h.province === userProvince);
+    }
+    return householdsDataQuery.data;
+  }, [householdsDataQuery.data, isProvincialUser, userProvince]);
+
+  // Distinct household count from the list data
+  const distinctHouseholdsCount = useMemo(() => {
+    if (!filteredHouseholdsData) return null;
+    const uniqueIds = new Set(
+      filteredHouseholdsData
+        .map((h: any) => h.household_id || h.householdId || h.hh_id || h.id)
+        .filter(Boolean)
+    );
+    return uniqueIds.size;
+  }, [filteredHouseholdsData]);
+
+  const caseworkersCount = useMemo(() => {
+    if (!filteredHouseholdsData) return null;
     const uniqueCaseworkers = new Set(
-      householdsDataQuery.data
+      filteredHouseholdsData
         .map((h: any) => h.caseworker_name || h.cwac_member_name)
         .filter(Boolean)
     );
     return uniqueCaseworkers.size;
-  }, [householdsDataQuery.data]);
+  }, [filteredHouseholdsData]);
 
   const formatCount = (value: number | null | undefined) => {
     if (value === null || value === undefined) {
@@ -142,7 +164,7 @@ const MetricsGrid = () => {
       title: "VCAs",
       value: formatCount(totalVcasQuery.data),
       subtitle: "All registered children",
-      icon: <FileCheck className="h-5 w-5" />,
+      icon: <Users className="h-5 w-5" />,
       variant: "default" as const,
       isLoading: totalVcasQuery.isLoading,
       colorClass: {
@@ -153,11 +175,11 @@ const MetricsGrid = () => {
     },
     {
       title: "Households",
-      value: formatCount(totalHouseholdsQuery.data),
-      subtitle: "Households tracked",
+      value: formatCount(distinctHouseholdsCount),
+      subtitle: "Distinct households tracked",
       icon: <Home className="h-5 w-5" />,
       variant: "success" as const,
-      isLoading: totalHouseholdsQuery.isLoading,
+      isLoading: householdsDataQuery.isLoading,
       colorClass: {
         iconBg: "bg-emerald-50",
         iconText: "text-emerald-600",
@@ -168,12 +190,12 @@ const MetricsGrid = () => {
       title: "Caseworkers",
       value: formatCount(caseworkersCount),
       subtitle: district === "All" || !district ? "All active Caseworkers" : `Active in ${district}`,
-      icon: <Briefcase className="h-5 w-5" />,
+      icon: <Users className="h-5 w-5" />,
       variant: "default" as const,
       isLoading: householdsDataQuery.isLoading,
       colorClass: {
-        iconBg: "bg-blue-50",
-        iconText: "text-blue-600",
+        iconBg: "bg-emerald-50",
+        iconText: "text-emerald-600",
         borderAccent: "",
       },
     },

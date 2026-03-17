@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, HeartPulse, Flag, ArrowRight, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import { Input } from "@/components/ui/input";
 import {
   DEFAULT_DISTRICT,
@@ -67,9 +67,9 @@ const tabs = [
 const typeConfig = {
   "vca-service": {
     icon: Users,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    badge: "bg-blue-50 text-blue-700",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50",
+    badge: "bg-emerald-50 text-emerald-700",
     route: "/vca-services",
   },
   "caregiver-service": {
@@ -165,7 +165,7 @@ const RecentActivity = () => {
   }, [feed, searchQuery, activeFilter]);
 
   return (
-    <GlowCard>
+    <GlowCard className="h-full">
       <CardHeader className="pb-3 border-b border-slate-50">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -209,10 +209,10 @@ const RecentActivity = () => {
                 onClick={() => setActiveFilter("incomplete")}
                 className={cn(
                   "px-3 py-1 rounded-lg shadow-sm border flex items-center gap-2 transition-all",
-                  activeFilter === "incomplete" ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-900 border-slate-100 hover:bg-slate-50"
+                  activeFilter === "incomplete" ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-slate-900 border-slate-100 hover:bg-slate-50"
                 )}
               >
-                <span className={cn("text-[10px] font-black tracking-wider", activeFilter === "incomplete" ? "text-indigo-100" : "text-indigo-500")}>Incomplete</span>
+                <span className={cn("text-[10px] font-black tracking-wider", activeFilter === "incomplete" ? "text-emerald-100" : "text-emerald-500")}>Incomplete</span>
                 <span className="text-xs font-bold">{counts.incomplete}</span>
               </button>
 
@@ -243,7 +243,9 @@ const RecentActivity = () => {
 
       <CardContent className="pt-4">
         {isLoading ? (
-          <TableSkeleton rows={5} columns={2} />
+          <div className="flex items-center justify-center py-12">
+            <LoadingDots />
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex h-[380px] flex-col items-center justify-center text-sm text-slate-400">
             <div className="p-6 rounded-full bg-slate-50 border border-slate-100 mb-4 opacity-40">

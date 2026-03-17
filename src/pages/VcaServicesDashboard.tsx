@@ -21,10 +21,12 @@ import {
   Shield,
   Landmark,
   GraduationCap,
+  Users,
 } from "lucide-react";
 import { format, isAfter, parseISO, parse, getMonth, getYear } from "date-fns";
 import { cn, toTitleCase } from "@/lib/utils";
 import { isCategoryProvided } from "@/lib/data-validation";
+
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -48,7 +50,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import LoadingDots from "@/components/aceternity/LoadingDots";
-import TableSkeleton from "@/components/ui/TableSkeleton";
 import { useQuery } from "@tanstack/react-query";
 import {
   getVcaServicesByDistrict,
@@ -132,6 +133,11 @@ const SERVICE_CATEGORIES = [
   "schooled_services",
   "safe_services",
   "stable_services",
+  "other_hiv_services",
+  "other_health_services",
+  "other_schooled_services",
+  "other_safe_services",
+  "other_stable_services",
 ] as const;
 
 const filterKeyToDataKey: Record<string, string> = {
@@ -210,23 +216,27 @@ const RiskKpiCard = ({ label, count, percent, thresholds, icon: Icon, descriptio
 const VcaServicesDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isDistrictUser = user?.description === "District User";
+  const isProvincialUser = user?.description === "Provincial User";
+  const userProvince = user?.title;
 
   // Initial state logic for district security
-  const initialDistrict = (user?.description === "District User" && user?.location)
+  const initialDistrict = (isDistrictUser && user?.location)
     ? user.location
     : "All";
 
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dqFilter, setDqFilter] = useState<string | null>(null);
   const [selectedJuneYear, setSelectedJuneYear] = useState<string>(() => String(getJuneReportingYear(new Date())));
 
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
-    if (user?.description === "District User" && user?.location && selectedDistrict !== user.location) {
+    if (isDistrictUser && user?.location && selectedDistrict !== user.location) {
       setSelectedDistrict(user.location);
     }
-  }, [user, selectedDistrict]);
+  }, [user, selectedDistrict, isDistrictUser]);
 
   // Discover districts
   const vcaListQuery = useQuery({
@@ -239,6 +249,7 @@ const VcaServicesDashboard = () => {
     const groups = new Map<string, string[]>();
     if (vcaListQuery.data) {
       (vcaListQuery.data as any[]).forEach((v: any) => {
+        if (isProvincialUser && userProvince && v.province !== userProvince) return;
         const raw = v.district;
         if (raw) {
           const normalized = toTitleCase(raw.trim());
@@ -249,7 +260,7 @@ const VcaServicesDashboard = () => {
       });
     }
     return groups;
-  }, [vcaListQuery.data]);
+  }, [vcaListQuery.data, isProvincialUser, userProvince]);
 
   const districts = useMemo(() => {
     return Array.from(discoveredDistrictsMap.keys()).sort();
@@ -283,6 +294,12 @@ const VcaServicesDashboard = () => {
   const allServices = useMemo(() => {
     return (servicesQuery.data ?? []) as any[];
   }, [servicesQuery.data]);
+
+  // DEBUG: Log first 3 records to inspect API fields
+  if (allServices.length > 0) {
+    console.log("VcaServicesDashboard API fields:", Object.keys(allServices[0]));
+    console.log("VcaServicesDashboard sample records:", allServices.slice(0, 3));
+  }
 
   const availableJuneYears = useMemo(() => {
     const years = new Set<number>();
@@ -332,6 +349,7 @@ const VcaServicesDashboard = () => {
     });
 
     const base = juneWindowServices.filter((service: any) => {
+      if (isProvincialUser && userProvince && service.province !== userProvince) return false;
       const vId = String(service.vca_id || service.vcaid || service.child_id || "").trim();
       const sDistrict = String(service.district || "");
 
@@ -388,7 +406,7 @@ const VcaServicesDashboard = () => {
     };
 
     return [...base].sort((a, b) => getTimestamp(b) - getTimestamp(a));
-  }, [juneWindowServices, selectedDistrict, searchQuery, discoveredDistrictsMap, vcasQuery.data]);
+  }, [juneWindowServices, selectedDistrict, searchQuery, discoveredDistrictsMap, vcasQuery.data, isProvincialUser, userProvince]);
 
   const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
     for (const key of keys) {
@@ -493,6 +511,61 @@ const VcaServicesDashboard = () => {
     };
   }, [vcasQuery.data, juneWindowServices, selectedDistrict, discoveredDistrictsMap]);
 
+  const insights = useMemo(() => {
+    const base = juneWindowServices;
+    const now = new Date();
+    const isEmpty = (v: any) => !v || v === "" || v === "not applicable" || v === "N/A" || v === "[]" || v === "none";
+
+    const noServiceDate = base.filter(r => isEmpty(r.service_date));
+    const noHealth = base.filter(r => isEmpty(r.health_services) && isEmpty(r.other_health_services));
+    const noHiv = base.filter(r => isEmpty(r.hiv_services) && isEmpty(r.other_hiv_services));
+    const noSchooled = base.filter(r => isEmpty(r.schooled_services) && isEmpty(r.other_schooled_services));
+    const noSafe = base.filter(r => isEmpty(r.safe_services) && isEmpty(r.other_safe_services));
+    const noStable = base.filter(r => isEmpty(r.stable_services) && isEmpty(r.other_stable_services));
+    const incomplete = base.filter(r =>
+      (isEmpty(r.health_services) && isEmpty(r.other_health_services)) ||
+      (isEmpty(r.schooled_services) && isEmpty(r.other_schooled_services)) ||
+      (isEmpty(r.safe_services) && isEmpty(r.other_safe_services)) ||
+      (isEmpty(r.stable_services) && isEmpty(r.other_stable_services))
+    );
+
+    const hivPositive = base.filter(r => r.is_hiv_positive === "1" || r.is_hiv_positive === true);
+    const hivNoVl = hivPositive.filter(r => isEmpty(r.date_last_vl) || isEmpty(r.vl_last_result));
+    const vlSuppressed = hivPositive.filter(r => {
+      const val = String(r.vl_last_result || "").toLowerCase();
+      return val.includes("suppress") || val.includes("undetect") || val === "ldl" || (Number(r.vl_last_result) > 0 && Number(r.vl_last_result) < 1000);
+    });
+
+    const noMmd = base.filter(r => isEmpty(r.level_mmd));
+    const futureDated = base.filter(r => { const d = new Date(r.service_date); return !isNaN(d.getTime()) && d > now; });
+    const seen = new Set<string>();
+    const duplicates: any[] = [];
+    base.forEach(r => { const key = `${r.vcaid || r.vca_id}|${r.service_date}|${r.health_services}`; if (seen.has(key)) duplicates.push(r); else seen.add(key); });
+
+    return [
+      { key: "no_date", label: "Missing service date", count: noServiceDate.length, records: noServiceDate },
+      { key: "no_health", label: "No health services", count: noHealth.length, records: noHealth },
+      { key: "no_hiv", label: "No HIV services", count: noHiv.length, records: noHiv },
+      { key: "no_schooled", label: "No education services", count: noSchooled.length, records: noSchooled },
+      { key: "no_safe", label: "No safety services", count: noSafe.length, records: noSafe },
+      { key: "no_stable", label: "No stability services", count: noStable.length, records: noStable },
+      { key: "incomplete", label: "Incomplete coverage", count: incomplete.length, records: incomplete },
+      { key: "hiv_no_vl", label: "HIV+ missing VL", count: hivNoVl.length, records: hivNoVl },
+      { key: "vl_suppressed", label: "VL suppressed", count: vlSuppressed.length, records: vlSuppressed },
+      { key: "no_mmd", label: "No MMD level", count: noMmd.length, records: noMmd },
+      { key: "future", label: "Future-dated", count: futureDated.length, records: futureDated },
+      { key: "duplicates", label: "Duplicate records", count: duplicates.length, records: duplicates },
+    ];
+  }, [juneWindowServices]);
+
+  const displayedServices = useMemo(() => {
+    if (!dqFilter) return filteredServices;
+    const insight = insights.find(i => i.key === dqFilter);
+    if (!insight) return filteredServices;
+    const dqSet = new Set(insight.records);
+    return filteredServices.filter(r => dqSet.has(r));
+  }, [filteredServices, dqFilter, insights]);
+
   const displayStats = selectedDistrict === "All" ? (dashboardStats || cachedNationwideStats) : dashboardStats;
   const isRefreshing = servicesQuery.isFetching && (displayStats?.totalVcas > 0);
 
@@ -505,25 +578,29 @@ const VcaServicesDashboard = () => {
     <DashboardLayout subtitle="Vca services intelligence">
       {/* ── Banner ── */}
       <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8">
-        <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 p-6 lg:p-8">
+        <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 px-4 py-12 sm:px-12 sm:py-16">
           <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
 
+              <span className="inline-block text-[10px] font-bold tracking-widest text-emerald-200 bg-white/10 px-3 py-1 rounded-full mb-2 uppercase">Registry overview</span>
               <h1 className="text-3xl font-black text-white lg:text-4xl leading-tight">
-                Vca services
+                VCA Services
               </h1>
               <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm font-medium">
                 <span className="flex items-center gap-1.5">
-                  <Activity className="h-4 w-4" />
-                  {(displayStats?.totalVcas || 0).toLocaleString()} Children
+                  <Users className="h-4 w-4" />
+                  {(displayStats?.totalVcas || 0).toLocaleString()} VCAs
                 </span>
-
+                <span className="flex items-center gap-1.5">
+                  <Activity className="h-4 w-4" />
+                  {(displayStats?.totalServices || 0).toLocaleString()} Service events
+                </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-4 w-4" />
-                  {selectedDistrict}
+                  {selectedDistrict === "All" ? "All districts" : selectedDistrict}
                 </span>
               </div>
             </div>
@@ -532,46 +609,44 @@ const VcaServicesDashboard = () => {
                 value={selectedJuneYear}
                 onValueChange={setSelectedJuneYear}
               >
-                <SelectTrigger className="w-[220px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
+                <SelectTrigger className="w-[220px] bg-emerald-800/40 border-emerald-400/30 text-white h-12 rounded-2xl font-bold focus:ring-white/20">
                   <SelectValue placeholder="Select June year" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-2xl border-emerald-100 shadow-2xl">
                   {availableJuneYears.map((year) => (
-                    <SelectItem key={year} value={String(year)}>
+                    <SelectItem key={year} value={String(year)} className="rounded-xl focus:bg-emerald-50">
                       June {year} - May {year + 1}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={selectedDistrict}
-                onValueChange={setSelectedDistrict}
-                disabled={user?.description === "District User"}
-              >
-                <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder="Select district" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All districts</SelectItem>
-                  {districts.map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex flex-col items-center gap-1">
-                <Button
-                  onClick={() => servicesQuery.refetch()}
-                  className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
+              {isDistrictUser ? (
+                <div className="h-12 px-5 rounded-2xl bg-white/10 border border-white/20 text-white/70 flex items-center text-sm font-medium">
+                  {selectedDistrict}
+                </div>
+              ) : (
+                <Select
+                  value={selectedDistrict}
+                  onValueChange={setSelectedDistrict}
                 >
-                  <RefreshCcw className={`h-4 w-4 mr-2 ${servicesQuery.isFetching ? "animate-spin" : ""}`} />
-                  Sync
-                </Button>
-                {servicesQuery.isFetching && (
-                  <p className="text-[10px] font-bold text-white/90 tracking-wide">
-                    Syncing data, please be patient...
-                  </p>
-                )}
-              </div>
+                  <SelectTrigger className="w-[180px] bg-emerald-800/40 border-emerald-400/30 text-white h-12 rounded-2xl font-bold focus:ring-white/20">
+                    <SelectValue placeholder="Select district" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-emerald-100 shadow-2xl">
+                    <SelectItem value="All" className="rounded-xl focus:bg-emerald-50">All districts</SelectItem>
+                    {districts.map((d) => (
+                      <SelectItem key={d} value={d} className="rounded-xl focus:bg-emerald-50">{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                onClick={() => servicesQuery.refetch()}
+                className="h-12 px-6 rounded-2xl bg-white text-[#00a67e] hover:bg-emerald-50 font-bold transition-all active:scale-95 shadow-lg shadow-black/5"
+              >
+                <RefreshCcw className={`h-4 w-4 mr-2 ${servicesQuery.isFetching ? "animate-spin" : ""}`} />
+                Sync
+              </Button>
             </div>
           </div>
         </div>
@@ -582,118 +657,135 @@ const VcaServicesDashboard = () => {
 
 
       <div className="space-y-8 pb-20">
-        {/* 🎯 SECTION 1: DOMAIN COVERAGE KPIs */}
-        <div className="space-y-2 mb-1">
-          <p className="text-[10px] font-black tracking-widest text-slate-400"></p>
-          <p className="text-xs text-slate-500"></p>
-        </div>
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-          <RiskKpiCard
-            label="Health coverage"
-            count={displayStats?.healthDomainCount}
-            percent={displayStats?.healthDomainRate}
-            thresholds={{ yellow: 60, red: 40, inverse: true }}
-            icon={HeartPulse}
-            description="Click to view VCAs missing health services"
-            to={`/registers/vca-risk?type=health_domain&district=${selectedDistrict}`}
-          />
-          <RiskKpiCard
-            label="Schooled coverage"
-            count={displayStats?.schooledDomainCount}
-            percent={displayStats?.schooledDomainRate}
-            thresholds={{ yellow: 60, red: 40, inverse: true }}
-            icon={BookOpen}
-            description="Click to view VCAs missing school services"
-            to={`/registers/vca-risk?type=schooled_domain&district=${selectedDistrict}`}
-          />
-          <RiskKpiCard
-            label="Safe coverage"
-            count={displayStats?.safeDomainCount}
-            percent={displayStats?.safeDomainRate}
-            thresholds={{ yellow: 60, red: 40, inverse: true }}
-            icon={Shield}
-            description="Click to view VCAs missing safety services"
-            to={`/registers/vca-risk?type=safe_domain&district=${selectedDistrict}`}
-          />
-          <RiskKpiCard
-            label="Stable coverage"
-            count={displayStats?.stableDomainCount}
-            percent={displayStats?.stableDomainRate}
-            thresholds={{ yellow: 60, red: 40, inverse: true }}
-            icon={Landmark}
-            description="Click to view VCAs missing stability services"
-            to={`/registers/vca-risk?type=stable_domain&district=${selectedDistrict}`}
-          />
-        </div>
-        <div className="animate-in fade-in slide-in-from-bottom-3 duration-500">
-          <RiskKpiCard
-            label="Graduation readiness (all 4 domains)"
-            count={displayStats?.allFourDomainsCount}
-            percent={displayStats?.allFourDomainsRate}
-            thresholds={{ yellow: 15, red: 5, inverse: true }}
-            icon={GraduationCap}
-            description="VCAs covered across Health, Schooled, Safe & Stable"
-            to={`/registers/vca-risk?type=graduation_path&district=${selectedDistrict}`}
-          />
-        </div>
+        {/* ── Coverage KPIs + Health Services Chart ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-3 duration-500">
+          {/* Left: Coverage KPI Cards */}
+          <div className="flex flex-col gap-4">
+            <div className="grid gap-4 grid-cols-2">
+              <RiskKpiCard
+                label="Health"
+                count={displayStats?.healthDomainCount}
+                percent={displayStats?.healthDomainRate}
+                thresholds={{ yellow: 60, red: 40, inverse: true }}
+                icon={HeartPulse}
+                description="Click to view VCAs missing health services"
+                to={`/registers/vca-risk?type=health_domain&district=${selectedDistrict}`}
+              />
+              <RiskKpiCard
+                label="Schooled"
+                count={displayStats?.schooledDomainCount}
+                percent={displayStats?.schooledDomainRate}
+                thresholds={{ yellow: 60, red: 40, inverse: true }}
+                icon={BookOpen}
+                description="Click to view VCAs missing school services"
+                to={`/registers/vca-risk?type=schooled_domain&district=${selectedDistrict}`}
+              />
+              <RiskKpiCard
+                label="Safe"
+                count={displayStats?.safeDomainCount}
+                percent={displayStats?.safeDomainRate}
+                thresholds={{ yellow: 60, red: 40, inverse: true }}
+                icon={Shield}
+                description="Click to view VCAs missing safety services"
+                to={`/registers/vca-risk?type=safe_domain&district=${selectedDistrict}`}
+              />
+              <RiskKpiCard
+                label="Stable"
+                count={displayStats?.stableDomainCount}
+                percent={displayStats?.stableDomainRate}
+                thresholds={{ yellow: 60, red: 40, inverse: true }}
+                icon={Landmark}
+                description="Click to view VCAs missing stability services"
+                to={`/registers/vca-risk?type=stable_domain&district=${selectedDistrict}`}
+              />
+            </div>
+            <RiskKpiCard
+              label="Graduation readiness (all 4 domains)"
+              count={displayStats?.allFourDomainsCount}
+              percent={displayStats?.allFourDomainsRate}
+              thresholds={{ yellow: 15, red: 5, inverse: true }}
+              icon={GraduationCap}
+              description="VCAs covered across Health, Schooled, Safe & Stable"
+              to={`/registers/vca-risk?type=graduation_path&district=${selectedDistrict}`}
+            />
+          </div>
 
-        {/* ── SECTION 2: HEALTH SERVICES INSIGHTS ── */}
-        <GlowCard className="overflow-hidden border-slate-200 shadow-sm">
-          <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/30">
-            <div className="flex items-center justify-between">
-              <div>
+          {/* Right: Most common health services chart */}
+          <GlowCard className="overflow-hidden border-slate-200 shadow-sm h-full">
+            <CardHeader className="p-6 border-b border-slate-100 bg-slate-50/30">
+              <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
                   <Stethoscope className="h-5 w-5 text-emerald-600" />
                   Most common health services
                 </CardTitle>
-                <CardDescription className="text-xs font-bold text-slate-400 tracking-widest mt-1">
-                  Provided health services across all profiles — {selectedDistrict}
-                </CardDescription>
+                <Badge variant="outline" className="h-6 px-3 border-emerald-200 bg-emerald-50 text-emerald-700 font-black text-[10px]">
+                  {displayStats?.totalServices || 0} service events
+                </Badge>
               </div>
-              <Badge variant="outline" className="h-6 px-3 border-emerald-200 bg-emerald-50 text-emerald-700 font-black text-[10px]">
-                {displayStats?.totalServices || 0} service events
+            </CardHeader>
+            <CardContent className="p-6">
+              {servicesQuery.isLoading ? (
+                <div className="h-[300px] flex items-center justify-center">
+                  <LoadingDots />
+                </div>
+              ) : !displayStats?.healthServiceStats || displayStats.healthServiceStats.length === 0 ? (
+                <div className="h-[300px] flex flex-col items-center justify-center text-slate-400 gap-3 border-2 border-dashed border-slate-100 rounded-2xl">
+                  <Target className="h-10 w-10 opacity-20" />
+                  <p className="text-sm font-bold">No health services found</p>
+                </div>
+              ) : (
+                <div className="h-[350px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={displayStats.healthServiceStats} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={150} tick={{ fill: "#64748b", fontSize: 10, fontWeight: 800 }} />
+                      <Tooltip cursor={{ fill: "#f8fafc" }} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                        {displayStats.healthServiceStats.map((_: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </GlowCard>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-sm font-bold text-slate-500 mb-3 tracking-wide">Data quality & insights</h3>
+          <p className="text-xs text-slate-400 mb-4">Click a card to filter records</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {insights.map((item) => (
+              <div
+                key={item.key}
+                onClick={() => { setDqFilter(dqFilter === item.key ? null : item.key); }}
+                className={cn(
+                  "cursor-pointer rounded-2xl border p-4 transition-all hover:shadow-md",
+                  dqFilter === item.key
+                    ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                    : "border-slate-100 bg-white hover:border-slate-200"
+                )}
+              >
+                <p className="text-2xl font-extrabold text-slate-900">{item.count}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">{item.label}</p>
+              </div>
+            ))}
+          </div>
+          {dqFilter && (
+            <div className="mt-3 flex items-center gap-2">
+              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs font-bold">
+                Filtered: {insights.find(i => i.key === dqFilter)?.label}
               </Badge>
+              <button onClick={() => setDqFilter(null)} className="text-xs text-slate-400 hover:text-slate-600 font-bold">
+                Clear filter
+              </button>
             </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            {servicesQuery.isLoading ? (
-              <div className="h-[300px] flex items-center justify-center">
-                <RefreshCcw className="h-8 w-8 text-emerald-500 animate-spin opacity-20" />
-              </div>
-            ) : !displayStats?.healthServiceStats || displayStats.healthServiceStats.length === 0 ? (
-              <div className="h-[300px] flex flex-col items-center justify-center text-slate-400 gap-3 border-2 border-dashed border-slate-100 rounded-2xl">
-                <Target className="h-10 w-10 opacity-20" />
-                <p className="text-sm font-bold">No health services found in delivery records</p>
-              </div>
-            ) : (
-              <div className="h-[350px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={displayStats.healthServiceStats} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                    <XAxis type="number" hide />
-                    <YAxis
-                      dataKey="name"
-                      type="category"
-                      axisLine={false}
-                      tickLine={false}
-                      width={150}
-                      tick={{ fill: "#64748b", fontSize: 10, fontWeight: 800 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "#f8fafc" }}
-                      contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }}
-                    />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                      {displayStats.healthServiceStats.map((_: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </GlowCard>
+          )}
+        </div>
+
       </div>
 
       {/* Module Navigation & Audit Trail */}
@@ -725,21 +817,25 @@ const VcaServicesDashboard = () => {
                   <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">District</TableHead>
                   <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Date of service</TableHead>
                   <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Service provided</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">HIV status</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Last VL date</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">VL result</TableHead>
+                  <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 h-14">Level MMD</TableHead>
                   <TableHead className="font-black text-[10px] tracking-[0.2em] text-slate-400 text-right pr-8 h-14">Caseworker</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {servicesQuery.isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={5} className="p-0">
-                        <TableSkeleton rows={1} columns={5} />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : filteredServices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-20 text-center">
+                    <TableCell colSpan={9}>
+                      <div className="flex items-center justify-center py-12">
+                        <LoadingDots />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : displayedServices.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-20 text-center">
                       <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
                         <FileText className="h-10 w-10 opacity-20" />
                         <p className="text-xs font-bold tracking-widest opacity-50">No service logs available</p>
@@ -747,7 +843,7 @@ const VcaServicesDashboard = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredServices.slice(0, 50).map((service, index) => {
+                  displayedServices.slice(0, 50).map((service, index) => {
                     const record = service as Record<string, unknown>;
                     const vcaId = String(pickValue(record, ["vca_id", "vcaid", "child_id", "unique_id"])).trim();
 
@@ -789,23 +885,39 @@ const VcaServicesDashboard = () => {
                         <TableCell className="text-xs font-bold text-slate-500">
                           {String(pickValue(record, ["service_date", "visit_date", "date"]))}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1.5 max-w-[400px]">
+                        <TableCell className="max-w-[250px] lg:max-w-[350px]">
+                          <div className="flex flex-wrap gap-1 overflow-hidden">
                             {providedServices.length > 0 ? (
                               providedServices.slice(0, 3).map((s, i) => (
-                                <Badge key={i} variant="outline" className="text-[9px] font-black border-slate-200 bg-white h-6 px-2.5 rounded-md tracking-tighter">
+                                <Badge key={i} variant="outline" className="text-[8px] sm:text-[9px] font-bold border-slate-200 bg-white h-5 sm:h-6 px-1.5 sm:px-2.5 rounded-md truncate max-w-[120px] sm:max-w-[160px]" title={s}>
                                   {s}
                                 </Badge>
                               ))
                             ) : (
-                              <span className="text-[10px] text-slate-300 font-bold italic">No specific service logged</span>
+                              <span className="text-[10px] text-slate-300 font-bold italic">No service logged</span>
                             )}
                             {providedServices.length > 3 && (
-                              <Badge variant="outline" className="text-[9px] font-black border-emerald-100 bg-emerald-50 text-emerald-700 h-6 px-2.5 rounded-md">
-                                +{providedServices.length - 3} more
+                              <Badge variant="outline" className="text-[8px] sm:text-[9px] font-bold border-emerald-100 bg-emerald-50 text-emerald-700 h-5 sm:h-6 px-1.5 sm:px-2.5 rounded-md shrink-0">
+                                +{providedServices.length - 3}
                               </Badge>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-slate-600">
+                          {service.is_hiv_positive === "1" || service.is_hiv_positive === true
+                            ? <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-[9px] font-black">Positive</Badge>
+                            : service.is_hiv_positive === "0" || service.is_hiv_positive === false
+                              ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[9px] font-black">Negative</Badge>
+                              : <span className="text-slate-400">N/A</span>}
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-slate-500">
+                          {service.date_last_vl || "N/A"}
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-slate-500">
+                          {service.vl_last_result || "N/A"}
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-slate-500">
+                          {service.level_mmd || "N/A"}
                         </TableCell>
                         <TableCell className="text-right pr-6 py-4">
                           <div className="flex flex-col items-end">

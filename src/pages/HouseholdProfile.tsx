@@ -14,7 +14,6 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { cn, toTitleCase } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmptyState from "@/components/EmptyState";
-import TableSkeleton from "@/components/ui/TableSkeleton";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +24,7 @@ import { format } from "date-fns";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 
 const subPopulationFilterLabels: Record<string, string> = {
   calhiv: "CALHIV",
@@ -298,7 +297,7 @@ const HouseholdProfile = () => {
     <DashboardLayout subtitle={`Household: ${id}`}>
       <div className="space-y-6 pb-20">
         {/* Header Section */}
-        <div className="relative overflow-hidden rounded-2xl shadow-lg">
+        <div className="relative overflow-hidden rounded-xl">
           {/* Gradient top section */}
           <div className="relative bg-gradient-to-r from-green-700 via-emerald-600 to-teal-600 p-6 lg:p-8">
             <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
@@ -482,7 +481,7 @@ const HouseholdProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Briefcase className="h-5 w-5 text-slate-600" /> Caseworker & system
+                      <Briefcase className="h-5 w-5 text-slate-600" /> Caseworker Details
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -506,7 +505,9 @@ const HouseholdProfile = () => {
               </CardHeader>
               <CardContent className="p-0">
                 {isLoadingMembers ? (
-                  <TableSkeleton rows={4} columns={5} />
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingDots />
+                  </div>
                 ) : householdMembers.length > 0 ? (
                   <div className="w-full overflow-x-auto">
                     <Table>
@@ -562,7 +563,9 @@ const HouseholdProfile = () => {
               </CardHeader>
               <CardContent>
                 {isLoadingCasePlans ? (
-                  <TableSkeleton rows={4} columns={4} />
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingDots />
+                  </div>
                 ) : householdCasePlans.length > 0 ? (
                   <div className="space-y-4">
                     <div className="w-full overflow-x-auto">
@@ -735,7 +738,7 @@ const HouseholdProfile = () => {
                             className="bg-slate-900 border-none hover:bg-slate-800 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 whitespace-nowrap">
                             {mutation.isPending ? (
                               <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <LoadingDots className="h-4" />
                                 Submitting...
                               </>
                             ) : (

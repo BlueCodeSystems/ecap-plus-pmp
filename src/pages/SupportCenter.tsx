@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle, MoreVertical, Plus, ArrowRight, Loader2, Trash2 } from "lucide-react";
+import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle, MoreVertical, Plus, ArrowRight, Trash2 } from "lucide-react";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -760,7 +761,7 @@ const SupportCenter = () => {
                       className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-[0_4px_12px_rgba(16,185,129,0.3)] w-8 h-8 shrink-0 ml-2"
                     >
                       {sendMutation.isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <LoadingDots className="h-4" />
                       ) : (
                         <Send className="h-3.5 w-3.5" />
                       )}

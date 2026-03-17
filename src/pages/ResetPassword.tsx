@@ -137,7 +137,7 @@ const ResetPassword = () => {
                   className="h-12 w-full bg-primary text-primary-foreground transition-transform duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Resetting..." : "Reset password"}
+                  {isLoading ? "Resetting" : "Reset password"}
                 </Button>
               </form>
             </div>

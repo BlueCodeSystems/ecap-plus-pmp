@@ -64,7 +64,7 @@ export default {
         "input-icon": "hsl(var(--input-icon))",
       },
       fontFamily: {
-        sans: ['Nunito Sans', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: "var(--radius)",

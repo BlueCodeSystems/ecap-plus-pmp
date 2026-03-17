@@ -14,6 +14,7 @@ import {
   CircleHelp,
   Calendar,
   Briefcase,
+  BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -89,6 +90,7 @@ const sections = [
     label: "Help & support",
     items: [
       { title: "Support Center", url: "/support", icon: CircleHelp },
+      { title: "Documentation", url: "/documentation", icon: BookOpen },
     ],
   },
 ];
@@ -128,7 +130,7 @@ export function AppSidebar() {
     if (!user) return [];
 
     const roleName = (typeof user.role === "string" ? user.role : user.role?.name || "").toLowerCase();
-    const isAdmin = roleName === "administrator";
+    const isAdmin = roleName === "administrator" || user.description === "Administrator" || (!user.description && roleName !== "");
     const isSupport = user.description === "Support User" || roleName.includes("support");
     const isDistrictUser = user.description === "District User";
     const isProvincialUser = user.description === "Provincial User";
@@ -141,8 +143,8 @@ export function AppSidebar() {
         // Districts page: Restricted for District Users (per security intent)
         if (item.url === "/districts" && isDistrictUser) return false;
 
-        // Admin: Only for Admins and Support
-        if (section.label === "Admin" && !isAdmin && !isSupport) return false;
+        // Admin: Only for Administrators
+        if (section.label === "Admin" && !isAdmin) return false;
 
         // Data Pipeline: Only for Admins and Support
         if (section.label === "Data Pipeline" && !isAdmin && !isSupport) return false;
@@ -229,7 +231,7 @@ export function AppSidebar() {
             <Avatar className="h-8 w-8 shrink-0 rounded-full">
               <AvatarImage src={user.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold uppercase rounded-full">
-                {user.first_name?.[0] ?? user.email[0]}
+                {user.first_name?.[0] ?? user.email?.[0] ?? "U"}
               </AvatarFallback>
             </Avatar>
             {!collapsed && (

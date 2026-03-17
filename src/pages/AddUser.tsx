@@ -264,7 +264,7 @@ const AddUser = () => {
                   disabled={householdsListQuery.isLoading}
                 >
                   <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
-                    <SelectValue placeholder={householdsListQuery.isLoading ? "Loading..." : "Select province"} />
+                    <SelectValue placeholder={householdsListQuery.isLoading ? "Loading" : "Select province"} />
                   </SelectTrigger>
                   <SelectContent>
                     {provinces.map((prov) => (
@@ -287,7 +287,7 @@ const AddUser = () => {
                 >
                   <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
                     <SelectValue placeholder={
-                      householdsListQuery.isLoading ? "Loading..." :
+                      householdsListQuery.isLoading ? "Loading" :
                         !formState.province ? "Select a province first" : "Select district"
                     } />
                   </SelectTrigger>

@@ -34,7 +34,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import LoadingDots from "@/components/aceternity/LoadingDots";
-import TableSkeleton from "@/components/ui/TableSkeleton";
 import { useQuery } from "@tanstack/react-query";
 import { getHouseholdServicesByDistrict, getHouseholdsByDistrict, DEFAULT_DISTRICT } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
@@ -190,7 +189,7 @@ const HouseholdServicesPage = () => {
               Total services: <span className="text-slate-900 ml-1">{displayStats?.total || 0}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-blue-500" />
+              <div className="h-2 w-2 rounded-full bg-emerald-500" />
               Unique households: <span className="text-slate-900 ml-1">{displayStats?.uniqueHhs || 0}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -210,7 +209,7 @@ const HouseholdServicesPage = () => {
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-3 mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
         {[
-          { label: "Total operations", value: displayStats?.total || 0, icon: ClipboardList, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Total operations", value: displayStats?.total || 0, icon: ClipboardList, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Target entities", value: displayStats?.uniqueHhs || 0, icon: Home, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Interaction density", value: displayStats?.engagement || 0, icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
         ].map((kpi, idx) => (
@@ -262,13 +261,13 @@ const HouseholdServicesPage = () => {
             </TableHeader>
             <TableBody>
               {servicesQuery.isLoading || servicesQuery.isFetching ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={5} className="p-0">
-                      <TableSkeleton rows={1} columns={5} />
-                    </TableCell>
-                  </TableRow>
-                ))
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <div className="flex items-center justify-center py-12">
+                      <LoadingDots />
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : filteredServices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-24 text-center">

@@ -51,6 +51,8 @@ const FlaggedRecordForm = lazy(() => import("./pages/FlaggedRecordForm"));
 const WeeklyExtracts = lazy(() => import("./pages/WeeklyExtracts"));
 const SupportCenter = lazy(() => import("./pages/SupportCenter"));
 const Calendar = lazy(() => import("./pages/Calendar"));
+const Documentation = lazy(() => import("./pages/Documentation"));
+const DocumentationArticle = lazy(() => import("./pages/DocumentationArticle"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -361,6 +363,22 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Calendar />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/documentation"
+                  element={
+                    <ProtectedRoute>
+                      <Documentation />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/documentation/:slug"
+                  element={
+                    <ProtectedRoute>
+                      <DocumentationArticle />
                     </ProtectedRoute>
                   }
                 />

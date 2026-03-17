@@ -6,7 +6,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import LoadingDots from "@/components/aceternity/LoadingDots";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+
 import AnimatedCounter from "@/components/AnimatedCounter";
 import {
   Table,
@@ -273,8 +273,10 @@ const Districts = () => {
               <TableBody>
                 {areDistrictsLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="p-0">
-                      <TableSkeleton rows={6} columns={4} />
+                    <TableCell colSpan={5}>
+                      <div className="flex items-center justify-center py-12">
+                        <LoadingDots />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : districtData.length === 0 ? (

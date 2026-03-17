@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LoadingDots from "@/components/aceternity/LoadingDots";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+
 import { Search, Trash2, RotateCcw, UserX, UserPlus, Shield, Mail, Calendar } from "lucide-react";
 import {
   deleteUser,
@@ -209,21 +209,25 @@ const Users = () => {
               <thead className="bg-slate-50/50 text-xs text-slate-500">
                 <tr>
                   <th className="py-3 px-6 font-semibold border-r border-slate-200">User details</th>
-                  <th className="py-3 px-6 font-semibold border-r border-slate-200">Role & permissions</th>
+                  <th className="py-3 px-6 font-semibold border-r border-slate-200">Role</th>
+                  <th className="py-3 px-6 font-semibold border-r border-slate-200">Province</th>
+                  <th className="py-3 px-6 font-semibold border-r border-slate-200">District</th>
                   <th className="py-3 px-6 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/50">
                 {usersQuery.isLoading && (
                   <tr>
-                    <td className="p-0" colSpan={3}>
-                      <TableSkeleton rows={5} columns={3} />
+                    <td colSpan={5}>
+                      <div className="flex items-center justify-center py-12">
+                        <LoadingDots />
+                      </div>
                     </td>
                   </tr>
                 )}
                 {!usersQuery.isLoading && filteredUsers.length === 0 && (
                   <tr>
-                    <td className="py-12 text-center text-slate-500" colSpan={3}>
+                    <td className="py-12 text-center text-slate-500" colSpan={5}>
                       <div className="flex flex-col items-center justify-center gap-2">
                         <UserX className="h-8 w-8 text-slate-300" />
                         <p className="text-slate-500 font-medium">
@@ -247,13 +251,15 @@ const Users = () => {
                       </div>
                     </td>
                     <td className="py-4 px-6 border-r border-slate-200">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 capitalize">
-                          {typeof user.role === "string"
-                            ? rolesById.get(user.role as string) ?? user.role
-                            : user.role?.name ?? "No role"}
-                        </Badge>
-                      </div>
+                      <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 capitalize">
+                        {user.description || "Administrator"}
+                      </Badge>
+                    </td>
+                    <td className="py-4 px-6 border-r border-slate-200">
+                      <span className="text-sm text-slate-700">{user.title || "All"}</span>
+                    </td>
+                    <td className="py-4 px-6 border-r border-slate-200">
+                      <span className="text-sm text-slate-700">{user.location || "All"}</span>
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

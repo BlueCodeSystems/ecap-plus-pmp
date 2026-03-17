@@ -88,7 +88,7 @@ const VcaServiceProfile = () => {
     <DashboardLayout subtitle={`VCA Service — ${vcaId}`}>
       <div className="space-y-6 pb-20">
         {/* ── Banner ── */}
-        <div className="relative overflow-hidden rounded-2xl shadow-lg">
+        <div className="relative overflow-hidden rounded-xl">
           <div className="relative bg-gradient-to-r from-green-700 via-emerald-600 to-teal-600 p-6 lg:p-8">
             <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
