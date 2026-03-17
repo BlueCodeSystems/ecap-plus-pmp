@@ -65,7 +65,7 @@ const DashboardHeader = ({
           description: n.message,
           date: new Date(n.timestamp),
           icon: isExtract
-            ? <DatabaseZap className="h-4 w-4 text-violet-600" />
+            ? <DatabaseZap className="h-4 w-4 text-emerald-600" />
             : <Bell className="h-4 w-4 text-primary" />,
           link: isExtract
             ? "/weekly-extracts"
@@ -140,7 +140,7 @@ const DashboardHeader = ({
           <Button
             variant="ghost"
             size="icon"
-            className="hidden sm:inline-flex relative transition-transform duration-300 hover:-translate-y-0.5 text-slate-500 hover:text-primary"
+            className="hidden sm:inline-flex relative transition-transform duration-300 hover:-translate-y-0.5 text-slate-500 hover:text-primary hover:bg-transparent"
             onClick={() => navigate("/support")}
             title="Support center"
           >
@@ -150,7 +150,7 @@ const DashboardHeader = ({
           <Button
             variant="ghost"
             size="icon"
-            className="hidden sm:inline-flex relative transition-transform duration-300 hover:-translate-y-0.5 text-slate-500 hover:text-primary"
+            className="hidden sm:inline-flex relative transition-transform duration-300 hover:-translate-y-0.5 text-slate-500 hover:text-primary hover:bg-transparent"
             onClick={() => navigate("/calendar")}
             title="Event calendar"
           >
@@ -163,7 +163,7 @@ const DashboardHeader = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative transition-transform duration-300 hover:-translate-y-0.5"
+                className="relative transition-transform duration-300 hover:-translate-y-0.5 hover:bg-transparent"
               >
                 <Bell className="h-5 w-5 text-slate-500" />
                 {unreadCount > 0 && (
@@ -240,7 +240,7 @@ const DashboardHeader = ({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="gap-2 px-2 transition-transform duration-300 hover:-translate-y-0.5"
+                className="gap-2 px-2 transition-transform duration-300 hover:-translate-y-0.5 hover:bg-transparent"
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
@@ -248,7 +248,7 @@ const DashboardHeader = ({
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden sm:block text-sm font-medium">{displayName}</span>
+                <span className="hidden sm:block text-sm font-bold">{displayName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">

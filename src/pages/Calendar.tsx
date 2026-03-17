@@ -50,7 +50,7 @@ import {
 } from "@/components/ui/dialog";
 
 const CATEGORIES = [
-  { name: "Meeting", color: "bg-blue-500", border: "border-blue-200", text: "text-blue-700" },
+  { name: "Meeting", color: "bg-emerald-500", border: "border-emerald-200", text: "text-emerald-700" },
   { name: "Field Visit", color: "bg-emerald-500", border: "border-emerald-200", text: "text-emerald-700" },
   { name: "Deadline", color: "bg-rose-500", border: "border-rose-200", text: "text-rose-700" },
   { name: "Personal", color: "bg-amber-500", border: "border-amber-200", text: "text-amber-700" },

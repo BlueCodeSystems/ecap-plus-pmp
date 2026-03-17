@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Calendar } from "lucide-react";
 
 const WelcomeBanner = () => {
   const { user } = useAuth();
@@ -9,6 +9,13 @@ const WelcomeBanner = () => {
   const firstName = user?.first_name || "there";
 
   const isFirstLogin = sessionStorage.getItem("ecap.first_login") === "true";
+
+  const getLocationLabel = () => {
+    const desc = user?.description;
+    if (desc === "District User" && user?.location) return user.location + " District";
+    if (desc === "Provincial User" && user?.title) return user.title + " Province";
+    return "All Districts";
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -37,15 +44,27 @@ const WelcomeBanner = () => {
           <p className="mt-1 text-sm text-white/90 max-w-lg font-medium">
             Monitor screening coverage, validate data quality, and coordinate fieldwork all in one place.
           </p>
+          <span className="mt-2 inline-block text-xs font-semibold text-emerald-200/90 bg-white/10 px-3 py-1 rounded-full">
+            {getLocationLabel()}
+          </span>
         </div>
-        <Button
-          onClick={() => navigate("/flags")}
-          className="w-fit border-0 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 px-6 py-6 text-sm font-semibold rounded-xl group transition-all duration-300"
-        >
-          <span className="mr-3 inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          Start DQA Review
-          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            onClick={() => navigate("/calendar")}
+            className="w-fit border-0 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 px-6 py-6 text-sm font-semibold rounded-xl group transition-all duration-300"
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            Calendar
+          </Button>
+          <Button
+            onClick={() => navigate("/flags")}
+            className="w-fit border-0 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 px-6 py-6 text-sm font-semibold rounded-xl group transition-all duration-300"
+          >
+            <span className="mr-3 inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            Start DQA Review
+            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Button>
+        </div>
       </div>
     </div>
   );

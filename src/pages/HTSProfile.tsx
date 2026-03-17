@@ -124,7 +124,7 @@ const HTSProfile = () => {
 
   if (htsQuery.isLoading && !record) {
     return (
-      <DashboardLayout subtitle="Loading profile...">
+      <DashboardLayout subtitle="Loading profile">
         <div className="flex h-[50vh] items-center justify-center">
           <LoadingDots />
         </div>
@@ -161,7 +161,7 @@ const HTSProfile = () => {
       <div className="space-y-6 pb-20">
 
         {/* ── Banner ── */}
-        <div className="relative overflow-hidden rounded-2xl shadow-lg">
+        <div className="relative overflow-hidden rounded-xl">
           {/* Gradient Header */}
           <div className="relative bg-gradient-to-r from-green-700 via-emerald-600 to-teal-600 p-6 lg:p-8">
             <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
@@ -227,11 +227,11 @@ const HTSProfile = () => {
 
 
               <span className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-indigo-500" />
+                <Calendar className="h-4 w-4 text-emerald-500" />
                 Date Created: {p(record, ["date_created"])}
               </span>
               <span className="flex items-center gap-1.5">
-                <HeartPulse className="h-4 w-4 text-indigo-500" />
+                <HeartPulse className="h-4 w-4 text-emerald-500" />
                 Facility: {p(record, ["health_facility"])}
               </span>
             </div>

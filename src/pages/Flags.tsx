@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import LoadingDots from "@/components/aceternity/LoadingDots";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+
 import {
   Table,
   TableBody,
@@ -23,7 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { notifyUsersOfFlagResolution } from "@/lib/directus";
-import { Flag, Search, Loader2, CheckCircle, XCircle, Download } from "lucide-react";
+import { Flag, Search, CheckCircle, XCircle, Download } from "lucide-react";
 
 const Flags = () => {
   const { user } = useAuth();
@@ -32,15 +32,29 @@ const Flags = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isResolving, setIsResolving] = useState<string | null>(null);
 
+  const isDistrictUser = user?.description === "District User";
+  const isProvincialUser = user?.description === "Provincial User";
+  const userProvince = user?.title;
+  const userDistrict = user?.location;
+
   const flagsQuery = useQuery({
     queryKey: ["flagged-records"],
     queryFn: getFlaggedRecords,
   });
 
-  const records = useMemo(
-    () => (flagsQuery.data ?? []).filter((r: any) => r.status?.toLowerCase() !== "resolved"),
-    [flagsQuery.data]
-  );
+  const records = useMemo(() => {
+    const allRecords = (flagsQuery.data ?? []).filter((r: any) => r.status?.toLowerCase() !== "resolved");
+    // Geographic filtering
+    return allRecords.filter((r: any) => {
+      if (isDistrictUser && userDistrict && userDistrict !== "All") {
+        return r.district === userDistrict;
+      }
+      if (isProvincialUser && userProvince && userProvince !== "All") {
+        return r.province === userProvince;
+      }
+      return true;
+    });
+  }, [flagsQuery.data, isDistrictUser, isProvincialUser, userDistrict, userProvince]);
 
   const filteredRecords = useMemo(() => {
     if (!searchQuery) return records;
@@ -49,7 +63,9 @@ const Flags = () => {
       Object.values(record).some((val) =>
         String(val).toLowerCase().includes(lowerQuery)
       )
-    );
+    ).sort((a: any, b: any) => {
+      return new Date(b.date_created || 0).getTime() - new Date(a.date_created || 0).getTime();
+    });
   }, [records, searchQuery]);
 
   const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
@@ -207,8 +223,10 @@ const Flags = () => {
               <TableBody>
                 {flagsQuery.isLoading && (
                   <TableRow>
-                    <TableCell colSpan={8} className="p-0">
-                      <TableSkeleton rows={6} columns={6} />
+                    <TableCell colSpan={8}>
+                      <div className="flex items-center justify-center py-12">
+                        <LoadingDots />
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
@@ -264,7 +282,7 @@ const Flags = () => {
                         disabled={isResolving === record.id}
                       >
                         {isResolving === record.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <LoadingDots className="h-4" />
                         ) : (
                           "Resolve"
                         )}

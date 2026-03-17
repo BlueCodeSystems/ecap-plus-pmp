@@ -237,7 +237,7 @@ const CaseworkerProfile = () => {
       <div className="space-y-6 pb-20">
 
         {/* ── Banner ── */}
-        <div className="relative overflow-hidden rounded-2xl shadow-lg">
+        <div className="relative overflow-hidden rounded-xl">
           <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 p-6 lg:p-8">
             <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
@@ -339,7 +339,7 @@ const CaseworkerProfile = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <DomainBadge label="Health" has={stats.health > 0} icon={HeartPulse} color="text-rose-600" />
-            <DomainBadge label="Schooled" has={stats.schooled > 0} icon={BookOpen} color="text-indigo-600" />
+            <DomainBadge label="Schooled" has={stats.schooled > 0} icon={BookOpen} color="text-emerald-600" />
             <DomainBadge label="Safe" has={stats.safe > 0} icon={Shield} color="text-orange-600" />
             <DomainBadge label="Stable" has={stats.stable > 0} icon={Landmark} color="text-amber-600" />
           </CardContent>
@@ -400,7 +400,7 @@ const CaseworkerProfile = () => {
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {hh.hasHealth && <span title="Health" className="h-2 w-2 rounded-full bg-rose-400" />}
-                        {hh.hasSchooled && <span title="Schooled" className="h-2 w-2 rounded-full bg-indigo-400" />}
+                        {hh.hasSchooled && <span title="Schooled" className="h-2 w-2 rounded-full bg-emerald-400" />}
                         {hh.hasSafe && <span title="Safe" className="h-2 w-2 rounded-full bg-orange-400" />}
                         {hh.hasStable && <span title="Stable" className="h-2 w-2 rounded-full bg-amber-400" />}
                         <span className="ml-1 text-[10px] text-slate-400 font-bold">

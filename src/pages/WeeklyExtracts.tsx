@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo } from "react";
 import {
   Home, Users, HeartHandshake, Baby, Flag,
-  Download, Loader2, RefreshCw, FolderDown, Clock, Send, CheckCircle2, Zap,
+  Download, RefreshCw, FolderDown, Clock, Send, CheckCircle2, Zap,
 } from "lucide-react";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
@@ -44,7 +45,7 @@ const extractConfigs: ExtractConfig[] = [
   {
     key: "households",
     title: "Households",
-    icon: <Home className="h-5 w-5 text-blue-600" />,
+    icon: <Home className="h-5 w-5 text-emerald-600" />,
     headers: [
       "household_id", "homeaddress", "facility",
       "district", "ward", "caseworker_name", "screened", "last_service_date",
@@ -63,7 +64,7 @@ const extractConfigs: ExtractConfig[] = [
   {
     key: "vcas",
     title: "VCAs",
-    icon: <Baby className="h-5 w-5 text-violet-600" />,
+    icon: <Baby className="h-5 w-5 text-emerald-600" />,
     headers: [
       "vca_id", "household_id", "gender", "age", "hiv_status",
       "facility", "district", "ward", "last_service_date",
@@ -324,7 +325,7 @@ const WeeklyExtracts = () => {
             disabled={anyLoading || totalRecords === 0 || downloading === "all"}
           >
             {downloading === "all" ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <LoadingDots className="h-4" />
             ) : (
               <FolderDown className="h-3.5 w-3.5" />
             )}
@@ -338,7 +339,7 @@ const WeeklyExtracts = () => {
             disabled={isNotifying || anyLoading || totalRecords === 0}
           >
             {isNotifying ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <LoadingDots className="h-4" />
             ) : notified ? (
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
             ) : (
@@ -349,14 +350,14 @@ const WeeklyExtracts = () => {
           <Button
             variant="outline"
             size="sm"
-            className="border-violet-200 text-violet-700 hover:bg-violet-50 gap-2"
+            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-2"
             onClick={handleTriggerFlow}
             disabled={isTriggering}
           >
             {isTriggering ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <LoadingDots className="h-4" />
             ) : triggered ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-violet-600" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
             ) : (
               <Zap className="h-3.5 w-3.5" />
             )}
@@ -398,7 +399,7 @@ const WeeklyExtracts = () => {
                 <Badge variant="secondary" className="text-xs">
                   {isLoading ? "..." : isFetching ? (
                     <span className="flex items-center gap-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <LoadingDots className="h-4" />
                       updating
                     </span>
                   ) : (
@@ -414,7 +415,7 @@ const WeeklyExtracts = () => {
                   onClick={() => handleDownload(config)}
                 >
                   {isDownloading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <LoadingDots className="h-4" />
                   ) : (
                     <Download className="h-4 w-4" />
                   )}

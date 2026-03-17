@@ -38,9 +38,12 @@ import { parseISO, isAfter, subDays } from "date-fns";
 const HTSRegister = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isDistrictUser = user?.description === "District User";
+  const isProvincialUser = user?.description === "Provincial User";
+  const userProvince = user?.title;
 
   // Initial state logic for district security
-  const initialDistrict = (user?.description === "District User" && user?.location)
+  const initialDistrict = (isDistrictUser && user?.location)
     ? user.location
     : "All";
 
@@ -48,7 +51,7 @@ const HTSRegister = () => {
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
-    if (user?.description === "District User" && user?.location && selectedDistrict !== user.location) {
+    if (isDistrictUser && user?.location && selectedDistrict !== user.location) {
       setSelectedDistrict(user.location);
     }
   }, [user, selectedDistrict]);
@@ -65,6 +68,7 @@ const HTSRegister = () => {
     const groups = new Map<string, string[]>();
     if (householdsListQuery.data) {
       (householdsListQuery.data as any[]).forEach((h: any) => {
+        if (isProvincialUser && userProvince && h.province !== userProvince) return;
         const raw = h.district;
         if (raw) {
           const normalized = toTitleCase(raw.trim());
@@ -75,7 +79,7 @@ const HTSRegister = () => {
       });
     }
     return groups;
-  }, [householdsListQuery.data]);
+  }, [householdsListQuery.data, isProvincialUser, userProvince]);
 
   const discoveredDistricts = useMemo(() => {
     return Array.from(discoveredDistrictsMap.keys()).sort();
@@ -98,12 +102,22 @@ const HTSRegister = () => {
 
   const allRecords = useMemo(() => {
     const rawData = (htsQuery.data ?? []) as any[];
-    if (selectedDistrict === "All") return rawData;
+    if (selectedDistrict === "All") {
+      if (isProvincialUser && userProvince) {
+        return rawData.filter(record => record.province === userProvince);
+      }
+      return rawData;
+    }
 
     const selectedVariants = discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict];
     return rawData.filter(r => {
+      if (isProvincialUser && userProvince && r.province !== userProvince) return false;
       const rDist = String(r.district || "");
       return selectedVariants.includes(rDist);
+    }).sort((a: any, b: any) => {
+      const idA = a.household_id || a.vca_id || a.id || "";
+      const idB = b.household_id || b.vca_id || b.id || "";
+      return String(idB).localeCompare(String(idA));
     });
   }, [htsQuery.data, selectedDistrict, discoveredDistrictsMap]);
 
@@ -248,7 +262,7 @@ const HTSRegister = () => {
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
-                disabled={user?.description === "District User"}
+                disabled={isDistrictUser}
               >
                 <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
                   <SelectValue placeholder={householdsListQuery.isLoading ? "Loading..." : "Select District"} />

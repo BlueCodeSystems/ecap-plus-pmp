@@ -7,7 +7,9 @@
       "WebSearch",
       "WebFetch(domain:minimals.cc)",
       "WebFetch(domain:mui.com)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(cd:*)",
+      "Bash(grep:*)"
     ]
   }
 }

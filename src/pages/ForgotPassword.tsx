@@ -104,7 +104,7 @@ const ForgotPassword = () => {
                   className="h-12 w-full bg-primary text-primary-foreground transition-transform duration-300 hover:-translate-y-0.5 hover:bg-primary/90"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Sending..." : "Send reset link"}
+                  {isLoading ? "Sending" : "Send reset link"}
                 </Button>
               </form>
 
