@@ -78,7 +78,7 @@ const Profile = () => {
     <DashboardLayout subtitle="Profile">
       <PageIntro
         eyebrow="Profile"
-        title="Keep your ECAP+ identity ready for field work."
+        title="My Profile"
         description="Update account details, verify access, and see how your role connects to program delivery."
         actions={<Badge className="bg-emerald-100 text-emerald-700">Directus account</Badge>}
       />
@@ -149,7 +149,7 @@ const Profile = () => {
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <div className="text-sm font-semibold text-amber-800">Access notes</div>
                 <p className="mt-2 text-sm text-amber-700">
-                  Your permissions are synced from Directus. Contact an admin if role updates
+                  Your permissions are synced from server. Contact an admin if role updates
                   are required.
                 </p>
               </div>

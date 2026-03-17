@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";
 import { Calendar, Clock, ChevronRight } from "lucide-react";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import { format, isToday } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ const CalendarWidget = () => {
     <GlowCard className="h-full">
       <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
         <div>
-          <CardTitle className="text-lg font-bold">Today's Agenda</CardTitle>
+          <CardTitle className="text-lg font-bold">Upcoming Schedule</CardTitle>
           <p className="text-xs text-muted-foreground mt-1">Your scheduled events and meetings</p>
         </div>
         <Calendar className="h-5 w-5 text-emerald-600 opacity-50" />
@@ -32,10 +33,8 @@ const CalendarWidget = () => {
       <CardContent>
         <div className="space-y-4">
           {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-12 bg-slate-100 animate-pulse rounded-xl" />
-              ))}
+            <div className="flex items-center justify-center py-8">
+              <LoadingDots />
             </div>
           ) : todaysEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
@@ -59,7 +58,7 @@ const CalendarWidget = () => {
                   <div className="flex items-center gap-3 overflow-hidden">
                     <div className={cn(
                       "w-1 h-8 rounded-full shrink-0",
-                      event.category === "Meeting" ? "bg-blue-500" :
+                      event.category === "Meeting" ? "bg-emerald-500" :
                         event.category === "Field Visit" ? "bg-emerald-500" :
                           event.category === "Deadline" ? "bg-rose-500" : "bg-amber-500"
                     )} />

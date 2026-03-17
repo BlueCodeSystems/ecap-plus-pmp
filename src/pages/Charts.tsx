@@ -25,7 +25,7 @@ const Charts = () => {
           {window.location.hostname === "localhost" && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-50/90 p-6 text-center backdrop-blur-sm">
               <div className="max-w-md space-y-4">
-                <Info className="mx-auto h-12 w-12 text-blue-500 opacity-50" />
+                <Info className="mx-auto h-12 w-12 text-emerald-500 opacity-50" />
                 <h3 className="text-lg font-semibold text-slate-900">
                   Dashboard Embedding Restricted Locally
                 </h3>

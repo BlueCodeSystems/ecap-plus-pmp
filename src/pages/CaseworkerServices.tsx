@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getCaregiverServicesByDistrict,
@@ -59,8 +59,8 @@ const RiskKpiCard = ({ label, count, icon: Icon, description, to, color = "emera
     teal: { bg: "bg-teal-50", text: "text-teal-600", ring: "ring-teal-400" },
     amber: { bg: "bg-amber-50", text: "text-amber-600", ring: "ring-amber-400" },
     rose: { bg: "bg-rose-50", text: "text-rose-600", ring: "ring-rose-400" },
-    blue: { bg: "bg-blue-50", text: "text-blue-600", ring: "ring-blue-400" },
-    purple: { bg: "bg-purple-50", text: "text-purple-600", ring: "ring-purple-400" },
+    blue: { bg: "bg-emerald-50", text: "text-emerald-600", ring: "ring-emerald-400" },
+    purple: { bg: "bg-emerald-50", text: "text-emerald-600", ring: "ring-emerald-400" },
     slate: { bg: "bg-slate-50", text: "text-slate-600", ring: "ring-slate-400" },
   };
 
@@ -469,7 +469,7 @@ const Caseworkers = () => {
           </CardHeader>
           <CardContent className="h-[300px] overflow-y-auto custom-scrollbar">
             {isLoading ? (
-              <div className="h-full flex items-center justify-center"><RefreshCcw className="animate-spin opacity-20" /></div>
+              <div className="h-full flex items-center justify-center"><LoadingDots /></div>
             ) : (
               <div className="space-y-4">
                 {stats?.topCaseworkers.map((worker, index) => (
@@ -528,7 +528,7 @@ const Caseworkers = () => {
           </CardHeader>
           <CardContent className="h-[300px] overflow-y-auto custom-scrollbar">
             {isLoading ? (
-              <div className="h-full flex items-center justify-center"><RefreshCcw className="animate-spin opacity-20" /></div>
+              <div className="h-full flex items-center justify-center"><LoadingDots /></div>
             ) : (
               <div className="space-y-4">
                 {stats?.topDistricts.map((district, index) => (
@@ -538,7 +538,7 @@ const Caseworkers = () => {
                         "flex h-10 w-10 items-center justify-center rounded-full font-bold text-xs shadow-sm",
                         index === 0 ? "bg-emerald-100 text-emerald-700 ring-4 ring-emerald-50" :
                           index === 1 ? "bg-teal-100 text-teal-700 ring-4 ring-teal-50" :
-                            index === 2 ? "bg-cyan-100 text-cyan-700 ring-4 ring-cyan-50" :
+                            index === 2 ? "bg-emerald-100 text-emerald-700 ring-4 ring-emerald-50" :
                               "bg-slate-100 text-slate-700"
                       )}>
                         {index + 1}
@@ -606,11 +606,13 @@ const Caseworkers = () => {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={4}><TableSkeleton rows={1} columns={4} /></TableCell>
-                  </TableRow>
-                ))
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <div className="flex items-center justify-center py-12">
+                      <LoadingDots />
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : filteredAuditLog.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="py-20 text-center text-slate-400">No records found</TableCell>

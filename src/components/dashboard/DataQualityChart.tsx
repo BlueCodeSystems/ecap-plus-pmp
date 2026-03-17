@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import {
   ChartContainer,
   ChartTooltip,
@@ -230,8 +231,8 @@ const DataQualityChart = () => {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex h-[300px] items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">
-            Loading chart data...
+          <div className="flex h-[300px] items-center justify-center">
+            <LoadingDots />
           </div>
         ) : (
           <ChartContainer config={chartConfig} className="h-[300px] w-full">

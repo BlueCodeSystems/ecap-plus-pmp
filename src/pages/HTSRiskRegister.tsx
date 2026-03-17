@@ -35,7 +35,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import { format, parseISO, isAfter, subDays } from "date-fns";
 import { cn, toTitleCase } from "@/lib/utils";
 import { downloadCsv } from "@/lib/exportUtils";
@@ -44,7 +44,7 @@ const RISK_TYPES = {
   unlinked: { label: "Positives Not On ART  ", icon: AlertCircle, color: "text-rose-600", bg: "bg-rose-50", description: "Positive cases not yet linked to ART" },
   pending: { label: "Pending Outcomes", icon: Clock, color: "text-amber-600", bg: "bg-amber-50", description: "Tests with unknown results" },
   new: { label: "New Positives", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50", description: "Positive results found in the last 7 days" },
-  all: { label: "All Records", icon: Briefcase, color: "text-indigo-600", bg: "bg-indigo-50", description: "Full HTS Register" }
+  all: { label: "All Records", icon: Briefcase, color: "text-emerald-600", bg: "bg-emerald-50", description: "Full HTS Register" }
 };
 
 const PROFILE_FIELDS: { label: string; keys: string[] }[] = [
@@ -259,8 +259,8 @@ const HTSRiskRegister = () => {
           </div>
         </div>
 
-        <Alert className="bg-indigo-50 border-indigo-200 text-indigo-900 shadow-sm">
-          <Info className="h-4 w-4 text-indigo-600" />
+        <Alert className="bg-emerald-50 border-emerald-200 text-emerald-900 shadow-sm">
+          <Info className="h-4 w-4 text-emerald-600" />
           <AlertTitle className="text-xs font-black tracking-wider uppercase">HTS Filter Active</AlertTitle>
           <AlertDescription className="text-sm font-medium opacity-90">
             {currentRisk.description}. Use the search bar for granular lookups.
@@ -280,8 +280,8 @@ const HTSRiskRegister = () => {
         <GlowCard className="border-slate-200 overflow-hidden">
           <div className="p-0 overflow-x-auto">
             {htsQuery.isLoading ? (
-              <div className="p-8">
-                <TableSkeleton columns={6} rows={10} />
+              <div className="flex items-center justify-center py-12">
+                <LoadingDots />
               </div>
             ) : filteredData.length > 0 ? (
               <Table>

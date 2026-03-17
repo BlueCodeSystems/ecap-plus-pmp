@@ -39,7 +39,7 @@ import {
   Flag,
   AlertTriangle,
   CheckCircle2,
-  Loader2,
+
   AlertCircle,
   PlusCircle,
   Sparkles
@@ -51,7 +51,6 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn, toTitleCase } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import EmptyState from "@/components/EmptyState";
-import TableSkeleton from "@/components/ui/TableSkeleton";
 import {
   Form,
   FormControl,
@@ -361,7 +360,7 @@ const VcaProfile = () => {
     <DashboardLayout subtitle={`Vca: ${id}`}>
       <div className="space-y-6 pb-20">
         {/* Header Section */}
-        <div className="relative overflow-hidden rounded-2xl shadow-lg">
+        <div className="relative overflow-hidden rounded-xl">
           {/* Gradient top section */}
           <div className={cn(
             "relative p-6 lg:p-8 transition-colors duration-500",
@@ -559,7 +558,9 @@ const VcaProfile = () => {
               </CardHeader>
               <CardContent>
                 {isLoadingCasePlans ? (
-                  <TableSkeleton rows={4} columns={4} />
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingDots />
+                  </div>
                 ) : vcaCasePlans.length > 0 ? (
                   <div className="w-full overflow-x-auto">
                     <Table className="table-fixed w-full">
@@ -730,7 +731,7 @@ const VcaProfile = () => {
                             className="bg-slate-900 border-none hover:bg-slate-800 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 whitespace-nowrap">
                             {mutation.isPending ? (
                               <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <LoadingDots className="h-4" />
                                 Submitting...
                               </>
                             ) : (

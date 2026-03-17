@@ -10,7 +10,7 @@ type GlowCardProps = React.HTMLAttributes<HTMLDivElement> & {
 
 const GlowCard = ({ children, className, wrapperClassName, hoverable = false, ...props }: GlowCardProps) => {
   return (
-    <div className={cn("group relative", wrapperClassName)}>
+    <div className={cn("group relative h-full", wrapperClassName)}>
       <div className={cn(
         "absolute -inset-[1px] rounded-2xl bg-gradient-to-br from-emerald-300/30 via-green-200/25 to-transparent opacity-60 blur-lg transition-opacity duration-500",
         hoverable && "group-hover:opacity-100"
@@ -26,7 +26,7 @@ const GlowCard = ({ children, className, wrapperClassName, hoverable = false, ..
 
 
         <div className="pointer-events-none absolute inset-0 rounded-2xl border border-white/70" />
-        <div className="relative z-10">{children}</div>
+        <div className="relative z-10 h-full">{children}</div>
       </Card>
     </div>
   );

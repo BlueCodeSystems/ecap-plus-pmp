@@ -1,5 +1,6 @@
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";
+import LoadingDots from "@/components/aceternity/LoadingDots";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -42,8 +43,8 @@ const ProvincialBreakdown = () => {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-            Loading breakdown...
+          <div className="flex h-[300px] items-center justify-center">
+            <LoadingDots />
           </div>
         ) : villageStats.length === 0 ? (
           <div className="flex h-[300px] items-center justify-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-500">

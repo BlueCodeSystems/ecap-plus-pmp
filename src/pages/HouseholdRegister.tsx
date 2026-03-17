@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import LoadingDots from "@/components/aceternity/LoadingDots";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+
 import {
   Table,
   TableBody,
@@ -81,7 +81,11 @@ const HouseholdRegister = () => {
   );
 
   // Initial state logic for district security
-  const initialDistrict = (user?.description === "District User" && user?.location)
+  const isDistrictUser = user?.description === "District User";
+  const isProvincialUser = user?.description === "Provincial User";
+  const userProvince = user?.title;
+
+  const initialDistrict = (isDistrictUser && user?.location)
     ? user.location
     : district;
 
@@ -89,7 +93,7 @@ const HouseholdRegister = () => {
 
   // SECURITY: Enforce district lock for District Users
   useEffect(() => {
-    if (user?.description === "District User" && user?.location && selectedDistrict !== user.location) {
+    if (isDistrictUser && user?.location && selectedDistrict !== user.location) {
       setSelectedDistrict(user.location);
     }
   }, [user, selectedDistrict]);
@@ -106,6 +110,8 @@ const HouseholdRegister = () => {
     if (hhListQuery.data) {
       (hhListQuery.data as any[]).forEach((h: any) => {
         const raw = h.district;
+        // Provincial Users: only include districts belonging to their province
+        if (isProvincialUser && userProvince && h.province !== userProvince) return;
         if (raw) {
           const normalized = toTitleCase(raw.trim());
           if (!groups.has(normalized)) groups.set(normalized, []);
@@ -115,7 +121,7 @@ const HouseholdRegister = () => {
       });
     }
     return groups;
-  }, [hhListQuery.data]);
+  }, [hhListQuery.data, isProvincialUser, userProvince]);
 
   const districts = useMemo(() => {
     return Array.from(discoveredDistrictsMap.keys()).sort();
@@ -134,6 +140,8 @@ const HouseholdRegister = () => {
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
 
     return allHouseholds.filter((household: any) => {
+      // Provincial Users: filter to their province only
+      if (isProvincialUser && userProvince && household.province !== userProvince) return false;
       const sDist = String(household.district || "");
       if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return false;
 
@@ -166,6 +174,10 @@ const HouseholdRegister = () => {
       });
 
       return matchesSearch && matchesFilters;
+    }).sort((a: any, b: any) => {
+      const idA = a.household_id || a.householdId || a.id || "";
+      const idB = b.household_id || b.householdId || b.id || "";
+      return String(idB).localeCompare(String(idA));
     });
   }, [households, searchQuery, subPopulationFilters]);
 
@@ -297,7 +309,7 @@ const HouseholdRegister = () => {
               <Select
                 value={selectedDistrict}
                 onValueChange={setSelectedDistrict}
-                disabled={user?.description === "District User"}
+                disabled={isDistrictUser}
               >
                 <SelectTrigger className="w-[180px] bg-slate-50 border-none font-bold h-9">
                   <SelectValue placeholder="Select District" />
@@ -350,8 +362,10 @@ const HouseholdRegister = () => {
               <TableBody>
                 {householdsQuery.isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="p-0">
-                      <TableSkeleton rows={8} columns={5} />
+                    <TableCell colSpan={5}>
+                      <div className="flex items-center justify-center py-12">
+                        <LoadingDots />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : filteredHouseholds.length === 0 ? (
