@@ -23,10 +23,6 @@ export default defineConfig(() => ({
     host: "::",
     port: 3040,
   },
-  preview: {
-    host: "::",
-    port: 3040,
-  },
   plugins: [react()],
   resolve: {
     alias: {
