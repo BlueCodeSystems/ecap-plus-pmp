@@ -10,6 +10,14 @@ export default defineConfig(() => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      // Proxy Superset API requests to avoid CORS issues in development
+      "/superset-api": {
+        target: "http://localhost:3005",
+        changeOrigin: true,
+        rewrite: (p: string) => p.replace(/^\/superset-api/, ""),
+      },
+    },
   },
   preview: {
     host: "::",
