@@ -44,7 +44,7 @@ const sections = [
       { title: "Dashboard", url: "/dashboard", icon: Home },
       { title: "Calendar", url: "/calendar", icon: Calendar },
       { title: "Districts", url: "/districts", icon: MapPin },
-      { title: "Charts", url: "/charts", icon: BarChart3 },
+      { title: "Program Dashboard", url: "/charts", icon: BarChart3 },
       { title: "Caseworkers", url: "/caseworkers", icon: Briefcase },
     ],
   },
