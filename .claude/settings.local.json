@@ -27,7 +27,8 @@
       "Bash(sudo systemctl:*)",
       "Read(//etc/nginx/sites-enabled/**)",
       "Read(//etc/nginx/sites-available/**)",
-      "Read(//etc/nginx/conf.d/**)"
+      "Read(//etc/nginx/conf.d/**)",
+      "Bash(find /home/bluecode2022/mvaccbackup/ecapbackup/ecap-plus-pmp/src -name \"*Sidebar*\" -o -name \"*sidebar*\" -o -name \"*nav*\" -o -name \"*Nav*\" 2>/dev/null | grep -v node_modules)"
     ]
   }
 }
