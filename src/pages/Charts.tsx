@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const DASHBOARDS = [
   {
     key: "main",
-    label: "Program Overview",
+    label: "ECAP+ Dashboard",
     id: import.meta.env.VITE_SUPERSET_DASHBOARD_ID_1 as string,
   },
   {
