@@ -488,6 +488,161 @@ export const createFlaggedRecord = async (payload: any) => {
 
   return safeJson(response);
 };
+// ─── ETL Pipeline API ───────────────────────────────────────────────
+
+export interface EtlRun {
+  run_id: string;
+  pipeline: string;
+  pipeline_name: string;
+  status: "pending" | "running" | "success" | "failed" | "cancelled";
+  triggered_by: string;
+  started_at: string;
+  completed_at: string | null;
+  duration_sec: number | null;
+  logs: string;
+  error: string | null;
+  created_at: string;
+}
+
+export interface EtlPipeline {
+  id: string;
+  name: string;
+  downloadFiles: string[];
+}
+
+export interface EtlFile {
+  name: string;
+  exists: boolean;
+  size: number | null;
+  sizeFormatted: string | null;
+  lastModified: string | null;
+}
+
+const dqaPost = async (path: string, body: Record<string, unknown> = {}) => {
+  const token = getStoredToken();
+  if (!token) throw new Error("Not authenticated");
+  const url = `${DQA_BASE_URL}${path}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await safeJson(response);
+  if (!response.ok) throw new Error(data?.message || `Request failed: ${response.status}`);
+  return data;
+};
+
+const dqaGetSkipCache = async (path: string) => {
+  const token = getStoredToken();
+  if (!token) throw new Error("Not authenticated");
+  const url = `${DQA_BASE_URL}${path}`;
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await safeJson(response);
+  if (!response.ok) throw new Error(data?.message || `Request failed: ${response.status}`);
+  return data;
+};
+
+export const triggerEtlPipeline = async (pipeline: string): Promise<EtlRun> => {
+  const res = await dqaPost("/etl/run", { pipeline });
+  return res.data;
+};
+
+export const getEtlRuns = async (params?: { limit?: number; pipeline?: string; status?: string }): Promise<EtlRun[]> => {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.pipeline) query.set("pipeline", params.pipeline);
+  if (params?.status) query.set("status", params.status);
+  const qs = query.toString();
+  const data = await dqaGetSkipCache(`/etl/runs${qs ? `?${qs}` : ""}`);
+  return data?.data ?? [];
+};
+
+export const getEtlRunById = async (runId: string): Promise<EtlRun> => {
+  const data = await dqaGetSkipCache(`/etl/runs/${runId}`);
+  return data?.data;
+};
+
+export const cancelEtlRun = async (runId: string) => dqaPost(`/etl/cancel/${runId}`);
+
+export const getEtlPipelines = async (): Promise<EtlPipeline[]> => {
+  const data = await dqaGetSkipCache("/etl/pipelines");
+  return data?.data ?? [];
+};
+
+export const getEtlFiles = async (pipeline: string): Promise<EtlFile[]> => {
+  const data = await dqaGetSkipCache(`/etl/files/${pipeline}`);
+  return data?.data ?? [];
+};
+
+export const getEtlDownloadUrl = (pipeline: string, fileName: string): string => {
+  return `${DQA_BASE_URL}/etl/download/${pipeline}/${encodeURIComponent(fileName)}`;
+};
+
+export const sendEtlReport = async () => dqaPost("/etl/send-report");
+
+// ─── Tablet Sync Status API ─────────────────────────────────────────
+export interface TabletSyncProvider {
+  provider: string;
+  location_id: string;
+  last_activity: string;
+  total_events: number;
+  status: "active" | "stale" | "inactive";
+}
+
+export interface TabletSyncStatus {
+  total: number;
+  active_7d: number;
+  active_30d: number;
+  stale: number;
+  providers: TabletSyncProvider[];
+}
+
+export const getTabletSyncStatus = async (): Promise<TabletSyncStatus> => {
+  const data = await dqaGetSkipCache("/etl/tablet-sync");
+  return data?.data;
+};
+
+// ─── Facility Performance API ───────────────────────────────────────
+export interface FacilityPerformance {
+  facility: string;
+  district: string;
+  total_vcas: number;
+  households: number;
+}
+
+export const getFacilityPerformance = async (): Promise<FacilityPerformance[]> => {
+  const data = await dqaGetSkipCache("/etl/facility-performance");
+  return data?.data ?? [];
+};
+
+// ─── Caseworker Journey API ─────────────────────────────────────────
+export interface JourneyPoint {
+  caseworker: string;
+  visit_date: string;
+  form_type: string;
+  lat: string | null;
+  lng: string | null;
+}
+
+export const getCaseworkerJourneys = async (params: {
+  caseworker?: string;
+  from?: string;
+  to?: string;
+}): Promise<JourneyPoint[]> => {
+  const query = new URLSearchParams();
+  if (params.caseworker) query.set("caseworker", params.caseworker);
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  const qs = query.toString();
+  const data = await dqaGetSkipCache(`/etl/caseworker-journeys${qs ? `?${qs}` : ""}`);
+  return data?.data ?? [];
+};
+
+export const getCaseworkerList = async (): Promise<{ caseworker: string; location_id: string }[]> => {
+  const data = await dqaGetSkipCache("/etl/caseworker-list");
+  return data?.data ?? [];
+};
+
 export const updateFlagStatus = async (flagId: string, status: string) => {
   const token = getStoredToken();
   if (!token) throw new Error("Not authenticated");
