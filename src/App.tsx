@@ -53,6 +53,7 @@ const SupportCenter = lazy(() => import("./pages/SupportCenter"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Documentation = lazy(() => import("./pages/Documentation"));
 const DocumentationArticle = lazy(() => import("./pages/DocumentationArticle"));
+const CaseworkerJourneys = lazy(() => import("./pages/CaseworkerJourneys"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -379,6 +380,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <DocumentationArticle />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/caseworker-journeys"
+                  element={
+                    <ProtectedRoute>
+                      <CaseworkerJourneys />
                     </ProtectedRoute>
                   }
                 />

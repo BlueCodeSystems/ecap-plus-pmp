@@ -77,7 +77,8 @@ const sections = [
   {
     label: "Data pipeline",
     items: [
-      { title: "Weekly Extracts", url: "/weekly-extracts", icon: DatabaseZap },
+      { title: "Data Pipeline", url: "/weekly-extracts", icon: DatabaseZap },
+      { title: "Caseworker Journeys", url: "/caseworker-journeys", icon: MapPin },
     ],
   },
   {
