@@ -33,3 +33,6 @@ dist-ssr
 !.env.example
 # Claude Code local settings
 .claude/
+
+# Added by ggshield
+.cache_ggshield
