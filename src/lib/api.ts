@@ -606,13 +606,169 @@ export const getTabletSyncStatus = async (): Promise<TabletSyncStatus> => {
 export interface FacilityPerformance {
   facility: string;
   district: string;
+  ward?: string;
   total_vcas: number;
   households: number;
+  services_this_month: number;
+  services_last_month: number;
+  trend_pct: number;
 }
 
-export const getFacilityPerformance = async (): Promise<FacilityPerformance[]> => {
-  const data = await dqaGetSkipCache("/etl/facility-performance");
+export const getFacilityPerformance = async (params?: { district?: string; facility?: string; ward?: string }): Promise<FacilityPerformance[]> => {
+  const q = new URLSearchParams();
+  if (params?.district && params.district !== "all") q.set("district", params.district);
+  if (params?.facility && params.facility !== "all") q.set("facility", params.facility);
+  if (params?.ward && params.ward !== "all") q.set("ward", params.ward);
+  const data = await dqaGetSkipCache(`/etl/facility-performance${q.toString() ? `?${q}` : ""}`);
   return data?.data ?? [];
+};
+
+// ─── Caseworker & Service Performance API ───────────────────────────
+export interface CaseworkerPerformance {
+  caseworker_name: string;
+  facility: string | null;
+  ward?: string | null;
+  district: string | null;
+  services_this_month: number;
+  services_last_month: number;
+  trend_pct: number;
+  unique_entities_this_month: number;
+  active_days_this_month: number;
+  services_per_active_day: number;
+  last_active: string | null;
+  tier: "top" | "mid" | "bottom" | "inactive";
+}
+
+export const getCaseworkerPerformance = async (params?: { district?: string; facility?: string; ward?: string }): Promise<CaseworkerPerformance[]> => {
+  const q = new URLSearchParams();
+  if (params?.district && params.district !== "all") q.set("district", params.district);
+  if (params?.facility && params.facility !== "all") q.set("facility", params.facility);
+  if (params?.ward && params.ward !== "all") q.set("ward", params.ward);
+  const data = await dqaGetSkipCache(`/etl/caseworker-performance${q.toString() ? `?${q}` : ""}`);
+  return data?.data ?? [];
+};
+
+export interface ServicePerformance {
+  service: string;
+  type: "vca" | "caregiver" | "household";
+  this_month: number;
+  last_month: number;
+  trend_pct: number;
+  unique_entities_this_month: number;
+  coverage_pct: number;
+  tier: "top" | "mid" | "bottom" | "inactive";
+}
+
+export const getServicePerformance = async (params?: { type?: string; district?: string; facility?: string; ward?: string }): Promise<{ data: ServicePerformance[]; meta: { total_vcas: number; total_households: number } }> => {
+  const q = new URLSearchParams();
+  if (params?.type && params.type !== "all") q.set("type", params.type);
+  if (params?.district && params.district !== "all") q.set("district", params.district);
+  if (params?.facility && params.facility !== "all") q.set("facility", params.facility);
+  if (params?.ward && params.ward !== "all") q.set("ward", params.ward);
+  const res = await dqaGetSkipCache(`/etl/service-performance${q.toString() ? `?${q}` : ""}`);
+  return { data: res?.data ?? [], meta: res?.meta ?? { total_vcas: 0, total_households: 0 } };
+};
+
+// ─── Service Summary (DB-backed canonical KPIs) ─────────────────────
+export interface ServiceSummary {
+  type: "vca" | "caregiver" | "household";
+  source: string;
+  generated_at: string;
+  data: Record<string, number>;
+}
+
+export const getServiceSummary = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string }): Promise<ServiceSummary> => {
+  const q = new URLSearchParams();
+  if (params.district && params.district !== "all" && params.district !== "All") q.set("district", params.district);
+  if (params.facility && params.facility !== "all") q.set("facility", params.facility);
+  if (params.ward && params.ward !== "all") q.set("ward", params.ward);
+  const res = await dqaGetSkipCache(`/etl/services/${params.type}/summary${q.toString() ? `?${q}` : ""}`);
+  return { type: params.type, source: res?.source ?? "", generated_at: res?.generated_at ?? "", data: res?.data ?? {} };
+};
+
+export interface ServiceTimeseriesPoint { month: string; label: string; count: number }
+export interface ServiceTimeseriesResponse { type: string; source: string; generated_at: string; data: ServiceTimeseriesPoint[] }
+
+export const getServiceTimeseries = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string }): Promise<ServiceTimeseriesResponse> => {
+  const q = new URLSearchParams();
+  if (params.district && params.district !== "all" && params.district !== "All") q.set("district", params.district);
+  if (params.facility && params.facility !== "all") q.set("facility", params.facility);
+  if (params.ward && params.ward !== "all") q.set("ward", params.ward);
+  const res = await dqaGetSkipCache(`/etl/services/${params.type}/timeseries${q.toString() ? `?${q}` : ""}`);
+  return { type: params.type, source: res?.source ?? "", generated_at: res?.generated_at ?? "", data: res?.data ?? [] };
+};
+
+export interface ServiceDistributionSlice { pillar: string; count: number; pct: number }
+export interface ServiceDistributionResponse { type: string; source: string; generated_at: string; total: number; window_days: number; data: ServiceDistributionSlice[] }
+
+export const getServiceDistribution = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string }): Promise<ServiceDistributionResponse> => {
+  const q = new URLSearchParams();
+  if (params.district && params.district !== "all" && params.district !== "All") q.set("district", params.district);
+  if (params.facility && params.facility !== "all") q.set("facility", params.facility);
+  if (params.ward && params.ward !== "all") q.set("ward", params.ward);
+  const res = await dqaGetSkipCache(`/etl/services/${params.type}/distribution${q.toString() ? `?${q}` : ""}`);
+  return { type: params.type, source: res?.source ?? "", generated_at: res?.generated_at ?? "", total: res?.total ?? 0, window_days: res?.window_days ?? 90, data: res?.data ?? [] };
+};
+
+// ─── Action Queue API ───────────────────────────────────────────────
+export interface ActionItem {
+  key: string;
+  label: string;
+  description: string;
+  count: number;
+  severity: "red" | "orange" | "yellow" | "slate";
+  filter: { type: string };
+}
+
+export interface ActionQueueResponse {
+  type: string;
+  generated_at: string;
+  data: ActionItem[];
+}
+
+export const getActionQueue = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string }): Promise<ActionQueueResponse> => {
+  const q = new URLSearchParams();
+  q.set("type", params.type);
+  if (params.district && params.district !== "all") q.set("district", params.district);
+  if (params.facility && params.facility !== "all") q.set("facility", params.facility);
+  if (params.ward && params.ward !== "all") q.set("ward", params.ward);
+  const res = await dqaGetSkipCache(`/etl/action-queue?${q}`);
+  return { type: res?.type ?? params.type, generated_at: res?.generated_at ?? "", data: res?.data ?? [] };
+};
+
+// ─── Duplicate review persistence ───────────────────────────────────
+export interface DuplicateReview {
+  run_key: string;
+  service_type: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string;
+  note: string | null;
+}
+
+export const listDuplicateReviews = async (): Promise<DuplicateReview[]> => {
+  const data = await dqaGetSkipCache("/etl/duplicates/reviews");
+  return data?.data ?? [];
+};
+
+export const upsertDuplicateReview = async (payload: { run_key: string; service_type?: string; reviewed_by?: string; note?: string }): Promise<void> => {
+  const token = getStoredToken();
+  if (!token) throw new Error("Not authenticated.");
+  const response = await fetch(`${DQA_BASE_URL}/etl/duplicates/review`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error("Failed to save review");
+};
+
+export const deleteDuplicateReview = async (run_key: string): Promise<void> => {
+  const token = getStoredToken();
+  if (!token) throw new Error("Not authenticated.");
+  const response = await fetch(`${DQA_BASE_URL}/etl/duplicates/review/${encodeURIComponent(run_key)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Failed to delete review");
 };
 
 // ─── Caseworker Journey API ─────────────────────────────────────────
@@ -628,19 +784,67 @@ export const getCaseworkerJourneys = async (params: {
   caseworker?: string;
   from?: string;
   to?: string;
+  facility?: string;
 }): Promise<JourneyPoint[]> => {
   const query = new URLSearchParams();
-  if (params.caseworker) query.set("caseworker", params.caseworker);
+  if (params.caseworker && params.caseworker !== "all") query.set("caseworker", params.caseworker);
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
+  if (params.facility && params.facility !== "all") query.set("facility", params.facility);
   const qs = query.toString();
   const data = await dqaGetSkipCache(`/etl/caseworker-journeys${qs ? `?${qs}` : ""}`);
   return data?.data ?? [];
 };
 
-export const getCaseworkerList = async (): Promise<{ caseworker: string; location_id: string }[]> => {
-  const data = await dqaGetSkipCache("/etl/caseworker-list");
+export const getCaseworkerList = async (
+  scope?: { district?: string; province?: string },
+): Promise<{ caseworker: string; location_id: string }[]> => {
+  const q = new URLSearchParams();
+  if (scope?.district && scope.district !== "all" && scope.district !== "All") q.set("district", scope.district);
+  if (scope?.province && scope.province !== "all" && scope.province !== "All") q.set("province", scope.province);
+  const url = `/etl/caseworker-list${q.toString() ? `?${q}` : ""}`;
+  const data = await dqaGetSkipCache(url);
   return data?.data ?? [];
+};
+
+export const getFacilityList = async (): Promise<string[]> => {
+  const data = await dqaGetSkipCache("/etl/facility-list");
+  return data?.data ?? [];
+};
+
+// ─── Duplicate Detection API ────────────────────────────────────────
+export interface DuplicateGroup {
+  entity_id: string;
+  service_date: string;
+  services: string;
+  duplicate_count: number;
+  caseworker_name: string;
+  facility: string;
+  district: string;
+  province: string;
+  ward?: string;
+}
+
+export interface DuplicateResponse {
+  type: string;
+  entity_label: string;
+  groups: DuplicateGroup[];
+  summary: {
+    total_groups: number;
+    total_redundant_records: number;
+    by_district: Record<string, number>;
+    by_facility: Record<string, number>;
+    by_caseworker: Record<string, number>;
+  };
+}
+
+export const getDuplicates = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string }): Promise<DuplicateResponse> => {
+  const query = new URLSearchParams();
+  query.set("type", params.type);
+  if (params.district) query.set("district", params.district);
+  if (params.facility) query.set("facility", params.facility);
+  const data = await dqaGetSkipCache(`/etl/duplicates?${query.toString()}`);
+  return data?.data;
 };
 
 export const updateFlagStatus = async (flagId: string, status: string) => {

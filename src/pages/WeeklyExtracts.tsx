@@ -18,12 +18,11 @@ import {
     TestTubes,
     Mail,
     Smartphone,
-    Building2,
 } from "lucide-react";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -40,7 +39,6 @@ import {
     getEtlDownloadUrl,
     sendEtlReport,
     getTabletSyncStatus,
-    getFacilityPerformance,
     type EtlRun,
     type EtlFile,
 } from "@/lib/api";
@@ -62,7 +60,7 @@ const PIPELINE_META: Record<string, { icon: typeof Database; color: string; desc
 
 const DataPipelinePage = () => {
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<"pipelines" | "runs" | "facilities" | "tablets">("pipelines");
+    const [activeTab, setActiveTab] = useState<"pipelines" | "runs" | "tablets">("pipelines");
     const [runningPipelines, setRunningPipelines] = useState<Record<string, string>>({});
     const [selectedRun, setSelectedRun] = useState<EtlRun | null>(null);
     const [filesByPipeline, setFilesByPipeline] = useState<Record<string, EtlFile[]>>({});
@@ -88,12 +86,6 @@ const DataPipelinePage = () => {
         refetchInterval: 15 * 60 * 1000, // auto-refresh every 15 minutes
     });
     const tabletSync = tabletSyncQuery.data;
-
-    const facilityQuery = useQuery({
-        queryKey: ["etl", "facilities"],
-        queryFn: getFacilityPerformance,
-        staleTime: 300_000,
-    });
 
     const runs = runsQuery.data ?? [];
     const latestRun = runs[0];
@@ -214,34 +206,58 @@ const DataPipelinePage = () => {
         cancelled: { color: "text-amber-600", bg: "bg-amber-50", icon: AlertCircle },
     };
 
+    const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
     return (
         <DashboardLayout subtitle="Data Pipeline">
-            <PageIntro
-                eyebrow="ETL Infrastructure"
-                title="Data Pipeline."
-                description="Run and monitor the Extract, Transform, and Load processes. Trigger pipelines, download output CSVs, and track run history."
-                actions={
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
+            {/* ── Hero ──────────────────────────────────────────────── */}
+            <div className="relative mb-6 overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(245,158,11,0.15),transparent_45%)]" />
+                <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
+                <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-amber-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
+
+                <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">ETL infrastructure</span>
+                            <span className="text-slate-400 text-[11px]">·</span>
+                            <span className="text-[11px] text-slate-600">{dateStr}</span>
+                            <Badge variant="outline" className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
+                                <Activity className="h-3 w-3" /> {runningRuns.length > 0 ? `${runningRuns.length} running` : "Idle"}
+                            </Badge>
+                        </div>
+                        <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
+                            <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-700 bg-clip-text text-transparent">
+                                Data pipeline
+                            </span>
+                            <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
+                                <Sparkles className="h-3 w-3" /> Extract · Transform · Load
+                            </Badge>
+                        </h1>
+                        <p className="mt-1 text-xs text-slate-600">Run and monitor ETL processes. Trigger pipelines, download output CSVs, and track run history.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+                        <button
+                            type="button"
                             onClick={handleSendEmail}
                             disabled={isSendingEmail}
-                            className="border-slate-200 bg-white hover:bg-slate-50"
+                            className="group inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 backdrop-blur-md transition-all hover:border-emerald-300 hover:bg-white disabled:opacity-50"
                         >
-                            {isSendingEmail ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
-                            Send Email Report
-                        </Button>
-                        <Button
-                            variant="outline"
+                            {isSendingEmail ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                            Email Report
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => { queryClient.invalidateQueries(); loadFiles(); toast.info("Refreshed"); }}
-                            className="border-slate-200 bg-white hover:bg-slate-50"
+                            className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
                         >
-                            <RotateCcw className="h-4 w-4 mr-2" />
+                            <RotateCcw className="h-3.5 w-3.5" />
                             Refresh
-                        </Button>
+                        </button>
                     </div>
-                }
-            />
+                </div>
+            </div>
 
             {/* Status Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
@@ -323,7 +339,6 @@ const DataPipelinePage = () => {
                 {[
                     { id: "pipelines" as const, label: "Pipelines", icon: Workflow },
                     { id: "runs" as const, label: "Run History", icon: Timer },
-                    { id: "facilities" as const, label: "Facility Performance", icon: Building2 },
                     { id: "tablets" as const, label: "Tablet Sync", icon: Smartphone },
                 ].map((tab) => (
                     <button
@@ -424,21 +439,33 @@ const DataPipelinePage = () => {
 
                                     <div className="flex gap-2 pt-2 mt-auto">
                                         {isRunning ? (
-                                            <Button size="sm" variant="outline" className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
-                                                onClick={() => handleCancel(runId)}>
-                                                <XCircle className="h-4 w-4 mr-2" /> Cancel Run
-                                            </Button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCancel(runId)}
+                                                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-rose-600 transition-all hover:border-rose-300 hover:bg-rose-50/60"
+                                            >
+                                                <XCircle className="h-3.5 w-3.5" />
+                                                Cancel Run
+                                            </button>
                                         ) : (
-                                            <Button size="sm" className="flex-1 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 active:scale-95 transition-all"
-                                                onClick={() => handleTrigger(key)}>
-                                                <Play className="h-4 w-4 mr-2" /> Run Pipeline
-                                            </Button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleTrigger(key)}
+                                                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700 active:scale-95"
+                                            >
+                                                <Play className="h-3.5 w-3.5" />
+                                                Run Pipeline
+                                            </button>
                                         )}
                                         {lastPipelineRun && (
-                                            <Button size="sm" variant="outline" className="border-slate-200"
-                                                onClick={() => { handleViewLogs(lastPipelineRun.run_id); setActiveTab("runs"); }}>
-                                                View Logs
-                                            </Button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { handleViewLogs(lastPipelineRun.run_id); setActiveTab("runs"); }}
+                                                className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 transition-all hover:border-emerald-300 hover:bg-white"
+                                            >
+                                                Logs
+                                                <ArrowRight className="h-3 w-3" />
+                                            </button>
                                         )}
                                     </div>
                                 </CardContent>
@@ -566,47 +593,6 @@ const DataPipelinePage = () => {
                         </CardContent>
                     </GlowCard>
                 </div>
-            )}
-
-            {/* ── Facilities Tab ── */}
-            {activeTab === "facilities" && (
-                <GlowCard>
-                    <CardHeader className="border-b border-slate-50">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="flex items-center gap-2">
-                                <Building2 className="h-5 w-5 text-primary" />
-                                Health Facility Performance
-                            </CardTitle>
-                            <Badge variant="outline" className="text-xs">
-                                {facilityQuery.data?.length ?? 0} facilities
-                            </Badge>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
-                                        <th className="px-6 py-4">Facility</th>
-                                        <th className="px-6 py-4">District</th>
-                                        <th className="px-6 py-4">VCAs</th>
-                                        <th className="px-6 py-4">Households</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {(facilityQuery.data ?? []).map((f, i) => (
-                                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-6 py-3 text-sm font-medium text-slate-700">{f.facility}</td>
-                                            <td className="px-6 py-3 text-xs text-slate-500">{f.district}</td>
-                                            <td className="px-6 py-3 text-sm font-mono text-slate-600">{Number(f.total_vcas).toLocaleString()}</td>
-                                            <td className="px-6 py-3 text-sm font-mono text-slate-600">{Number(f.households).toLocaleString()}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </GlowCard>
             )}
 
             {/* ── Tablet Sync Tab ── */}

@@ -1,4 +1,4 @@
-import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap, CircleHelp, Calendar } from "lucide-react";
+import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap, CircleHelp, Calendar, LogOut, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -163,25 +163,47 @@ const DashboardHeader = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative transition-transform duration-300 hover:-translate-y-0.5 hover:bg-transparent"
+                className="relative transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-50/60"
               >
                 <Bell className="h-5 w-5 text-slate-500" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center animate-in zoom-in">
-                    {unreadCount}
-                  </span>
+                  <>
+                    <span aria-hidden className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-emerald-400 animate-ping opacity-50" />
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 px-1 text-[10px] font-bold text-white shadow-sm shadow-emerald-700/30 ring-2 ring-white">
+                      {unreadCount}
+                    </span>
+                  </>
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-0">
-              <div className="p-4 border-b flex items-start justify-between">
-                <div>
-                  <h3 className="font-bold text-sm">System notifications</h3>
-                  <p className="text-xs text-muted-foreground">Real-time alerts for {district || "your area"}</p>
+            <DropdownMenuContent
+              align="end"
+              className="relative w-80 p-0 rounded-2xl border border-emerald-100/60 bg-white/90 backdrop-blur-xl shadow-[0_30px_80px_-30px_rgba(15,118,110,0.4)] overflow-hidden"
+            >
+              {/* Aurora background */}
+              <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden rounded-2xl">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.10),transparent_55%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(14,165,233,0.08),transparent_50%)]" />
+              </div>
+
+              <div className="px-4 py-3 border-b border-emerald-100/40 bg-gradient-to-r from-emerald-50/40 via-teal-50/20 to-transparent flex items-start justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-white/60 shadow-sm">
+                      <Sparkles className="h-3.5 w-3.5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-100 px-1.5 text-[10px] font-bold text-emerald-700">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">Tasks and alerts for {district || "your area"}</p>
                 </div>
                 {unreadCount > 0 && (
                   <button
-                    className="text-xs font-semibold text-muted-foreground hover:text-red-500 transition-colors whitespace-nowrap mt-0.5"
+                    className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:text-emerald-800 transition-colors px-2 py-1 rounded-md hover:bg-emerald-50/70"
                     onClick={handleClearAll}
                   >
                     Clear all
@@ -190,47 +212,50 @@ const DashboardHeader = ({
               </div>
               <ScrollArea className="h-72">
                 {notifications.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-slate-400">
-                    No recent notifications
+                  <div className="px-4 py-10 text-center">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                      <Bell className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-900">All caught up</p>
+                    <p className="text-[11px] text-slate-500">No recent notifications.</p>
                   </div>
                 ) : (
                   notifications.map((n) => (
                     <DropdownMenuItem
                       key={n.id}
-                      className="p-4 border-b last:border-0 rounded-none cursor-pointer focus:bg-slate-50 flex gap-3 items-start"
+                      className="px-4 py-3 border-b border-emerald-50/60 last:border-0 rounded-none cursor-pointer transition-colors focus:bg-gradient-to-r focus:from-emerald-50/40 focus:via-teal-50/20 focus:to-transparent flex gap-3 items-start"
                       onClick={() => {
                         if (n.link) navigate(n.link);
                       }}
                     >
-                      <div className="mt-0.5 shrink-0">{n.icon}</div>
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-white/60 shadow-sm">{n.icon}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-900">{n.title}</p>
-                        <p className="text-xs text-slate-500 line-clamp-2 whitespace-normal">{n.description}</p>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium">
+                        <p className="text-sm font-bold text-slate-900">{n.title}</p>
+                        <p className="text-xs text-slate-600 line-clamp-2 whitespace-normal leading-relaxed">{n.description}</p>
+                        <p className="text-[10px] text-emerald-600/80 mt-1 font-semibold">
                           {formatDistanceToNow(n.date, { addSuffix: true })}
                         </p>
                       </div>
                       <button
-                        className="shrink-0 mt-0.5 p-1 rounded hover:bg-slate-200 transition-colors"
+                        className="shrink-0 mt-0.5 h-6 w-6 flex items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                         title="Dismiss"
                         onClick={(e) => handleDismiss(n.id, e)}
                       >
-                        <X className="h-3 w-3 text-slate-400" />
+                        <X className="h-3 w-3" />
                       </button>
                     </DropdownMenuItem>
                   ))
                 )}
               </ScrollArea>
-              <div className="p-2 border-t text-center">
-                <Button
-                  variant="ghost"
-                  className="w-full text-xs h-8 font-bold tracking-widest text-primary"
+              <div className="p-2 border-t border-emerald-100/40 bg-gradient-to-r from-emerald-50/30 via-teal-50/15 to-transparent text-center">
+                <button
+                  className="w-full text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700 hover:text-emerald-800 py-1.5 rounded-md hover:bg-emerald-50/70 transition-colors"
                   onClick={() => {
                     navigate("/support");
                   }}
                 >
                   View all activity
-                </Button>
+                </button>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -240,33 +265,82 @@ const DashboardHeader = ({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="gap-2 px-2 transition-transform duration-300 hover:-translate-y-0.5 hover:bg-transparent"
+                className="gap-2 px-1 sm:px-2 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-50/60"
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="hidden sm:block text-sm font-bold">{displayName}</span>
+                <div className="relative">
+                  <div aria-hidden className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70" />
+                  <Avatar className="relative h-8 w-8 ring-2 ring-white shadow-sm">
+                    <AvatarImage src={user?.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 text-white text-xs sm:text-sm font-extrabold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <span className="hidden sm:block text-sm font-bold text-slate-700">{displayName}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>My account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/profile")}>
-                <User className="mr-2 h-4 w-4" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+            <DropdownMenuContent
+              align="end"
+              className="w-64 rounded-2xl shadow-[0_30px_80px_-30px_rgba(15,118,110,0.4)] border border-emerald-100/60 bg-white/90 backdrop-blur-xl p-1.5 overflow-hidden"
+            >
+              {/* Aurora background */}
+              <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden rounded-2xl">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.10),transparent_55%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(14,165,233,0.08),transparent_50%)]" />
+              </div>
+
+              <DropdownMenuLabel className="px-3 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div aria-hidden className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70" />
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 ring-2 ring-white shadow-sm overflow-hidden">
+                      {user?.avatar ? (
+                        <img
+                          src={getFileUrl(user.avatar)}
+                          alt={displayName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-extrabold text-white">{initials}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold text-slate-900 truncate">{displayName}</div>
+                    <div className="text-[10px] text-slate-500 truncate">{user?.email}</div>
+                  </div>
+                </div>
+                <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  My account
+                </div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator className="bg-emerald-100/40" />
+
               <DropdownMenuItem
-                className="text-destructive"
+                className="rounded-lg px-3 py-2.5 cursor-pointer transition-all focus:bg-gradient-to-r focus:from-emerald-50/80 focus:via-teal-50/40 focus:to-transparent focus:text-emerald-700 group"
+                onClick={() => navigate("/profile")}
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 mr-2 transition-colors group-focus:bg-emerald-100">
+                  <User className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 group-focus:text-emerald-700">Profile</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="bg-emerald-100/40" />
+
+              <DropdownMenuItem
+                className="rounded-lg px-3 py-2.5 cursor-pointer transition-all focus:bg-gradient-to-r focus:from-rose-50/80 focus:via-pink-50/40 focus:to-transparent focus:text-rose-700 group"
                 onClick={() => {
                   logout();
                   navigate("/");
                 }}
               >
-                Logout
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-100 mr-2 transition-colors group-focus:bg-rose-100">
+                  <LogOut className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm font-bold text-rose-600">Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

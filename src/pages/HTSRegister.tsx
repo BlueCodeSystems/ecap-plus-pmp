@@ -234,54 +234,59 @@ const HTSRegister = () => {
 
   return (
     <DashboardLayout subtitle="HTS Register">
-      {/* ── Banner ── */}
-      <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8">
-        <div className="relative bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500 p-6 lg:p-8">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+      {/* ── Hero ──────────────────────────────────────────────── */}
+      <div className="relative mb-6 overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(244,63,94,0.15),transparent_45%)]" />
+        <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
+        <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-rose-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
 
-          <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h1 className="text-3xl font-black text-white lg:text-4xl leading-tight">
-                HTS Register
-              </h1>
-
-              <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-white/70 text-sm font-medium">
-                <span className="flex items-center gap-1.5">
-                  <Activity className="h-4 w-4" />
-                  {(displayStats?.total || 0).toLocaleString()} Total Tests
-                </span>
-
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" />
-                  {selectedDistrict}
-                </span>
-              </div>
+        <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">HTS register</span>
+              <span className="text-slate-400 text-[11px]">·</span>
+              <span className="text-[11px] text-slate-600">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
+              <Badge variant="outline" className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
+                <Activity className="h-3 w-3" /> {(displayStats?.total || 0).toLocaleString()} tests
+              </Badge>
+              <Badge variant="outline" className="gap-1 border-slate-200 bg-white/80 text-[10px] text-slate-600 backdrop-blur-md">
+                <MapPin className="h-3 w-3" /> {selectedDistrict}
+              </Badge>
             </div>
-            <div className="flex items-center gap-3">
-              <Select
-                value={selectedDistrict}
-                onValueChange={setSelectedDistrict}
-                disabled={isDistrictUser}
-              >
-                <SelectTrigger className="w-[180px] bg-white/10 border-white/20 text-white font-bold h-10 backdrop-blur-sm">
-                  <SelectValue placeholder={householdsListQuery.isLoading ? "Loading..." : "Select District"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Districts</SelectItem>
-                  {discoveredDistricts.map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => htsQuery.refetch()}
-                className="bg-white text-emerald-700 hover:bg-white/90 shadow-xl h-10 font-bold px-5"
-              >
-                <RefreshCcw className={`h-4 w-4 mr-2 ${htsQuery.isFetching ? "animate-spin" : ""}`} />
-                Sync
-              </Button>
-            </div>
+            <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
+              <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-rose-700 bg-clip-text text-transparent">
+                HIV Testing &amp; Services
+              </span>
+            </h1>
+            <p className="mt-1 text-xs text-slate-600">Testing outcomes, linkage to ART, and contact tracing across the cohort.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <Select
+              value={selectedDistrict}
+              onValueChange={setSelectedDistrict}
+              disabled={isDistrictUser}
+            >
+              <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white/80 border-slate-200 backdrop-blur-md text-xs">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                  <SelectValue placeholder={householdsListQuery.isLoading ? "Loading…" : "Select District"} />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Districts</SelectItem>
+                {discoveredDistricts.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              onClick={() => htsQuery.refetch()}
+              className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
+            >
+              <RefreshCcw className={`h-3.5 w-3.5 ${htsQuery.isFetching ? "animate-spin" : ""}`} />
+              Sync
+            </button>
           </div>
         </div>
       </div>
