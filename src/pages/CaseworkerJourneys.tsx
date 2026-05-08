@@ -153,11 +153,27 @@ const CaseworkerJourneys = () => {
   );
 
   // Fetch all facilities from the database
-  const { data: facilities = [] } = useQuery({
+  const { data: allFacilities = [] } = useQuery({
     queryKey: ["facility-list"],
     queryFn: getFacilityList,
     staleTime: 10 * 60 * 1000,
   });
+
+  // Restrict facility/ward list by user role:
+  //   District User  -> only facilities in their district (derived from caseworkerList)
+  //   Provincial User -> only facilities in their province (derived from caseworkerList)
+  //   Admin / others  -> full list
+  const facilities = useMemo(() => {
+    if (!isDistrictUser && !isProvincialUser) return allFacilities;
+    const allowed = new Set<string>();
+    (caseworkerList as any[]).forEach((cw) => {
+      const f = String(cw?.facility ?? "").trim();
+      if (f) allowed.add(f);
+    });
+    if (allowed.size === 0) return [];
+    const lc = new Set([...allowed].map((s) => s.toLowerCase()));
+    return allFacilities.filter((f: string) => lc.has(String(f).toLowerCase()));
+  }, [allFacilities, caseworkerList, isDistrictUser, isProvincialUser]);
 
   // Facility/ward filtering is client-side (applies live on selection, no Apply needed)
   const validPoints = useMemo(() => {
@@ -225,9 +241,13 @@ const CaseworkerJourneys = () => {
     setIsPlaying(false);
   };
 
-  // Strip the upstream "ec-" prefix from form types so the exported CSV
-  // shows readable values like "household" / "vca" instead of "ec-household".
-  const cleanFormType = (raw: unknown) => String(raw ?? "").replace(/^ec[-_]?/i, "");
+  // Strip the upstream "ec-" prefix (and chained variants like "ec-pmp-") from
+  // form types so the exported CSV shows readable values like "household" /
+  // "vca" instead of "ec-household" or "ec-pmp-vca-monitoring".
+  const cleanFormType = (raw: unknown) =>
+    String(raw ?? "")
+      .replace(/^(ec[-_]?(pmp|app|plus)?[-_]?)+/i, "")
+      .trim();
 
   const handleExportCsv = () => {
     if (validPoints.length === 0) return;
