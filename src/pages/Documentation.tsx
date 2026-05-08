@@ -76,14 +76,14 @@ const Documentation = () => {
       title: "Registers",
       icon: FileText,
       description: `Working data: ${formatNumber(householdsQuery.data)} households, ${formatNumber(vcasQuery.data)} VCAs, ${formatNumber(mothersQuery.data)} mothers in the system.`,
-      links: ["Household register", "CA register", "Mother index register", "HTS and PMTCT registers"],
+      links: ["Household register", "VCA register", "Mother index register", "HTS and PMTCT registers"],
       liveStat: { label: "Total records", value: formatNumber(totalRecords) },
     },
     {
       title: "Services",
       icon: Shield,
       description: "Track service delivery across household, CA, and caregiver levels — filter by sub-population, drill into records, and export CSVs.",
-      links: ["Household services", "CA services", "Caregiver services", "Data quality insights"],
+      links: ["Household services", "VCA services", "Caregiver services", "Data quality insights"],
     },
     {
       title: "Data Quality",
