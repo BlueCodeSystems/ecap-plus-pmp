@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle, MoreVertical, Plus, ArrowRight, Trash2 } from "lucide-react";
+import { Send, MessageCircle, Search, Phone, Video, Download, Play, Pause, Image as ImageIcon, AlertTriangle, MoreVertical, Plus, ArrowRight, Trash2, Sparkles, Activity, LifeBuoy } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
@@ -450,9 +450,44 @@ const SupportCenter = () => {
     );
   };
 
+  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const onlineCount = users.filter((u) => isOnline(u.last_access)).length;
+
   return (
     <DashboardLayout title="Support Center">
-      <div className="flex h-[calc(100vh-8rem)] bg-white rounded-lg border overflow-hidden relative">
+      {/* ── Hero ──────────────────────────────────────────────── */}
+      <div className="relative mb-4 overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(245,158,11,0.15),transparent_45%)]" />
+        <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
+        <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-amber-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
+
+        <div className="relative z-10 flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">Help &amp; support</span>
+              <span className="text-slate-400 text-[11px]">·</span>
+              <span className="text-[11px] text-slate-600">{dateStr}</span>
+              <Badge variant="outline" className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
+                <Activity className="h-3 w-3" /> {onlineCount} online
+              </Badge>
+            </div>
+            <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
+              <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-700 bg-clip-text text-transparent">
+                Support center
+              </span>
+              <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
+                <LifeBuoy className="h-3 w-3" /> Live chat &amp; tickets
+              </Badge>
+            </h1>
+            <p className="mt-1 text-xs text-slate-600">Talk to teammates, share files, and resolve issues without leaving the platform.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative">
+        <div aria-hidden className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl bg-gradient-to-br from-emerald-200/40 via-teal-200/25 to-amber-200/20 opacity-50 blur-md" />
+        <div className="flex h-[calc(100vh-12rem)] bg-white/80 backdrop-blur-xl rounded-2xl border border-emerald-100/60 shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)] overflow-hidden relative">
         {/* Conversations Sidebar */}
         <div className={cn(
           "w-full sm:w-80 border-r flex flex-col transition-all duration-300",
@@ -488,8 +523,8 @@ const SupportCenter = () => {
                   {selectedUserId === conv.partnerId && (
                     <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-emerald-500 rounded-r-full shadow-[2px_0_15px_rgba(16,185,129,0.6)] animate-in slide-in-from-left duration-500" />
                   )}
-                  <Avatar
-                    className="h-12 w-12 cursor-pointer"
+                  <div
+                    className="relative shrink-0 cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (partner) {
@@ -499,14 +534,17 @@ const SupportCenter = () => {
                       }
                     }}
                   >
-                    {partnerAvatar && <AvatarImage src={getFileUrl(partnerAvatar)} />}
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {initials}
-                    </AvatarFallback>
+                    <div aria-hidden className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70" />
+                    <Avatar className="relative h-12 w-12 ring-2 ring-white shadow-sm">
+                      {partnerAvatar && <AvatarImage src={getFileUrl(partnerAvatar)} className="object-cover" />}
+                      <AvatarFallback className="bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 text-white text-sm font-extrabold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
                     {isOnline(partner?.last_access) && (
-                      <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                      <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
                     )}
-                  </Avatar>
+                  </div>
                   <div className="flex-1 text-left min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-sm truncate">
@@ -546,19 +584,25 @@ const SupportCenter = () => {
                 >
                   <ArrowRight className="h-4 w-4 rotate-180" />
                 </Button>
-                <Avatar
-                  className="h-10 w-10 cursor-pointer"
+                <div
+                  className="relative shrink-0 cursor-pointer"
                   onClick={() => {
                     setProfileModalUserId(selectedUser.id);
                     setIsProfileEditable(selectedUser.id === user?.id);
                     setProfileModalOpen(true);
                   }}
                 >
-                  {selectedUser.avatar && <AvatarImage src={getFileUrl(selectedUser.avatar)} />}
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {selectedUser.first_name?.[0]}{selectedUser.last_name?.[0]}
-                  </AvatarFallback>
-                </Avatar>
+                  <div aria-hidden className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70" />
+                  <Avatar className="relative h-10 w-10 ring-2 ring-white shadow-sm">
+                    {selectedUser.avatar && <AvatarImage src={getFileUrl(selectedUser.avatar)} className="object-cover" />}
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 text-white text-xs font-extrabold">
+                      {selectedUser.first_name?.[0]}{selectedUser.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isOnline(selectedUser.last_access) && (
+                    <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                  )}
+                </div>
                 <div>
                   <h3 className="font-semibold">
                     {selectedUser.first_name} {selectedUser.last_name}
@@ -779,6 +823,7 @@ const SupportCenter = () => {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {/* Profile Picture Modal */}

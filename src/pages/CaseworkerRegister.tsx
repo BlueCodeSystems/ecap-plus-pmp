@@ -262,7 +262,7 @@ const CaseworkerRegister = () => {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <Button
-                    onClick={() => navigate("/caseworkers")}
+                    onClick={() => navigate(-1)}
                     variant="outline"
                     size="sm"
                     className="border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm h-8"

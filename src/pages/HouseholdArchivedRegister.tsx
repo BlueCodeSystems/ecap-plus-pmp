@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
-import { Archive, Search, Filter, Download } from "lucide-react";
+import { Archive, Search, Filter, Download, X, GraduationCap, ChevronRight } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
+import { Activity, Sparkles, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 
 import {
@@ -292,108 +293,185 @@ const HouseholdArchivedRegister = () => {
     return parts.join("\n");
   };
 
+  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
   return (
     <DashboardLayout subtitle="Household Archived Register">
-      <GlowCard>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Archive className="h-4 w-4 text-primary" />
-              <CardTitle>Archived Households</CardTitle>
+      {/* ── Hero ──────────────────────────────────────────────── */}
+      <div className="relative mb-6 overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(245,158,11,0.15),transparent_45%)]" />
+        <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
+        <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-amber-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
+
+        <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">Archived households</span>
+              <span className="text-slate-400 text-[11px]">·</span>
+              <span className="text-[11px] text-slate-600">{dateStr}</span>
+              <Badge variant="outline" className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
+                <Activity className="h-3 w-3" /> Deregistered only
+              </Badge>
             </div>
-            <div className="flex-1" />
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-slate-200 text-slate-600 hover:text-primary transition-all"
-                onClick={exportToCSV}
-              >
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Button>
-              <div className="h-8 w-px bg-slate-100 mx-1 hidden sm:block" />
-              <span className="text-xs font-black text-slate-400 whitespace-nowrap">District:</span>
-              <Select
-                value={selectedDistrict}
-                onValueChange={setSelectedDistrict}
-                disabled={isDistrictUser}
-              >
-                <SelectTrigger className="w-[180px] bg-slate-50 border-none font-bold h-9">
+            <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
+              <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-700 bg-clip-text text-transparent">
+                Graduated &amp; exited households
+              </span>
+              <Badge variant="outline" className="ml-2 gap-1 border-amber-200 bg-amber-50/80 align-middle text-[10px] text-amber-700 shadow-sm">
+                <Archive className="h-3 w-3" /> Closed cases
+              </Badge>
+            </h1>
+            <p className="mt-1 text-xs text-slate-600">Households that have been deregistered or graduated out of the programme.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <Select
+              value={selectedDistrict}
+              onValueChange={setSelectedDistrict}
+              disabled={isDistrictUser}
+            >
+              <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white/80 border-slate-200 backdrop-blur-md text-xs">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
                   <SelectValue placeholder="Select District" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Districts</SelectItem>
-                  {districts.map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Districts</SelectItem>
+                {districts.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              onClick={exportToCSV}
+              className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </button>
           </div>
-          <div className="mt-2 text-sm text-amber-600 font-medium">
-            Note: Only deregistered caregivers are shown.
-          </div>
-        </CardHeader>
+        </div>
+      </div>
 
-        <CardContent className="space-y-6">
-          {/* Filters Section */}
-          <div className="space-y-6">
-            {/* Sub-population Filters */}
-            <SubPopulationFilter
-              filters={subPopulationFilters}
-              labels={subPopulationFilterLabels}
-              onChange={handleFilterChange}
-              onClear={handleClearFilters}
-            />
+      <div className="relative">
+        <div aria-hidden className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl bg-gradient-to-br from-emerald-200/40 via-teal-200/25 to-amber-200/20 opacity-50 blur-md" />
+        <GlowCard>
 
-            {/* Graduation Filter */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-slate-700">Filter by Graduation</h3>
-              <Select
-                value={graduationFilter}
-                onValueChange={setGraduationFilter}
-              >
-                <SelectTrigger className="w-full md:w-[400px]">
-                  <SelectValue placeholder="Select graduation reason" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Reasons</SelectItem>
-                  {graduationOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-t pt-4">
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <CardContent className="space-y-6 pt-6">
+          {/* ── Primary toolbar: search · graduation · clear ──────── */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+            <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Global Search..."
+                placeholder="Search by ID, facility, or caseworker…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 h-10 bg-white border-slate-200 focus-visible:ring-emerald-500/30"
               />
             </div>
-            <Button variant="ghost" onClick={handleClearFilters} className="text-slate-600">
-              Clear Filters
-            </Button>
+            <Select value={graduationFilter} onValueChange={setGraduationFilter}>
+              <SelectTrigger className="h-10 w-full sm:w-[220px] bg-white border-slate-200">
+                <div className="flex items-center gap-2 min-w-0">
+                  <GraduationCap className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <SelectValue placeholder="All reasons" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All reasons</SelectItem>
+                {graduationOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(() => {
+              const activeCount =
+                Object.values(subPopulationFilters).filter((v) => v !== "all").length +
+                (graduationFilter !== "all" ? 1 : 0) +
+                (searchQuery ? 1 : 0);
+              return (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  disabled={activeCount === 0}
+                  className="group inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 h-10 text-xs font-medium text-slate-600 transition-all hover:border-rose-300 hover:bg-rose-50/60 hover:text-rose-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear
+                  {activeCount > 0 && (
+                    <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-100 px-1 text-[10px] font-bold text-rose-700">
+                      {activeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
 
-          <div className="overflow-x-auto rounded-md border">
+          {/* ── Sub-population tri-state filters ──────────────── */}
+          <SubPopulationFilter
+            filters={subPopulationFilters}
+            labels={subPopulationFilterLabels}
+            onChange={handleFilterChange}
+            onClear={handleClearFilters}
+          />
+
+          {/* ── Active filter chips ──────────────── */}
+          {(() => {
+            const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
+            Object.entries(subPopulationFilters).forEach(([k, v]) => {
+              if (v !== "all") {
+                chips.push({
+                  key: `sp-${k}`,
+                  label: `${subPopulationFilterLabels[k]}: ${v}`,
+                  onClear: () => handleFilterChange(k, "all"),
+                });
+              }
+            });
+            if (graduationFilter !== "all") {
+              chips.push({
+                key: "grad",
+                label: `Graduation: ${graduationFilter}`,
+                onClear: () => setGraduationFilter("all"),
+              });
+            }
+            if (searchQuery) {
+              chips.push({
+                key: "search",
+                label: `Search: "${searchQuery}"`,
+                onClear: () => setSearchQuery(""),
+              });
+            }
+            if (chips.length === 0) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Active</span>
+                {chips.map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={c.onClear}
+                    className="group inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50/70 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 transition-all hover:border-emerald-400 hover:bg-emerald-100"
+                  >
+                    {c.label}
+                    <X className="h-2.5 w-2.5 opacity-60 transition-opacity group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+
+          <div className="overflow-x-auto rounded-xl border border-emerald-100/60">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px] hidden sm:table-cell">Hh id</TableHead>
-                  <TableHead className="min-w-[200px] hidden sm:table-cell">Household details</TableHead>
-                  <TableHead className="w-[120px] hidden lg:table-cell">Archived on</TableHead>
-                  <TableHead className="w-[150px] hidden md:table-cell">Reason</TableHead>
-                  <TableHead className="text-right w-[60px]">Action</TableHead>
+              <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-amber-50/40">
+                <TableRow className="hover:bg-transparent border-b border-emerald-100/60">
+                  <TableHead className="w-[120px] hidden sm:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">HH ID</TableHead>
+                  <TableHead className="w-[220px] hidden sm:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">Household details</TableHead>
+                  <TableHead className="w-[110px] hidden lg:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">Archived on</TableHead>
+                  <TableHead className="w-[150px] hidden md:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">Reason</TableHead>
+                  <TableHead className="text-right w-[60px] text-[11px] font-bold uppercase tracking-wider text-emerald-800">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -423,7 +501,7 @@ const HouseholdArchivedRegister = () => {
                 {paginatedHouseholds.map((household: any, index: number) => {
                   const id = pickValue(household, ["household_id", "householdId", "hh_id", "id", "unique_id"]);
                   return (
-                    <TableRow key={`${String(id)}-${index}`}>
+                    <TableRow key={`${String(id)}-${index}`} className="group transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
                       <TableCell className="font-medium align-top hidden sm:table-cell">
                         <span className="text-sm font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">{String(id)}</span>
                       </TableCell>
@@ -438,8 +516,8 @@ const HouseholdArchivedRegister = () => {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell align-top">
-                        <div className="whitespace-pre-line text-[10px] text-slate-600 leading-snug">
+                      <TableCell className="hidden sm:table-cell align-top w-[220px] max-w-[220px]">
+                        <div className="text-[10px] text-slate-600 leading-snug line-clamp-2 break-words">
                           {getAddressString(household)}
                         </div>
                       </TableCell>
@@ -452,14 +530,14 @@ const HouseholdArchivedRegister = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-right align-top px-2 sm:px-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs border-slate-200"
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-lg border border-emerald-200/60 bg-white/80 px-2.5 py-1 text-[10px] sm:text-xs font-bold text-emerald-700 transition-all hover:border-emerald-300 hover:bg-emerald-50/60 hover:shadow-sm"
                           onClick={() => navigate(`/profile/household-details`, { state: { id: String(id) } })}
                         >
                           View
-                        </Button>
+                          <ChevronRight className="h-3 w-3" />
+                        </button>
                       </TableCell>
                     </TableRow>
                   );
@@ -520,6 +598,7 @@ const HouseholdArchivedRegister = () => {
           </div>
         </CardContent>
       </GlowCard>
+      </div>
     </DashboardLayout>
   );
 };

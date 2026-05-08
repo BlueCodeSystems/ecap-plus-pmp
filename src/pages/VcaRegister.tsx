@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
-import { Filter, Search, Download } from "lucide-react";
+import { Filter, Search, Download, X, ChevronRight } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
+import { Activity, Sparkles, MapPin, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 
 import {
@@ -345,51 +346,106 @@ const VcaRegister = () => {
     return parts.join("\n");
   };
 
+  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
   return (
     <DashboardLayout subtitle="VCA Register">
-      <GlowCard className="mt-4">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div>
-              <CardTitle>VCA Register</CardTitle>
-              <div className="mt-2 text-sm text-amber-600 font-medium">
-                Note: Only active VCAs are shown.
-              </div>
-            </div>
-            <div className="flex-1" />
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-slate-200 text-slate-600 hover:text-primary transition-all"
-                onClick={exportToCSV}
-              >
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Button>
-              <div className="h-8 w-px bg-slate-100 mx-1 hidden sm:block" />
-              <span className="text-xs font-bold text-slate-400 whitespace-nowrap">District:</span>
-              <Select
-                value={selectedDistrict}
-                onValueChange={setSelectedDistrict}
-                disabled={isDistrictUser}
-              >
-                <SelectTrigger className="w-[180px] bg-slate-50 border-none font-bold h-9">
-                  <SelectValue placeholder="Select District" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All Districts</SelectItem>
-                  {districts.map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
+      {/* ── Hero ──────────────────────────────────────────────── */}
+      <div className="relative mb-6 overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(139,92,246,0.15),transparent_45%)]" />
+        <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
+        <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-violet-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
 
-        <CardContent className="space-y-6">
-          {/* Filters Section */}
+        <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">VCA register</span>
+              <span className="text-slate-400 text-[11px]">·</span>
+              <span className="text-[11px] text-slate-600">{dateStr}</span>
+              <Badge variant="outline" className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
+                <Activity className="h-3 w-3" /> Active VCAs
+              </Badge>
+            </div>
+            <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
+              <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-violet-700 bg-clip-text text-transparent">
+                Children &amp; adolescents
+              </span>
+              <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
+                <Users className="h-3 w-3" /> Demographics · Services · Status
+              </Badge>
+            </h1>
+            <p className="mt-1 text-xs text-slate-600">Only active VCAs are shown. Use the filters to drill down by sub-population.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <Select
+              value={selectedDistrict}
+              onValueChange={setSelectedDistrict}
+              disabled={isDistrictUser}
+            >
+              <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white/80 border-slate-200 backdrop-blur-md text-xs">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                  <SelectValue placeholder="Select District" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Districts</SelectItem>
+                {districts.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              onClick={exportToCSV}
+              className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative">
+        <div aria-hidden className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl bg-gradient-to-br from-emerald-200/40 via-teal-200/25 to-violet-200/20 opacity-50 blur-md" />
+        <GlowCard>
+        <CardContent className="space-y-6 pt-6">
+          {/* ── Primary toolbar: search · clear ──────────────── */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+            <div className="relative flex-1 min-w-0 sm:min-w-[260px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search by ID, name, or facility…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-10 bg-white border-slate-200 focus-visible:ring-emerald-500/30"
+              />
+            </div>
+            {(() => {
+              const activeCount =
+                Object.values(subPopulationFilters).filter((v) => v !== "all").length +
+                (searchQuery ? 1 : 0);
+              return (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  disabled={activeCount === 0}
+                  className="group inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 h-10 text-xs font-medium text-slate-600 transition-all hover:border-rose-300 hover:bg-rose-50/60 hover:text-rose-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear
+                  {activeCount > 0 && (
+                    <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-100 px-1 text-[10px] font-bold text-rose-700">
+                      {activeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
+          </div>
+
+          {/* ── Sub-population tri-state filters ──────────────── */}
           <SubPopulationFilter
             filters={subPopulationFilters}
             labels={subPopulationFilterLabels}
@@ -397,30 +453,53 @@ const VcaRegister = () => {
             onClear={handleClearFilters}
           />
 
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-t pt-4">
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Global Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Button variant="ghost" onClick={handleClearFilters} className="text-slate-600">
-              Clear Filters
-            </Button>
-          </div>
+          {/* ── Active filter chips ──────────────── */}
+          {(() => {
+            const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
+            Object.entries(subPopulationFilters).forEach(([k, v]) => {
+              if (v !== "all") {
+                chips.push({
+                  key: `sp-${k}`,
+                  label: `${subPopulationFilterLabels[k]}: ${v}`,
+                  onClear: () => handleFilterChange(k, "all"),
+                });
+              }
+            });
+            if (searchQuery) {
+              chips.push({
+                key: "search",
+                label: `Search: "${searchQuery}"`,
+                onClear: () => setSearchQuery(""),
+              });
+            }
+            if (chips.length === 0) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Active</span>
+                {chips.map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={c.onClear}
+                    className="group inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50/70 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 transition-all hover:border-emerald-400 hover:bg-emerald-100"
+                  >
+                    {c.label}
+                    <X className="h-2.5 w-2.5 opacity-60 transition-opacity group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
-          <div className="rounded-md border">
+          <div className="rounded-xl border border-emerald-100/60 overflow-hidden">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px] hidden sm:table-cell">Unique id</TableHead>
-                  <TableHead className="w-[80px] hidden sm:table-cell">Gender</TableHead>
-                  <TableHead className="w-[60px] hidden sm:table-cell">Age</TableHead>
-                  <TableHead className="min-w-[200px] hidden lg:table-cell">Household details</TableHead>
-                  <TableHead className="text-right w-[60px]">Action</TableHead>
+              <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-violet-50/40">
+                <TableRow className="hover:bg-transparent border-b border-emerald-100/60">
+                  <TableHead className="w-[120px] hidden sm:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">Unique ID</TableHead>
+                  <TableHead className="w-[80px] hidden sm:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">Gender</TableHead>
+                  <TableHead className="w-[60px] hidden sm:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">Age</TableHead>
+                  <TableHead className="w-[220px] hidden lg:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">Household details</TableHead>
+                  <TableHead className="text-right w-[70px] text-[11px] font-bold uppercase tracking-wider text-emerald-800">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -442,7 +521,7 @@ const VcaRegister = () => {
                   paginatedVcas.map((vca: any, index: number) => {
                     const id = pickValue(vca, ["uid", "unique_id", "vca_id"]);
                     return (
-                      <TableRow key={`${id}-${index}`}>
+                      <TableRow key={`${id}-${index}`} className="group transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
                         <TableCell className="font-medium align-top hidden sm:table-cell">
                           <span className="text-sm font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">{String(id)}</span>
                         </TableCell>
@@ -465,20 +544,20 @@ const VcaRegister = () => {
                         <TableCell className="hidden sm:table-cell align-top">
                           {calculateAge(vca.birthdate)}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <div className="whitespace-pre-line text-xs text-slate-600 leading-snug">
+                        <TableCell className="hidden lg:table-cell w-[220px] max-w-[220px]">
+                          <div className="text-xs text-slate-600 leading-snug line-clamp-2 break-words">
                             {getAddressString(vca)}
                           </div>
                         </TableCell>
                         <TableCell className="text-right align-top px-2 sm:px-4">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-[10px] sm:h-8 sm:px-3 sm:text-xs"
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200/60 bg-white/80 px-2.5 py-1 text-[10px] sm:text-xs font-bold text-emerald-700 transition-all hover:border-emerald-300 hover:bg-emerald-50/60 hover:shadow-sm"
                             onClick={() => navigate(`/profile/vca-details`, { state: { id: String(id) } })}
                           >
                             View
-                          </Button>
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
                         </TableCell>
                       </TableRow>
                     );
@@ -533,6 +612,7 @@ const VcaRegister = () => {
           </div>
         </CardContent>
       </GlowCard>
+      </div>
     </DashboardLayout>
   );
 };
