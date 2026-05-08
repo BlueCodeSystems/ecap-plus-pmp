@@ -37,7 +37,6 @@ const navigationItems = [
   { title: "VCA Register", url: "/vcas", icon: Users, category: "Navigation" },
   { title: "VCA Services", url: "/vca-services", icon: ClipboardList, category: "Navigation" },
   { title: "Caregiver Services", url: "/caregiver-services", icon: HeartPulse, category: "Navigation" },
-  { title: "Caseworkers", url: "/caseworkers", icon: Briefcase, category: "Navigation" },
   { title: "Flags", url: "/flags", icon: Flag, category: "Navigation" },
   { title: "Household Archived", url: "/households/archived", icon: Archive, category: "Navigation" },
   { title: "VCA Archived", url: "/vcas/archived", icon: Archive, category: "Navigation" },

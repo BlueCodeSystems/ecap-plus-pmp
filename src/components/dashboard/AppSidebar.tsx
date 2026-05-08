@@ -15,6 +15,9 @@ import {
   Calendar,
   Briefcase,
   BookOpen,
+  Gauge,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -41,11 +44,10 @@ const sections = [
   {
     label: "Overview",
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: Home },
+      { title: "Home", url: "/dashboard", icon: Home },
       { title: "Calendar", url: "/calendar", icon: Calendar },
       { title: "Districts", url: "/districts", icon: MapPin },
       { title: "Program Dashboard", url: "/charts", icon: BarChart3 },
-      { title: "Caseworkers", url: "/caseworkers", icon: Briefcase },
     ],
   },
   {
@@ -70,7 +72,7 @@ const sections = [
       { title: "Household Services", url: "/household-services", icon: Home },
       { title: "VCA Services", url: "/vca-services", icon: ClipboardList },
       { title: "Caregiver Services", url: "/caregiver-services", icon: HeartPulse },
-
+      { title: "Performance", url: "/performance", icon: Gauge },
       { title: "Flags", url: "/flags", icon: Flag },
     ],
   },
@@ -138,9 +140,6 @@ export function AppSidebar() {
 
     return sections.map(section => {
       const filteredItems = section.items.filter(item => {
-        // Caseworkers: Restricted for District Users
-        if (item.url === "/caseworkers" && isDistrictUser) return false;
-
         // Districts page: Restricted for District Users (per security intent)
         if (item.url === "/districts" && isDistrictUser) return false;
 
@@ -165,13 +164,31 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" style={{ backgroundColor: 'var(--sidebar-background)' } as any}>
+    <Sidebar collapsible="icon" className="border-r border-emerald-100/60 bg-white/70 backdrop-blur-xl">
+      {/* Aurora background blobs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.10),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_100%,rgba(14,165,233,0.08),transparent_50%)]" />
+        <div className="absolute -top-32 -left-16 h-[20rem] w-[20rem] rounded-full bg-emerald-300/20 blur-[100px] animate-pulse [animation-duration:8s]" />
+        <div className="absolute -bottom-24 -right-12 h-[22rem] w-[22rem] rounded-full bg-teal-300/15 blur-[110px] animate-pulse [animation-duration:10s] [animation-delay:-3s]" />
+      </div>
+
       {/* Logo */}
-      <SidebarHeader className="px-5 py-5">
-        <div className={cn("flex items-center", collapsed && "justify-center")}>
-          <span className="text-sm font-bold text-slate-900 tracking-tight">
-            {collapsed ? "E+" : "ECAP+ PMP"}
-          </span>
+      <SidebarHeader className="px-5 py-5 border-b border-emerald-100/40">
+        <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 shadow-md shadow-emerald-500/30">
+            <Sparkles className="h-4 w-4 text-white" strokeWidth={2.4} />
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-extrabold tracking-tight bg-gradient-to-r from-emerald-700 via-teal-600 to-sky-700 bg-clip-text text-transparent">
+                ECAP+ PMP
+              </span>
+              <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-600/80">
+                Program Operations
+              </span>
+            </div>
+          )}
         </div>
       </SidebarHeader>
 
@@ -179,7 +196,7 @@ export function AppSidebar() {
       <SidebarContent className="px-3" ref={scrollRef} onScroll={saveScroll}>
         {filteredSections.map((section) => (
           <SidebarGroup key={section.label} className="pb-2 pt-3">
-            <SidebarGroupLabel className="px-3 pb-2 text-[10px] font-bold tracking-wider text-muted-foreground/70">
+            <SidebarGroupLabel className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700/70">
               {section.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -193,21 +210,27 @@ export function AppSidebar() {
                           to={item.url}
                           end
                           className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-[7px] text-xs font-semibold transition-colors duration-150",
+                            "group relative flex items-center gap-3 rounded-lg px-3 py-[7px] text-xs font-semibold transition-all duration-200",
                             active
-                              ? "bg-primary/10 text-primary"
-                              : "text-muted-foreground hover:bg-slate-100 hover:text-foreground"
+                              ? "bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent text-emerald-700 shadow-sm ring-1 ring-emerald-200/60"
+                              : "text-slate-600 hover:bg-gradient-to-r hover:from-emerald-50/70 hover:via-teal-50/40 hover:to-transparent hover:text-emerald-700"
                           )}
                           activeClassName=""
                         >
+                          {active && (
+                            <span aria-hidden className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-full bg-gradient-to-b from-emerald-500 to-teal-500 shadow-[0_0_8px_2px_rgba(16,185,129,0.5)]" />
+                          )}
                           <item.icon
                             className={cn(
-                              "h-[18px] w-[18px] shrink-0",
-                              active ? "text-primary" : "text-slate-400"
+                              "h-[18px] w-[18px] shrink-0 transition-colors",
+                              active ? "text-emerald-600" : "text-slate-400 group-hover:text-emerald-600"
                             )}
                             strokeWidth={active ? 2.2 : 1.8}
                           />
-                          <span>{item.title}</span>
+                          <span className="flex-1">{item.title}</span>
+                          {active && !collapsed && (
+                            <ChevronRight className="h-3 w-3 text-emerald-500/70" strokeWidth={2.4} />
+                          )}
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -220,27 +243,30 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-slate-100 px-4 py-3">
+      <SidebarFooter className="border-t border-emerald-100/40 px-4 py-3">
         {user && (
           <div
             className={cn(
-              "flex items-center gap-3 rounded-lg py-2 mb-1 cursor-pointer hover:bg-slate-50 -mx-1 px-2 transition-colors",
+              "group flex items-center gap-3 rounded-lg py-2 mb-1 cursor-pointer transition-all hover:bg-gradient-to-r hover:from-emerald-50/70 hover:via-teal-50/40 hover:to-transparent -mx-1 px-2",
               collapsed && "justify-center mx-0 px-0"
             )}
             onClick={() => navigate("/profile")}
           >
-            <Avatar className="h-8 w-8 shrink-0 rounded-full">
-              <AvatarImage src={user.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
-              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold uppercase rounded-full">
-                {user.first_name?.[0] ?? user.email?.[0] ?? "U"}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative shrink-0">
+              <div aria-hidden className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70 transition-opacity group-hover:opacity-100" />
+              <Avatar className="relative h-8 w-8 ring-2 ring-white shadow-sm rounded-full">
+                <AvatarImage src={user.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 text-white text-xs font-extrabold uppercase rounded-full">
+                  {user.first_name?.[0] ?? user.email?.[0] ?? "U"}
+                </AvatarFallback>
+              </Avatar>
+            </div>
             {!collapsed && (
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-bold text-slate-800 truncate leading-tight">
+                <span className="text-xs font-bold text-slate-800 truncate leading-tight group-hover:text-emerald-700 transition-colors">
                   {user.first_name ? `${user.first_name} ${user.last_name ?? ""}`.trim() : user.email}
                 </span>
-                <span className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
+                <span className="text-[10px] text-emerald-600/80 truncate leading-tight mt-0.5 font-semibold">
                   {typeof user.role === "string" ? user.role : user.role?.name ?? "User"}
                 </span>
               </div>
@@ -249,12 +275,12 @@ export function AppSidebar() {
         )}
         <button
           className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500 -mx-1",
+            "group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-xs font-semibold text-slate-500 transition-all hover:bg-gradient-to-r hover:from-rose-50/80 hover:via-pink-50/40 hover:to-transparent hover:text-rose-600 -mx-1",
             collapsed && "justify-center mx-0 px-0"
           )}
           onClick={handleLogout}
         >
-          <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
+          <LogOut className="h-[18px] w-[18px] shrink-0 transition-colors group-hover:text-rose-500" strokeWidth={1.8} />
           {!collapsed && <span>Logout</span>}
         </button>
       </SidebarFooter>

@@ -67,8 +67,8 @@ export const articles: Article[] = [
     content: `The Household Register shows all registered households.\n\nFeatures:\n- Search by household ID, address, facility, or caseworker\n- Filter by district (locked for district users)\n- Sub-population filters for specific demographics\n- Click a row to view the full household profile\n- Export to CSV\n\nData is sorted by household ID in descending order (newest first).`,
   },
   {
-    title: "CA register",
-    slug: toSlug("CA register"),
+    title: "VCA register",
+    slug: toSlug("VCA register"),
     category: "Registers",
     content: `The VCA (Vulnerable Children and Adolescents) Register lists all registered children.\n\nFeatures:\n- Search by VCA ID, name, or household\n- District filtering with province-level access control\n- Sub-population filters (HIV status, disability, household type, etc.)\n- Click a row to view the full VCA profile with service history\n- Export to CSV`,
   },
@@ -92,8 +92,8 @@ export const articles: Article[] = [
     content: `The Household Services page shows service delivery data for households.\n\nSections:\n- **Banner**: Total households, service events, and location\n- **Coverage KPIs**: Health, Schooled, Safe, Stable domain coverage with click-through to risk registers\n- **Most common health services**: Horizontal bar chart\n- **Data quality cards**: Click to filter the table by specific issues\n- **Service table**: Full audit log with search, pagination, and CSV export\n\nServices are filtered by June reporting year (June–May cycle).`,
   },
   {
-    title: "CA services",
-    slug: toSlug("CA services"),
+    title: "VCA services",
+    slug: toSlug("VCA services"),
     category: "Services",
     content: `The VCA Services page tracks service delivery for vulnerable children.\n\nIt includes the same layout as Household Services plus:\n- HIV status, viral load date, VL result, and MMD level columns\n- VCA-specific data quality insights (HIV+ missing VL, overdue VL tests, no MMD level)\n- Service events counted per VCA`,
   },

@@ -1,6 +1,5 @@
-import { MapPin, Home, Users, Download, ArrowRight, RefreshCw, ChevronRight } from "lucide-react";
+import { MapPin, Home, Users, Download, ArrowRight, RefreshCw, ChevronRight, Activity, Sparkles } from "lucide-react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -234,40 +233,86 @@ const Districts = () => {
     }
   };
 
+  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const totalHouseholds = districtData.reduce((sum: number, d: any) => sum + (d?.households || 0), 0);
+
   return (
     <DashboardLayout subtitle="Districts">
-      <div className="space-y-4 pt-4">
-        <GlowCard className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/10 py-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold text-foreground">District Coverage</h2>
+      {/* ── Hero ──────────────────────────────────────────────── */}
+      <div className="relative mb-6 overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(14,165,233,0.15),transparent_45%)]" />
+        <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
+        <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-sky-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
+
+        <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">District coverage</span>
+              <span className="text-slate-400 text-[11px]">·</span>
+              <span className="text-[11px] text-slate-600">{dateStr}</span>
+              <Badge variant="outline" className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
+                <Activity className="h-3 w-3" /> {districtData.length} districts
+              </Badge>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground gap-2 transition-all disabled:opacity-50"
+            <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
+              <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-sky-700 bg-clip-text text-transparent">
+                Geographic coverage &amp; reach
+              </span>
+              <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
+                <Sparkles className="h-3 w-3" /> {totalHouseholds.toLocaleString()} households
+              </Badge>
+            </h1>
+            <p className="mt-1 text-xs text-slate-600">Programme reach by district. Drill into any row to see records or export a detailed report.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <button
               onClick={() => {
-                // Invalidate all related queries to trigger a fresh background fetch
                 queryClient.invalidateQueries({ queryKey: ["kpi"] });
                 queryClient.invalidateQueries({ queryKey: ["districts-discovery"] });
                 queryClient.invalidateQueries({ queryKey: ["district-stats"] });
               }}
               disabled={isSyncing}
+              className="group inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 backdrop-blur-md transition-all hover:border-emerald-300 hover:bg-white disabled:opacity-50"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
-              {isSyncing ? "Syncing..." : "Sync Districts"}
-            </Button>
+              {isSyncing ? "Syncing…" : "Sync"}
+            </button>
+            <button
+              onClick={handleExportSummary}
+              disabled={districtData.length === 0}
+              className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export Summary
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative">
+        <div aria-hidden className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl bg-gradient-to-br from-emerald-200/40 via-teal-200/25 to-sky-200/20 opacity-50 blur-md" />
+        <GlowCard className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-emerald-100/40 bg-gradient-to-r from-emerald-50/40 via-teal-50/20 to-transparent py-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-white/60 shadow-sm">
+                <MapPin className="h-4 w-4" />
+              </div>
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-emerald-800">District Coverage</CardTitle>
+            </div>
+            <Badge variant="outline" className="border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
+              {districtData.length} {districtData.length === 1 ? "district" : "districts"}
+            </Badge>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow>
-                  <TableHead className="w-[80px] hidden md:table-cell">No.</TableHead>
-                  <TableHead>District</TableHead>
-                  <TableHead className="hidden sm:table-cell">Households</TableHead>
-                  <TableHead className="hidden sm:table-cell">VCAs</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+              <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
+                <TableRow className="hover:bg-transparent border-b border-emerald-100/60">
+                  <TableHead className="w-[80px] hidden md:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">No.</TableHead>
+                  <TableHead className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">District</TableHead>
+                  <TableHead className="hidden sm:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">Households</TableHead>
+                  <TableHead className="hidden sm:table-cell text-[11px] font-bold uppercase tracking-wider text-emerald-800">VCAs</TableHead>
+                  <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-emerald-800">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -287,25 +332,39 @@ const Districts = () => {
                   </TableRow>
                 ) : (
                   districtData.map((data: any, index) => (
-                    <TableRow key={data.district} className="group transition-colors hover:bg-muted/30">
-                      <TableCell className="font-medium text-muted-foreground hidden md:table-cell">{index + 1}</TableCell>
-                      <TableCell className="font-bold text-foreground">
-                        <div className="flex flex-col">
-                          <span>{data.district}</span>
-                          <div className="flex gap-2 mt-1 sm:hidden">
-                            <span className="text-[10px] text-muted-foreground">HHs: {formatCount(data.households)}</span>
-                            <span className="text-[10px] text-muted-foreground">VCAs: {formatCount(data.vcas)}</span>
+                    <TableRow key={data.district} className="group transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
+                      <TableCell className="font-mono font-semibold text-emerald-700 hidden md:table-cell">{String(index + 1).padStart(2, "0")}</TableCell>
+                      <TableCell className="font-bold text-slate-900">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-white/60 shadow-sm">
+                            <MapPin className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span>{data.district}</span>
+                            <div className="flex gap-2 mt-0.5 sm:hidden">
+                              <span className="text-[10px] text-slate-500">HH: {formatCount(data.households)}</span>
+                              <span className="text-[10px] text-slate-500">VCAs: {formatCount(data.vcas)}</span>
+                            </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">{formatCount(data.households)}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{formatCount(data.vcas)}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                          <Home className="h-3 w-3 text-emerald-600" />
+                          {formatCount(data.households)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                          <Users className="h-3 w-3 text-violet-600" />
+                          {formatCount(data.vcas)}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
+                          <button
+                            type="button"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-100/60 bg-white/80 text-emerald-600 transition-all hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-50"
                             onClick={() => handleExportDistrictDetails(data.district)}
                             disabled={exportingDistrict === data.district}
                             title="Export Detailed Report"
@@ -313,17 +372,17 @@ const Districts = () => {
                             {exportingDistrict === data.district ? (
                               <LoadingDots className="text-emerald-500 scale-50" />
                             ) : (
-                              <Download className="h-4 w-4" />
+                              <Download className="h-3.5 w-3.5" />
                             )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5"
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
                             onClick={() => navigate(`/households?district=${encodeURIComponent(data.district)}`)}
                           >
-                            View Records<ChevronRight className="h-4 w-4" />
-                          </Button>
+                            View
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -217,8 +217,8 @@ const CaseworkerProfile = () => {
         <EmptyState
           icon={<User className="h-7 w-7" />}
           title="No caseworker selected"
-          description="Navigate to a caseworker from the Caseworkers page."
-          action={{ label: "Back to Caseworkers", onClick: () => navigate("/caseworkers") }}
+          description="Navigate to a caseworker from the Caseworker Journeys page."
+          action={{ label: "Back", onClick: () => navigate(-1) }}
           className="h-[50vh]"
         />
       </DashboardLayout>

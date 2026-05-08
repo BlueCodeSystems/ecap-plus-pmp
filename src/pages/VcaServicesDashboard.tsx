@@ -28,6 +28,7 @@ import { cn, toTitleCase } from "@/lib/utils";
 import { isCategoryProvided } from "@/lib/data-validation";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import DuplicateDetectionCard from "@/components/dashboard/DuplicateDetectionCard";
 import PageIntro from "@/components/dashboard/PageIntro";
 import GlowCard from "@/components/aceternity/GlowCard";
 import { Badge } from "@/components/ui/badge";
@@ -935,6 +936,10 @@ const VcaServicesDashboard = () => {
             </Table>
           </div>
         </GlowCard>
+      </div>
+
+      <div className="mt-8 px-1">
+        <DuplicateDetectionCard type="vca" />
       </div>
 
     </DashboardLayout >

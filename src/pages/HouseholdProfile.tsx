@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, MapPin, Calendar, ClipboardCheck, Briefcase, Layers, ShieldCheck, HeartPulse, FileText, Activity, Link2, Home, Flag, AlertTriangle } from "lucide-react";
+import { ArrowLeft, User, MapPin, Calendar, ClipboardCheck, Briefcase, Layers, ShieldCheck, HeartPulse, FileText, Activity, Link2, Home, Flag, AlertTriangle, Archive, Users, ChevronRight } from "lucide-react";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -293,131 +293,140 @@ const HouseholdProfile = () => {
   // Pick the latest service date dynamically from the sorted services list
   const lastServiceDate = householdServices[0]?.service_date || household.last_service_date || "N/A";
 
+  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
   return (
     <DashboardLayout subtitle={`Household: ${id}`}>
       <div className="space-y-6 pb-20">
-        {/* Header Section */}
-        <div className="relative overflow-hidden rounded-xl">
-          {/* Gradient top section */}
-          <div className="relative bg-gradient-to-r from-green-700 via-emerald-600 to-teal-600 p-6 lg:p-8">
-            <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,rgba(255,255,255,0.05)_50%,transparent_100%)] bg-[length:200px_100%]" />
+        {/* ── Hero ──────────────────────────────────────────────── */}
+        <div className="relative overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(14,165,233,0.15),transparent_45%)]" />
+          <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
+          <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-sky-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
 
-            <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge className={cn(
-                    "text-xs border-0",
-                    isArchived ? "bg-red-400/20 text-white" : "bg-white/20 text-white"
-                  )}>
-                    {isArchived ? "Archived Household" : "Active Household"}
-                  </Badge>
-                  <Badge className="text-xs border-0 bg-white/20 text-white">
-                    {householdVcas.length} VCAs
-                  </Badge>
-                </div>
-                <h1 className="text-3xl font-bold text-white lg:text-4xl">
-                  Caregiver Name – Confidential
-                </h1>
+          <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">Household profile</span>
+                <span className="text-slate-400 text-[11px]">·</span>
+                <span className="text-[11px] text-slate-600">{dateStr}</span>
+                <Badge variant="outline" className={cn(
+                  "ml-1 gap-1 text-[10px]",
+                  isArchived
+                    ? "border-amber-200 bg-amber-50/80 text-amber-700"
+                    : "border-emerald-200 bg-emerald-50/80 text-emerald-700"
+                )}>
+                  {isArchived ? <Archive className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+                  {isArchived ? "Archived" : "Active"}
+                </Badge>
+                <Badge variant="outline" className="gap-1 border-violet-200 bg-violet-50/80 text-[10px] text-violet-700">
+                  <Users className="h-3 w-3" /> {householdVcas.length} VCAs
+                </Badge>
               </div>
-              <Button
+              <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
+                <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-sky-700 bg-clip-text text-transparent">
+                  Caregiver – Confidential
+                </span>
+                <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
+                  <Sparkles className="h-3 w-3" /> Members · Caseplans · Referrals
+                </Badge>
+              </h1>
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+                <span className="inline-flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-slate-400" />
+                  ID: <span className="font-mono font-semibold text-slate-700">{id}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                  {String(household.district || "N/A")}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+                  {String(household.caseworker_name || "N/A")}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+              <button
+                type="button"
                 onClick={() => navigate(-1)}
-                variant="outline"
-                size="sm"
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
+                className="group inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 backdrop-blur-md transition-all hover:border-emerald-300 hover:bg-white"
               >
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
-              </Button>
-            </div>
-          </div>
-
-          {/* White metadata strip */}
-          <div className="bg-white border border-slate-200 border-t-0 rounded-b-2xl px-6 py-4 lg:px-8">
-            <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <Layers className="h-4 w-4" /> ID: {id}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4" /> {String(household.district || "N/A")}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Briefcase className="h-4 w-4" /> {String(household.caseworker_name || "N/A")}
-              </span>
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Quick Info Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {/* Card 1: Ward */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-100 p-2">
-                  <MapPin className="h-4 w-4 text-slate-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Ward</p>
-                  <p className="text-sm font-medium text-slate-900">{String(household.ward || "N/A")}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Card 2: Primary Facility */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-100 p-2">
-                  <HeartPulse className="h-4 w-4 text-slate-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Primary Facility</p>
-                  <p className="text-sm font-medium text-slate-900">{String(household.facility || "N/A")}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Card 3: Last Service Date */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-100 p-2">
-                  <Calendar className="h-4 w-4 text-slate-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Last Service Date</p>
-                  <p className="text-sm font-medium text-slate-900">{String(lastServiceDate)}</p>
+        {/* ── Quick stat cards ──────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {([
+            {
+              icon: MapPin,
+              label: "Ward",
+              value: String(household.ward || "N/A"),
+              iconBg: "from-emerald-100 to-teal-100 text-emerald-700",
+              glow: "from-emerald-200/70 via-teal-200/40",
+            },
+            {
+              icon: HeartPulse,
+              label: "Primary facility",
+              value: String(household.facility || "N/A"),
+              iconBg: "from-rose-100 to-pink-100 text-rose-700",
+              glow: "from-rose-200/70 via-pink-200/40",
+            },
+            {
+              icon: Calendar,
+              label: "Last service date",
+              value: String(lastServiceDate),
+              iconBg: "from-sky-100 to-cyan-100 text-sky-700",
+              glow: "from-sky-200/70 via-cyan-200/40",
+            },
+          ] as const).map((card) => {
+            const Icon = card.icon;
+            return (
+              <div key={card.label} className="group relative">
+                <div className={`absolute -inset-[1px] rounded-2xl bg-gradient-to-br ${card.glow} to-transparent opacity-40 blur-md transition-opacity duration-500 group-hover:opacity-100`} />
+                <div className="relative h-full rounded-2xl border border-slate-200/70 bg-white/75 p-5 backdrop-blur-xl shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-slate-300">
+                  <div className="flex items-center justify-between">
+                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${card.iconBg} ring-1 ring-white/60 shadow-sm`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 text-base font-extrabold text-slate-900 truncate" title={card.value}>{card.value}</div>
+                  <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{card.label}</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            );
+          })}
         </div>
 
-        {/* Tabs Section */}
+        {/* ── Tabs ──────────────────────────────────────────────── */}
         <Tabs defaultValue="overview" className="w-full">
-          <div className="mb-8 flex flex-col items-center justify-between gap-6 md:flex-row">
-            <TabsList className="h-auto w-full flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/50 p-2 md:w-auto">
-              <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Summary
-              </TabsTrigger>
-              <TabsTrigger value="family" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Family members
-              </TabsTrigger>
-              <TabsTrigger value="history" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Caseplans
-              </TabsTrigger>
-              <TabsTrigger value="audit" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Referrals
-              </TabsTrigger>
-              <TabsTrigger value="flags" className="rounded-full px-5 py-2 text-xs font-black tracking-wider transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Flag record form
-              </TabsTrigger>
-            </TabsList>
-            <div className="hidden text-xs font-bold text-slate-400 md:block">
-              Household ID: <span className="text-slate-900">{id}</span>
+          <div className="mb-6 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
+            <div className="-mx-1 overflow-x-auto px-1 max-w-full">
+              <TabsList className="inline-flex h-9 items-center gap-1 rounded-xl bg-slate-100/80 p-1 backdrop-blur-sm border border-slate-200/50 whitespace-nowrap">
+                <TabsTrigger value="overview" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                  Summary
+                </TabsTrigger>
+                <TabsTrigger value="family" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                  Family
+                </TabsTrigger>
+                <TabsTrigger value="history" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                  Caseplans
+                </TabsTrigger>
+                <TabsTrigger value="audit" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                  Referrals
+                </TabsTrigger>
+                <TabsTrigger value="flags" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                  Flag form
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            <div className="hidden text-[11px] font-semibold text-slate-400 md:block">
+              Household ID: <span className="font-mono text-slate-700">{id}</span>
             </div>
           </div>
 
@@ -511,7 +520,7 @@ const HouseholdProfile = () => {
                 ) : householdMembers.length > 0 ? (
                   <div className="w-full overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-slate-50">
+                      <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
                         <TableRow>
                           <TableHead className="pl-6">Member Details</TableHead>
                           <TableHead>Birthdate</TableHead>
@@ -542,7 +551,14 @@ const HouseholdProfile = () => {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right pr-6">
-                              <Button onClick={() => navigate(`/profile/vca-details`, { state: { id: String(m.uid || m.vca_id || m.unique_id) } })} size="sm" className="h-8 text-xs font-bold bg-primary text-white hover:bg-primary/90">View profile</Button>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/profile/vca-details`, { state: { id: String(m.uid || m.vca_id || m.unique_id) } })}
+                                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
+                              >
+                                View profile
+                                <ChevronRight className="h-3 w-3" />
+                              </button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -766,7 +782,7 @@ const HouseholdProfile = () => {
                   {householdFlags.length > 0 ? (
                     <div className="w-full overflow-x-auto">
                       <Table>
-                        <TableHeader className="bg-slate-50/50">
+                        <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
                           <TableRow>
                             <TableHead className="pl-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">Category</TableHead>
                             <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Date flagged</TableHead>
@@ -776,7 +792,7 @@ const HouseholdProfile = () => {
                         </TableHeader>
                         <TableBody>
                           {householdFlags.map((item: any, idx: number) => (
-                            <TableRow key={idx} className="hover:bg-slate-50/50 transition-colors">
+                            <TableRow key={idx} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
                               <TableCell className="pl-6">
                                 <div className="flex flex-col">
                                   <span className="font-bold text-slate-900 text-sm">{String(item.category || item.form_type || "General")}</span>
@@ -966,7 +982,7 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
                       </TableHeader>
                       <TableBody>
                         {linkedServices.map((svc: any, i: number) => (
-                          <TableRow key={i} className="hover:bg-slate-50/30">
+                          <TableRow key={i} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">{svc.service_date || "N/A"}</TableCell>
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 text-slate-700 border-r border-slate-100">{svc.is_hiv_positive || "N/A"}</TableCell>
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 text-slate-700 border-r border-slate-100">{svc.vl_last_result || "N/A"}</TableCell>

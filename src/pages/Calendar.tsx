@@ -15,7 +15,8 @@ import {
   Layers,
   LayoutGrid,
   List,
-  Trash2
+  Trash2,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -377,61 +378,78 @@ const CalendarPage = () => {
 
   return (
     <DashboardLayout title="Event Calendar">
-      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-10rem)]">
-        {/* Sidebar Controls */}
-        <div className="w-full lg:w-72 space-y-6">
-          <Button
-            className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 gap-2 font-bold"
-            onClick={openAddModal}
-          >
-            <Plus className="h-5 w-5" /> Schedule event
-          </Button>
-
-          <Card className="border-slate-200 shadow-sm overflow-hidden rounded-2xl">
-            <CardHeader className="bg-slate-50/50 border-b pb-3">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Tag className="h-4 w-4 text-emerald-600" /> Categories
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-3">
-              {CATEGORIES.map((cat) => (
-                <div key={cat.name} className="flex items-center justify-between group cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("h-3 w-3 rounded-full", cat.color)} />
-                    <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">{cat.name}</span>
-                  </div>
-                  <Badge variant="outline" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    {events.filter(e => e.category === cat.name).length}
-                  </Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200 shadow-sm overflow-hidden rounded-2xl">
-            <CardHeader className="bg-slate-50/50 border-b pb-3">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Clock className="h-4 w-4 text-emerald-600" /> Recent Activities
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 p-0">
-              <div className="divide-y divide-slate-100">
-                {events.slice(0, 4).map((e, i) => (
-                  <div key={i} className="p-4 hover:bg-slate-50 transition-colors">
-                    <p className="text-xs font-bold text-slate-900 truncate">{e.title}</p>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      {format(new Date(e.start_time), "MMM d, HH:mm")}
-                    </p>
-                  </div>
-                ))}
-                {events.length === 0 && (
-                  <div className="p-8 text-center">
-                    <p className="text-xs text-slate-400">No upcoming events</p>
-                  </div>
-                )}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Sidebar Controls (sticky on lg+) */}
+        <div className="w-full lg:w-72 lg:shrink-0">
+          <div className="lg:sticky lg:top-6 space-y-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
+            <button
+              onClick={openAddModal}
+              className="group relative w-full"
+            >
+              <div aria-hidden className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400 blur-sm opacity-50 group-hover:opacity-80 transition-opacity" />
+              <div className="relative flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 text-sm font-semibold text-white shadow-md shadow-emerald-700/30 transition-all hover:from-emerald-700 hover:via-teal-700 hover:to-sky-700">
+                <Plus className="h-5 w-5" /> Schedule event
               </div>
-            </CardContent>
-          </Card>
+            </button>
+
+            <div className="relative">
+              <div aria-hidden className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl bg-gradient-to-br from-emerald-200/40 via-teal-200/25 to-sky-200/20 opacity-50 blur-md" />
+              <Card className="border border-emerald-100/60 bg-white/75 backdrop-blur-xl shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)] overflow-hidden rounded-2xl">
+                <CardHeader className="bg-gradient-to-r from-emerald-50/40 via-teal-50/20 to-transparent border-b border-emerald-100/40 pb-3">
+                  <CardTitle className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-2">
+                    <Tag className="h-3.5 w-3.5 text-emerald-600" /> Categories
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-2.5">
+                  {CATEGORIES.map((cat) => {
+                    const count = events.filter(e => e.category === cat.name).length;
+                    return (
+                      <div key={cat.name} className="flex items-center justify-between group cursor-pointer rounded-md px-2 py-1 -mx-2 transition-colors hover:bg-emerald-50/40">
+                        <div className="flex items-center gap-3">
+                          <div className={cn("h-2.5 w-2.5 rounded-full ring-2 ring-white shadow-sm", cat.color)} />
+                          <span className="text-xs font-medium text-slate-700 group-hover:text-emerald-700 transition-colors">{cat.name}</span>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] border-emerald-200/60 bg-emerald-50/70 text-emerald-700 font-bold">
+                          {count}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="relative">
+              <div aria-hidden className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl bg-gradient-to-br from-emerald-200/40 via-teal-200/25 to-sky-200/20 opacity-50 blur-md" />
+              <Card className="border border-emerald-100/60 bg-white/75 backdrop-blur-xl shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)] overflow-hidden rounded-2xl">
+                <CardHeader className="bg-gradient-to-r from-emerald-50/40 via-teal-50/20 to-transparent border-b border-emerald-100/40 pb-3">
+                  <CardTitle className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-emerald-600" /> Upcoming Soon
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="divide-y divide-emerald-50/60">
+                    {events.slice(0, 4).map((e, i) => (
+                      <div key={i} className="px-4 py-3 transition-colors hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
+                        <p className="text-xs font-bold text-slate-900 truncate">{e.title}</p>
+                        <p className="text-[10px] text-emerald-600/80 font-semibold mt-0.5">
+                          {format(new Date(e.start_time), "MMM d, HH:mm")}
+                        </p>
+                      </div>
+                    ))}
+                    {events.length === 0 && (
+                      <div className="px-4 py-8 text-center">
+                        <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                          <Clock className="h-4 w-4" />
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-700">No future events scheduled</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -453,31 +471,25 @@ const CalendarPage = () => {
               </Button>
             </div>
 
-            <div className="flex items-center p-1 bg-slate-100 rounded-xl">
-              <Button
-                variant={view === "month" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setView("month")}
-                className={cn("rounded-lg text-xs font-bold h-8", view === "month" ? "bg-white text-slate-900 shadow-sm border" : "text-slate-500")}
-              >
-                Month
-              </Button>
-              <Button
-                variant={view === "week" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setView("week")}
-                className={cn("rounded-lg text-xs font-bold h-8", view === "week" ? "bg-white text-slate-900 shadow-sm border" : "text-slate-500")}
-              >
-                Week
-              </Button>
-              <Button
-                variant={view === "day" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setView("day")}
-                className={cn("rounded-lg text-xs font-bold h-8", view === "day" ? "bg-white text-slate-900 shadow-sm border" : "text-slate-500")}
-              >
-                Day
-              </Button>
+            <div className="inline-flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl backdrop-blur-sm border border-slate-200/50">
+              {(["month", "week", "day"] as const).map((v) => {
+                const isActive = view === v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setView(v)}
+                    className={cn(
+                      "rounded-lg text-xs font-bold uppercase tracking-wider h-8 px-4 transition-all capitalize",
+                      isActive
+                        ? "bg-white text-emerald-700 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800",
+                    )}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -492,95 +504,117 @@ const CalendarPage = () => {
 
       {/* Add Event Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-emerald-600 p-8 text-white relative">
-            <div className="absolute top-4 right-4 opacity-10">
-              <CalendarIcon className="h-24 w-24" />
+        <DialogContent className="sm:max-w-[500px] w-[calc(100%-2rem)] rounded-3xl p-0 overflow-hidden border border-emerald-200/60 bg-white/90 backdrop-blur-xl shadow-[0_30px_80px_-30px_rgba(15,118,110,0.5)]">
+          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-600 px-6 py-6 sm:px-8 sm:py-8 text-white">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
+            <div className="pointer-events-none absolute -top-12 -right-8 h-40 w-40 rounded-full bg-white/15 blur-2xl animate-pulse [animation-duration:6s]" />
+            <div className="pointer-events-none absolute -bottom-12 -left-8 h-32 w-32 rounded-full bg-emerald-200/20 blur-2xl animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
+
+            <div className="relative flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md ring-1 ring-white/30 shadow-md">
+                <CalendarIcon className="h-5 w-5" />
+              </div>
+              <DialogHeader className="text-left">
+                <div className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/90 mb-1.5 w-fit">
+                  <Sparkles className="h-2.5 w-2.5" />
+                  {isEditing ? "Editing" : "New event"}
+                </div>
+                <DialogTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                  {isEditing ? "Edit event" : "Schedule new event"}
+                </DialogTitle>
+                <p className="text-emerald-50/90 text-xs mt-0.5">
+                  {isEditing ? "Update your event details below." : "Fill in the details to add to your agenda."}
+                </p>
+              </DialogHeader>
             </div>
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black tracking-tight">
-                {isEditing ? "Edit event" : "Schedule new event"}
-              </DialogTitle>
-              <p className="text-emerald-100 text-sm mt-1">
-                {isEditing ? "Update your event details below." : "Fill in the details to add to your agenda."}
-              </p>
-            </DialogHeader>
           </div>
 
-          <div className="p-8 space-y-6 bg-white">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Event title</label>
+          <div className="px-6 py-6 sm:px-8 space-y-5 bg-white">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">Event title</label>
               <Input
                 placeholder="Ex: Weekly Team Review"
-                className="h-12 rounded-2xl border-slate-200 focus:ring-emerald-500"
+                className="h-11 rounded-xl border-slate-200 bg-white/80 backdrop-blur-md focus-visible:ring-emerald-500/30 focus-visible:border-emerald-300"
                 value={newEvent.title}
                 onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Start time</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1.5 min-w-0">
+                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">Start time</label>
                 <Input
                   type="datetime-local"
-                  className="h-12 rounded-2xl border-slate-200"
+                  className="h-11 rounded-xl border-slate-200 bg-white/80 backdrop-blur-md text-xs sm:text-sm focus-visible:ring-emerald-500/30 focus-visible:border-emerald-300 w-full"
                   value={newEvent.start_time}
                   onChange={(e) => setNewEvent({ ...newEvent, start_time: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">End time</label>
+              <div className="space-y-1.5 min-w-0">
+                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">End time</label>
                 <Input
                   type="datetime-local"
-                  className="h-12 rounded-2xl border-slate-200"
+                  className="h-11 rounded-xl border-slate-200 bg-white/80 backdrop-blur-md text-xs sm:text-sm focus-visible:ring-emerald-500/30 focus-visible:border-emerald-300 w-full"
                   value={newEvent.end_time}
                   onChange={(e) => setNewEvent({ ...newEvent, end_time: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Category</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">Category</label>
               <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(cat => (
-                  <button
-                    key={cat.name}
-                    onClick={() => setNewEvent({ ...newEvent, category: cat.name as any })}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-bold border transition-all",
-                      newEvent.category === cat.name
-                        ? cn(cat.color, "text-white border-transparent shadow-md")
-                        : "bg-white text-slate-500 border-slate-100 hover:border-slate-300"
-                    )}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
+                {CATEGORIES.map(cat => {
+                  const isActive = newEvent.category === cat.name;
+                  return (
+                    <button
+                      key={cat.name}
+                      type="button"
+                      onClick={() => setNewEvent({ ...newEvent, category: cat.name as any })}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
+                        isActive
+                          ? cn(cat.color, "text-white border-transparent shadow-md ring-2 ring-white/40")
+                          : "bg-white/80 text-slate-600 border-slate-200 hover:border-emerald-200 hover:bg-emerald-50/40"
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 rounded-full", isActive ? "bg-white/80" : cat.color)} />
+                      {cat.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1">Description (optional)</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">Description (optional)</label>
               <Input
-                placeholder="Add more context..."
-                className="h-12 rounded-2xl border-slate-200"
+                placeholder="Add more context…"
+                className="h-11 rounded-xl border-slate-200 bg-white/80 backdrop-blur-md focus-visible:ring-emerald-500/30 focus-visible:border-emerald-300"
                 value={newEvent.description}
                 onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
               />
             </div>
           </div>
 
-          <DialogFooter className="p-8 pt-0 bg-white">
-            <Button variant="ghost" onClick={() => setIsAddModalOpen(false)} className="rounded-2xl h-12 font-bold px-8">Cancel</Button>
-            <Button
-              className="rounded-2xl h-12 bg-emerald-600 hover:bg-emerald-700 font-black px-12 shadow-lg shadow-emerald-600/20"
+          <DialogFooter className="px-6 sm:px-8 pb-6 sm:pb-8 pt-0 bg-white flex-col sm:flex-row gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(false)}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/80 px-6 h-11 text-xs font-bold uppercase tracking-wider text-slate-600 transition-all hover:border-rose-300 hover:bg-rose-50/60 hover:text-rose-700 w-full sm:w-auto"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
               onClick={handleSaveEvent}
               disabled={createMutation.isPending || updateMutation.isPending}
+              className="group relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 px-8 h-11 text-xs font-bold uppercase tracking-wider text-white shadow-md shadow-emerald-700/30 transition-all hover:from-emerald-700 hover:via-teal-700 hover:to-sky-700 disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
             >
               {isEditing
-                ? (updateMutation.isPending ? "Updating..." : "Update Event")
-                : (createMutation.isPending ? "Scheduling..." : "Create Event")}
-            </Button>
+                ? (updateMutation.isPending ? "Updating…" : "Update Event")
+                : (createMutation.isPending ? "Scheduling…" : "Create Event")}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

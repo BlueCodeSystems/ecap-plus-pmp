@@ -229,6 +229,7 @@ export const createUser = async (payload: {
   description?: string;
   title?: string;
   location?: string;
+  facility?: string;
 }) => {
   const data = await directusRequest("/users", {
     method: "POST",
@@ -249,6 +250,7 @@ export const updateUser = async (
     description?: string;
     title?: string;
     location?: string;
+    facility?: string;
   }>,
 ) => {
   const data = await directusRequest(`/users/${id}`, {
