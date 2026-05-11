@@ -1,6 +1,5 @@
-import { Bell, Search, User, Sun, Moon, Clock, CheckCircle2, X, DatabaseZap, CircleHelp, Calendar, LogOut, Sparkles } from "lucide-react";
+import { Bell, BellOff, User, X, DatabaseZap, CircleHelp, Calendar, LogOut, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,17 +14,43 @@ import { useNavigate } from "react-router-dom";
 import { GlobalSearch } from "./GlobalSearch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFileUrl } from "@/lib/directus";
-import {
-  getCaregiverServicesByDistrict
-} from "@/lib/api";
 import { markNotificationRead, clearAllNotifications } from "@/lib/directus";
+import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import LoadingDots from "@/components/aceternity/LoadingDots";
-import { useRef, useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 
-// Simple notification sound (Beep)
-const BEEP_SOUND = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"; // Placeholder beep
+const SOUND_STORAGE_KEY = "ecapplus.notifications.sound";
+
+// Synthesized two-tone beep via the WebAudio API — no asset file needed,
+// works regardless of bundler/public-folder state.
+function playNotificationBeep() {
+  try {
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.0001;
+    gain.connect(ctx.destination);
+
+    const tones = [880, 1320];
+    tones.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      const t = ctx.currentTime + i * 0.12;
+      osc.start(t);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+      osc.stop(t + 0.1);
+    });
+    setTimeout(() => ctx.close().catch(() => {}), 400);
+  } catch {
+    // best-effort — silently swallow if WebAudio is unavailable
+  }
+}
 
 type DashboardHeaderProps = {
   title?: string;
@@ -46,13 +71,19 @@ const DashboardHeader = ({
       const { getNotifications } = await import("@/lib/directus");
       return getNotifications(user?.id); // Pass user.id for security
     },
-    staleTime: 1000 * 30, // 30 seconds
-    refetchInterval: 1000 * 30, // Poll every 30 seconds for performance & responsiveness
+    staleTime: 1000 * 25,
+    refetchInterval: 1000 * 30,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     enabled: !!user?.id,
   });
 
   const [prevUnreadCount, setPrevUnreadCount] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem(SOUND_STORAGE_KEY) !== "off";
+  });
+  const firstLoadRef = useRef(true);
 
   const notifications = useMemo(() => {
     return (directusNotifications ?? [])
@@ -78,16 +109,58 @@ const DashboardHeader = ({
 
   const unreadCount = notifications.length;
 
-  // Sound Logic
+  // Beep + system notification only when count grows AFTER the first load,
+  // and only if the tab is hidden / unfocused (so we don't beep at a user
+  // already looking at the dashboard).
   useEffect(() => {
+    if (firstLoadRef.current) {
+      firstLoadRef.current = false;
+      setPrevUnreadCount(unreadCount);
+      return;
+    }
     if (unreadCount > prevUnreadCount) {
-      // Play sound
-      if (audioRef.current) {
-        audioRef.current.play().catch(e => console.warn("Audio play failed:", e));
+      const delta = unreadCount - prevUnreadCount;
+      if (soundEnabled) playNotificationBeep();
+      if (
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.visibilityState !== "visible"
+      ) {
+        try {
+          new Notification("ECAP+ PMP", {
+            body: delta === 1 ? "You have a new notification" : `You have ${delta} new notifications`,
+            icon: "/ecap-logo.png",
+            silent: !soundEnabled,
+          });
+        } catch {
+          // best effort
+        }
       }
     }
     setPrevUnreadCount(unreadCount);
-  }, [unreadCount, prevUnreadCount]);
+  }, [unreadCount, prevUnreadCount, soundEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  const toggleSound = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(SOUND_STORAGE_KEY, next ? "on" : "off");
+      } catch {
+        // ignore quota / privacy-mode failures
+      }
+      return next;
+    });
+  };
 
   const handleDismiss = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -97,6 +170,7 @@ const DashboardHeader = ({
       queryClient.invalidateQueries({ queryKey: ["directus-notifications"] });
     } catch (error) {
       console.error("Failed to dismiss notification:", error);
+      toast.error("Couldn't dismiss notification");
     }
   };
 
@@ -105,10 +179,12 @@ const DashboardHeader = ({
     e.stopPropagation();
     if (!user?.id) return;
     try {
-      await clearAllNotifications(user.id);
+      const cleared = await clearAllNotifications(user.id);
       queryClient.invalidateQueries({ queryKey: ["directus-notifications"] });
+      toast.success(cleared > 0 ? `Cleared ${cleared} notification${cleared === 1 ? "" : "s"}` : "Inbox already clear");
     } catch (error) {
       console.error("Failed to clear notifications:", error);
+      toast.error("Couldn't clear notifications");
     }
   };
 
@@ -201,14 +277,24 @@ const DashboardHeader = ({
                   </div>
                   <p className="mt-1 text-[11px] text-slate-500">Tasks and alerts for {district || "your area"}</p>
                 </div>
-                {unreadCount > 0 && (
+                <div className="flex items-center gap-1 shrink-0">
                   <button
-                    className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:text-emerald-800 transition-colors px-2 py-1 rounded-md hover:bg-emerald-50/70"
-                    onClick={handleClearAll}
+                    type="button"
+                    className="text-slate-400 hover:text-emerald-700 transition-colors p-1 rounded-md hover:bg-emerald-50/70"
+                    onClick={toggleSound}
+                    title={soundEnabled ? "Mute notification sound" : "Enable notification sound"}
                   >
-                    Clear all
+                    {soundEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
                   </button>
-                )}
+                  {unreadCount > 0 && (
+                    <button
+                      className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:text-emerald-800 transition-colors px-2 py-1 rounded-md hover:bg-emerald-50/70"
+                      onClick={handleClearAll}
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
               </div>
               <ScrollArea className="h-72">
                 {notifications.length === 0 ? (
@@ -346,7 +432,6 @@ const DashboardHeader = ({
           </DropdownMenu>
         </div>
       </div>
-      <audio ref={audioRef} src="/notification.wav" preload="auto" />
     </div>
   );
 };

@@ -288,7 +288,7 @@ export const getNotifications = async (userId?: string) => {
     "filter[status][_eq]": "inbox",
     "filter[recipient][_eq]": userId, // SECURITY: Strictly filter by recipient
     "sort": "-timestamp",
-    "limit": "20",
+    "limit": "100",
     "fields": "id,subject,message,timestamp,collection,sender,recipient,item",
   });
 
@@ -338,14 +338,30 @@ export const sendMail = async (payload: {
 };
 
 
+/**
+ * Batch-archive every inbox notification for a user with a single Directus
+ * PATCH. Avoids the N+1 race where new notifications arriving mid-clear
+ * survived the loop, and removes the prior 20-item pagination cap.
+ */
 export const clearAllNotifications = async (userId: string) => {
   if (!userId) return 0;
-  const notifications = await getNotifications(userId);
-  await Promise.allSettled(
-    notifications.map((n: Notification) => markNotificationRead(n.id))
-  );
-  return notifications.length;
+  const params = new URLSearchParams({
+    "filter[recipient][_eq]": userId,
+    "filter[status][_eq]": "inbox",
+  });
+  const data = await directusRequest(`/notifications?${params.toString()}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "archived" }),
+  });
+  return Array.isArray(data?.data) ? data.data.length : 0;
 };
+
+/**
+ * Batch-mark every inbox notification for a user as read (status: archived
+ * in this app's semantics is used for dismissal; "read" maps to archived
+ * for the dashboard bell badge).
+ */
+export const markAllNotificationsReadForUser = clearAllNotifications;
 
 /**
  * Manually triggers the Weekly Extract Notifications flow on the server.
@@ -408,14 +424,30 @@ export const notifyAllUsers = async (subject: string, message: string) => {
   return { sent, emailsSent, total: users.length };
 };
 
+// Roles that should be notified when a record is flagged / a flag is
+// resolved. Anything else (caseworkers, viewers) gets filtered out so we
+// stop blasting a notification to every active user in the system.
+const FLAG_NOTIFY_ROLE_KEYWORDS = ["admin", "administrator", "supervisor", "qa", "data quality", "manager"];
+
+const isFlagNotifyRecipient = (u: DirectusUser) => {
+  const roleName =
+    typeof u.role === "object" && u.role !== null
+      ? String((u.role as { name?: string }).name ?? "")
+      : "";
+  if (!roleName) return false;
+  const lower = roleName.toLowerCase();
+  return FLAG_NOTIFY_ROLE_KEYWORDS.some((k) => lower.includes(k));
+};
+
 export const notifyUsersOfFlag = async (hhId: string, verifier: string, comment: string, vcaId?: string) => {
-  const users = await listUsers("active");
+  const users = (await listUsers("active")) as DirectusUser[];
+  const recipients = users.filter(isFlagNotifyRecipient);
   const entityId = vcaId && vcaId !== "Not Available" ? `VCA ${vcaId} (HH ${hhId})` : `Household ${hhId}`;
   const subject = `Record Flagged: ${entityId}`;
   const message = `A record for ${entityId} has been flagged by ${verifier}. \n\nComment: ${comment}`;
 
   return Promise.allSettled(
-    users.map((u: DirectusUser) =>
+    recipients.map((u) =>
       createNotification({
         recipient: u.id,
         subject,
@@ -427,13 +459,14 @@ export const notifyUsersOfFlag = async (hhId: string, verifier: string, comment:
 };
 
 export const notifyUsersOfFlagResolution = async (hhId: string, resolver: string, comment: string, vcaId?: string) => {
-  const users = await listUsers("active");
+  const users = (await listUsers("active")) as DirectusUser[];
+  const recipients = users.filter(isFlagNotifyRecipient);
   const entityId = vcaId && vcaId !== "Not Available" ? `VCA ${vcaId} (HH ${hhId})` : `Household ${hhId}`;
   const subject = `Flag Resolved: ${entityId}`;
   const message = `The flag for ${entityId} has been resolved by ${resolver}. \n\nResolution/Comment: ${comment}`;
 
   return Promise.allSettled(
-    users.map((u: DirectusUser) =>
+    recipients.map((u) =>
       createNotification({
         recipient: u.id,
         subject,
