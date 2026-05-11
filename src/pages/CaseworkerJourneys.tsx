@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Download, Filter, Navigation, CalendarIcon, Flame, Play, Pause, SkipBack, SkipForward, Check, ChevronsUpDown } from "lucide-react";
+import { MapPin, Download, Filter, Navigation, CalendarIcon, Flame, Play, Pause, SkipBack, SkipForward, Check, ChevronsUpDown, Maximize2, Minimize2 } from "lucide-react";
 import { MapContainer, TileLayer, CircleMarker, Popup, Polyline, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -30,13 +30,52 @@ import {
 } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn, normalizePlaceName, dedupePlaceNames } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { getCaseworkerJourneys, getCaseworkerList, getFacilityList } from "@/lib/api";
 import type { JourneyPoint } from "@/lib/api";
 
 const ZAMBIA_CENTER: [number, number] = [-13.1339, 27.8493];
 const DEFAULT_ZOOM = 6;
+
+// Map raw OpenSRP entityType values ("ec_household_service_report",
+// "ec_vca_case_plan", etc.) to human-friendly visit categories. The exposed
+// usernames-on-pin work is paired with this: we surface *what* happened at a
+// stop rather than the internal form name.
+function categorizeVisit(formType: unknown): string {
+  const t = String(formType ?? "").toLowerCase();
+  if (!t) return "Visit";
+  if (
+    t.includes("household") ||
+    t.includes("caregiver") ||
+    t.includes("mother") ||
+    t.includes("pmtct_mother") ||
+    t.includes("hh_")
+  ) return "Household Visit";
+  if (
+    t.includes("vca") ||
+    t.includes("child") ||
+    t.includes("client") ||
+    t.includes("hiv_assessment") ||
+    t.includes("hiv_testing") ||
+    t.includes("muac") ||
+    t.includes("grad") ||
+    t.includes("pmtct_child")
+  ) return "Child Visit";
+  return "Visit";
+}
+
+function visitLabel(types: Array<string | undefined | null>): string {
+  const cats = new Set<string>();
+  for (const t of types) {
+    const c = categorizeVisit(t);
+    if (c) cats.add(c);
+  }
+  if (cats.size === 0) return "Visit";
+  if (cats.size === 1) return [...cats][0];
+  if (cats.has("Household Visit") && cats.has("Child Visit")) return "Household & Child Visit";
+  return [...cats].join(", ");
+}
 
 // Heatmap layer component (uses leaflet.heat via useMap)
 function HeatmapLayer({ points }: { points: [number, number, number][] }) {
@@ -70,11 +109,11 @@ function PlaybackMarker({ position, point }: { position: [number, number]; point
       <Popup>
         <div className="text-sm space-y-0.5">
           <p className="font-semibold text-red-600">Current Position</p>
-          {point?.facility && <p className="text-blue-600 font-medium">{point.facility}</p>}
+          {point?.facility && <p className="text-blue-600 font-medium">{normalizePlaceName(point.facility)}</p>}
           <p className="text-slate-500">
             {point?.visit_date ? new Date(point.visit_date).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
           </p>
-          <p className="text-slate-400 text-xs">{point?.form_type}</p>
+          <p className="text-slate-400 text-xs">{categorizeVisit(point?.form_type)}</p>
         </div>
       </Popup>
     </CircleMarker>
@@ -105,6 +144,22 @@ const CaseworkerJourneys = () => {
 
   // View mode: journey (default), heatmap, playback
   const [viewMode, setViewMode] = useState<"journey" | "heatmap" | "playback">("journey");
+
+  // Fullscreen toggle for the Journey Map card
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  useEffect(() => {
+    if (!isMapFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMapFullscreen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isMapFullscreen]);
 
   // Playback state
   const [playbackIndex, setPlaybackIndex] = useState(0);
@@ -164,19 +219,24 @@ const CaseworkerJourneys = () => {
   //   Provincial User -> only facilities in their province (derived from caseworkerList)
   //   Admin / others  -> full list
   const facilities = useMemo(() => {
-    if (!isDistrictUser && !isProvincialUser) return allFacilities;
-    const allowed = new Set<string>();
-    (caseworkerList as any[]).forEach((cw) => {
-      const f = String(cw?.facility ?? "").trim();
-      if (f) allowed.add(f);
-    });
-    if (allowed.size === 0) return [];
-    const lc = new Set([...allowed].map((s) => s.toLowerCase()));
-    return allFacilities.filter((f: string) => lc.has(String(f).toLowerCase()));
+    const baseList = (() => {
+      if (!isDistrictUser && !isProvincialUser) return allFacilities;
+      const allowed = new Set<string>();
+      (caseworkerList as any[]).forEach((cw) => {
+        const f = String(cw?.facility ?? "").trim();
+        if (f) allowed.add(f);
+      });
+      if (allowed.size === 0) return [];
+      const lc = new Set([...allowed].map((s) => s.toLowerCase()));
+      return allFacilities.filter((f: string) => lc.has(String(f).toLowerCase()));
+    })();
+    // Title-case ward names ("chibale" → "Chibale") and collapse duplicates
+    // that differ only by case so the dropdown never lists "chibale" + "Chibale".
+    return dedupePlaceNames(baseList as string[]).sort((a, b) => a.localeCompare(b));
   }, [allFacilities, caseworkerList, isDistrictUser, isProvincialUser]);
 
   // Facility/ward filtering is client-side (applies live on selection, no Apply needed)
-  const validPoints = useMemo(() => {
+  const filteredPoints = useMemo(() => {
     if (selectedFacility && selectedFacility !== "all") {
       const filter = selectedFacility.toLowerCase();
       return allValidPoints.filter((p: any) => {
@@ -186,6 +246,34 @@ const CaseworkerJourneys = () => {
     }
     return allValidPoints;
   }, [allValidPoints, selectedFacility]);
+
+  // Collapse same (entity, date) into a single GPS marker so a caseworker who
+  // logged multiple services for the same household / VCA in one day shows
+  // as one dot, not a stack of overlapping markers. We attach the visit
+  // count and the unique form types so the popup can still surface that
+  // multiple things happened at that stop.
+  const validPoints = useMemo(() => {
+    const groups = new Map<string, { rep: any; visits: any[] }>();
+    for (const p of filteredPoints as any[]) {
+      const dateOnly = String(p.visit_date || "").slice(0, 10);
+      const idKey =
+        p.entity_id ||
+        p.household_id ||
+        `${Math.round(Number(p.lat) * 10000)},${Math.round(Number(p.lng) * 10000)}`;
+      const key = `${idKey}::${dateOnly}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.visits.push(p);
+      } else {
+        groups.set(key, { rep: p, visits: [p] });
+      }
+    }
+    return Array.from(groups.values()).map(({ rep, visits }) => ({
+      ...rep,
+      visit_count: visits.length,
+      visit_form_types: Array.from(new Set(visits.map((v: any) => v.form_type).filter(Boolean))),
+    }));
+  }, [filteredPoints]);
 
   const sortedPoints = useMemo(
     () => [...validPoints].sort((a, b) => new Date(a.visit_date).getTime() - new Date(b.visit_date).getTime()),
@@ -198,7 +286,10 @@ const CaseworkerJourneys = () => {
   );
 
   const heatmapData = useMemo(
-    () => validPoints.map((p) => [Number(p.lat), Number(p.lng), 0.5] as [number, number, number]),
+    () => validPoints.map((p: any) => {
+      const weight = Math.min(0.3 + 0.15 * Number(p.visit_count || 1), 1);
+      return [Number(p.lat), Number(p.lng), weight] as [number, number, number];
+    }),
     [validPoints]
   );
 
@@ -412,7 +503,7 @@ const CaseworkerJourneys = () => {
                             (groups[facility] ||= []).push(cw);
                           });
                           return Object.entries(groups).map(([facility, members]) => (
-                            <CommandGroup key={facility} heading={facility}>
+                            <CommandGroup key={facility} heading={normalizePlaceName(facility)}>
                               {members.map((cw) => {
                                 const label = cw.display_name || cw.caseworker;
                                 const haystack = `${label} ${cw.facility || ""}`;
@@ -516,35 +607,49 @@ const CaseworkerJourneys = () => {
         </GlowCard>
 
         {/* Map Card */}
-        <GlowCard>
+        <div className={cn(isMapFullscreen && "fixed inset-0 z-[1000] bg-white overflow-auto")}>
+        <GlowCard
+          className={cn(isMapFullscreen && "rounded-none border-0 shadow-none")}
+        >
           <CardHeader className="pb-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <MapPin className="h-4 w-4" />
                 Journey Map
               </CardTitle>
-              {validPoints.length > 0 && (
-                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
-                  <button onClick={() => { setViewMode("journey"); setIsPlaying(false); }}
-                    className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                      viewMode === "journey" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    )}>
-                    <MapPin className="h-3 w-3 inline mr-1" /> Journey
-                  </button>
-                  <button onClick={() => { setViewMode("heatmap"); setIsPlaying(false); }}
-                    className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                      viewMode === "heatmap" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    )}>
-                    <Flame className="h-3 w-3 inline mr-1" /> Heatmap
-                  </button>
-                  <button onClick={() => { setViewMode("playback"); setPlaybackIndex(0); setIsPlaying(false); }}
-                    className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                      viewMode === "playback" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                    )}>
-                    <Play className="h-3 w-3 inline mr-1" /> Playback
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {validPoints.length > 0 && (
+                  <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+                    <button onClick={() => { setViewMode("journey"); setIsPlaying(false); }}
+                      className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                        viewMode === "journey" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                      )}>
+                      <MapPin className="h-3 w-3 inline mr-1" /> Journey
+                    </button>
+                    <button onClick={() => { setViewMode("heatmap"); setIsPlaying(false); }}
+                      className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                        viewMode === "heatmap" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                      )}>
+                      <Flame className="h-3 w-3 inline mr-1" /> Heatmap
+                    </button>
+                    <button onClick={() => { setViewMode("playback"); setPlaybackIndex(0); setIsPlaying(false); }}
+                      className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                        viewMode === "playback" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                      )}>
+                      <Play className="h-3 w-3 inline mr-1" /> Playback
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsMapFullscreen((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all"
+                  title={isMapFullscreen ? "Exit fullscreen (Esc)" : "Expand to fullscreen"}
+                >
+                  {isMapFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  <span className="hidden sm:inline">{isMapFullscreen ? "Exit" : "Fullscreen"}</span>
+                </button>
+              </div>
             </div>
             {validPoints.length > 0 && (
               <div className="flex flex-wrap items-center gap-4 mt-2 text-xs">
@@ -557,6 +662,20 @@ const CaseworkerJourneys = () => {
                     </Badge>
                   </div>
                 )}
+                {(() => {
+                  const selectedCw = caseworkerList.find((cw: any) => cw.caseworker === appliedFilters.caseworker) as any;
+                  const district = selectedCw?.district as string | undefined;
+                  if (!district) return null;
+                  return (
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3 w-3 text-emerald-500" />
+                      <span className="text-slate-500">District:</span>
+                      <Badge variant="outline" className="text-xs font-normal border-emerald-200 bg-emerald-50/60 text-emerald-700">
+                        {normalizePlaceName(district)}
+                      </Badge>
+                    </div>
+                  );
+                })()}
                 <div className="flex items-center gap-1.5">
                   <MapPin className="h-3 w-3 text-slate-400" />
                   <span className="text-slate-500">Points:</span>
@@ -574,20 +693,20 @@ const CaseworkerJourneys = () => {
               </div>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className={cn(isMapFullscreen && "p-2 sm:p-3")}>
             {isLoading ? (
-              <div className="flex h-[500px] items-center justify-center rounded-lg bg-slate-50">
+              <div className={cn("flex items-center justify-center rounded-lg bg-slate-50", isMapFullscreen ? "h-[calc(100vh-130px)]" : "h-[500px]")}>
                 <div className="text-center">
                   <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                   <p className="text-sm text-slate-500">Loading GPS data...</p>
                 </div>
               </div>
             ) : isError ? (
-              <div className="flex h-[500px] items-center justify-center rounded-lg bg-red-50">
+              <div className={cn("flex items-center justify-center rounded-lg bg-red-50", isMapFullscreen ? "h-[calc(100vh-130px)]" : "h-[500px]")}>
                 <p className="text-sm font-medium text-red-600">Failed to load journey data.</p>
               </div>
             ) : !hasServerFilter ? (
-              <div className="flex h-[500px] items-center justify-center rounded-lg bg-slate-50">
+              <div className={cn("flex items-center justify-center rounded-lg bg-slate-50", isMapFullscreen ? "h-[calc(100vh-130px)]" : "h-[500px]")}>
                 <div className="text-center max-w-md">
                   <MapPin className="mx-auto mb-3 h-10 w-10 text-slate-300" />
                   <p className="text-sm font-medium text-slate-600">Select a caseworker or date range</p>
@@ -595,7 +714,7 @@ const CaseworkerJourneys = () => {
                 </div>
               </div>
             ) : validPoints.length === 0 ? (
-              <div className="flex h-[500px] items-center justify-center rounded-lg bg-slate-50">
+              <div className={cn("flex items-center justify-center rounded-lg bg-slate-50", isMapFullscreen ? "h-[calc(100vh-130px)]" : "h-[500px]")}>
                 <div className="text-center max-w-md">
                   <MapPin className="mx-auto mb-3 h-10 w-10 text-slate-300" />
                   <p className="text-sm font-medium text-slate-600">No GPS data found for this caseworker</p>
@@ -603,7 +722,7 @@ const CaseworkerJourneys = () => {
                 </div>
               </div>
             ) : (
-              <>
+              <div>
                 {/* Playback controls - above map */}
                 {viewMode === "playback" && sortedPoints.length > 0 && (
                   <div className="mb-3 p-4 bg-slate-50 rounded-xl">
@@ -631,15 +750,15 @@ const CaseworkerJourneys = () => {
                     {playbackPoint && (
                       <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
                         <span>{new Date(playbackPoint.visit_date).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                        {(playbackPoint as any).facility && <span className="text-blue-600 font-medium">{(playbackPoint as any).facility}</span>}
+                        {(playbackPoint as any).facility && <span className="text-blue-600 font-medium">{normalizePlaceName((playbackPoint as any).facility)}</span>}
                         {(playbackPoint as any).household_id && <span className="text-emerald-600 font-medium">ID: {(playbackPoint as any).household_id}</span>}
-                        <span>{playbackPoint.form_type}</span>
+                        <span>{categorizeVisit(playbackPoint.form_type)}</span>
                       </div>
                     )}
                   </div>
                 )}
 
-                <div className="h-[500px] overflow-hidden rounded-lg">
+                <div className={cn("overflow-hidden rounded-lg", isMapFullscreen ? "h-[calc(100vh-130px)]" : "h-[500px]")}>
                   <MapContainer center={mapCenter} zoom={mapZoom} className="h-full w-full" scrollWheelZoom={true}>
                     <TileLayer
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -649,20 +768,33 @@ const CaseworkerJourneys = () => {
                     {/* Journey view */}
                     {viewMode === "journey" && (
                       <>
-                        {validPoints.map((point: any, idx: number) => (
-                          <CircleMarker key={`j-${idx}`} center={[Number(point.lat), Number(point.lng)]} radius={5}
-                            pathOptions={{ color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.8, weight: 1 }}>
-                            <Popup>
-                              <div className="text-sm space-y-0.5">
-                                <p className="font-semibold">{point.caseworker}</p>
-                                {point.facility && <p className="text-blue-600 font-medium">{point.facility}</p>}
-                                {point.household_id && <p className="text-emerald-600 text-xs font-medium">ID: {point.household_id}</p>}
-                                <p className="text-slate-500">{new Date(point.visit_date).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-                                <p className="text-slate-400 text-xs">{point.form_type}</p>
-                              </div>
-                            </Popup>
-                          </CircleMarker>
-                        ))}
+                        {validPoints.map((point: any, idx: number) => {
+                          const visits = Number(point.visit_count || 1);
+                          const radius = visits > 1 ? Math.min(5 + Math.sqrt(visits) * 2, 12) : 5;
+                          const types: string[] = Array.isArray(point.visit_form_types) && point.visit_form_types.length > 0
+                            ? point.visit_form_types
+                            : (point.form_type ? [point.form_type] : []);
+                          return (
+                            <CircleMarker key={`j-${idx}`} center={[Number(point.lat), Number(point.lng)]} radius={radius}
+                              pathOptions={{ color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.8, weight: 1 }}>
+                              <Popup>
+                                <div className="text-sm space-y-0.5">
+                                  {point.facility && <p className="text-blue-600 font-semibold">{normalizePlaceName(point.facility)}</p>}
+                                  {point.household_id && <p className="text-emerald-600 text-xs font-medium">ID: {point.household_id}</p>}
+                                  <p className="text-slate-500">{new Date(point.visit_date).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                                  {visits > 1 ? (
+                                    <p className="text-slate-400 text-xs">
+                                      <span className="inline-flex items-center px-1.5 py-0.5 mr-1 rounded bg-emerald-100 text-emerald-700 font-bold">{visits} visits</span>
+                                      {visitLabel(types)}
+                                    </p>
+                                  ) : (
+                                    <p className="text-slate-400 text-xs">{categorizeVisit(point.form_type)}</p>
+                                  )}
+                                </div>
+                              </Popup>
+                            </CircleMarker>
+                          );
+                        })}
                         {polylinePositions.length > 1 && (
                           <Polyline positions={polylinePositions} pathOptions={{ color: "#3b82f6", weight: 3, opacity: 0.7 }} />
                         )}
@@ -687,10 +819,11 @@ const CaseworkerJourneys = () => {
                     )}
                   </MapContainer>
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </GlowCard>
+        </div>
       </div>
     </DashboardLayout>
   );
