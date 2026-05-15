@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useFyFilter } from "@/context/FyFilterContext";
 import {
   Search,
   FileText,
@@ -239,11 +240,15 @@ const VcaServicesDashboard = () => {
     }
   }, [user, selectedDistrict, isDistrictUser]);
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   // Discover districts
   const vcaListQuery = useQuery({
-    queryKey: ["vca-districts-discovery"],
-    queryFn: () => getChildrenByDistrict(""),
-    staleTime: 1000 * 60 * 30, // 30 minutes
+    queryKey: ["vca-districts-discovery", fyKey],
+    queryFn: () => getChildrenByDistrict("", fyArg),
+    staleTime: 1000 * 60 * 30,
   });
 
   const discoveredDistrictsMap = useMemo(() => {
@@ -268,14 +273,14 @@ const VcaServicesDashboard = () => {
   }, [discoveredDistrictsMap]);
 
   const vcasQuery = useQuery({
-    queryKey: ["vca-vcas-all", "All"], // Fetch all for local filtering
-    queryFn: () => getChildrenByDistrict(""),
+    queryKey: ["vca-vcas-all", "All", fyKey],
+    queryFn: () => getChildrenByDistrict("", fyArg),
     staleTime: 1000 * 60 * 30,
   });
 
   // 1. PERFORMANCE: Enhanced query configuration with aggressive caching
   const servicesQuery = useQuery({
-    queryKey: ["vca-services-all", "All"], // Fetch all for local filtering (syncs variants)
+    queryKey: ["vca-services-all", "All", fyKey],
     queryFn: () => getVcaServicesByDistrict(""),
     staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60,

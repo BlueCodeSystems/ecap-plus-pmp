@@ -38,6 +38,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toTitleCase } from "@/lib/utils";
 import { DEFAULT_DISTRICT, getChildrenArchivedRegister, getHouseholdsByDistrict } from "@/lib/api";
+import { useFyFilter } from "@/context/FyFilterContext";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
@@ -204,11 +205,16 @@ const VcaArchivedRegister = () => {
   const [graduationFilter, setGraduationFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   const archivedQuery = useQuery({
-    queryKey: ["vcas", "archived", "All", graduationFilter], // Fetch all for local filtering
+    queryKey: ["vcas", "archived", "All", graduationFilter, fyKey],
     queryFn: () =>
       getChildrenArchivedRegister("", {
         reason: graduationFilter === "all" ? undefined : graduationFilter,
+        fy: fyArg,
       }),
     staleTime: 1000 * 60 * 10,
   });

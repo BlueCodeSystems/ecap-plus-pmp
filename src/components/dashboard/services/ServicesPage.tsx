@@ -36,10 +36,13 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { getHouseholdsByDistrict, getServiceSummary } from "@/lib/api";
+import { useFyFilter } from "@/context/FyFilterContext";
 import { downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -144,6 +147,7 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
   const [domainFilter, setDomainFilter] = useState<"all" | ServicePillar>("all");
   const [dateWindow, setDateWindow] = useState("all");
   const [issueFilter, setIssueFilter] = useState<string | null>(null);
+  const [focusedEntityId, setFocusedEntityId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRecord, setSelectedRecord] = useState<NormalizedServiceRecord | null>(null);
   const deferredSearch = useDeferredValue(searchQuery);
@@ -170,6 +174,12 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
     setSelectedRecord(null);
   }, [type, selectedDistrict, domainFilter, dateWindow, deferredSearch]);
 
+  // Switching service tab should clear an in-flight focus — the same
+  // entity_id might not exist in the new tab's data.
+  useEffect(() => {
+    setFocusedEntityId(null);
+  }, [type]);
+
   // Discover districts (province-scoped if needed)
   const hhListQuery = useQuery({
     queryKey: ["districts-discovery-services", "All"],
@@ -194,9 +204,13 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
     return districtOptions.filter((d) => d !== "All");
   }, [selectedDistrict, districtOptions]);
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   const { data: summary } = useQuery({
-    queryKey: ["service-summary", type, districtParam, undefined, undefined],
-    queryFn: () => getServiceSummary({ type, district: districtParam }),
+    queryKey: ["service-summary", type, districtParam, undefined, undefined, fyKey],
+    queryFn: () => getServiceSummary({ type, district: districtParam, fy: fyArg }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -207,9 +221,16 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
         const rows = await fetchRawServices(type, district);
         return (rows as Array<Record<string, unknown>>).map((row) => ({ ...row, _sourceDist: district }));
       },
-      staleTime: 60 * 1000,
+      // Bumped from 60s — these are monthly aggregations that don't change
+      // minute-to-minute. The IndexedDB persister in App.tsx keeps the
+      // payload across page reloads too.
+      staleTime: 15 * 60 * 1000,
+      gcTime: 60 * 60 * 1000,
       refetchOnWindowFocus: false,
       retry: false,
+      // Keep showing previously fetched rows while a fresh fetch runs in
+      // the background — table never blanks out on tab/district switch.
+      placeholderData: (previous: unknown) => previous,
     })),
   });
 
@@ -218,9 +239,11 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
       ? districtsToFetch.map((district) => ({
           queryKey: ["services-workspace", "household-register", district],
           queryFn: () => fetchHouseholdRegister(district),
-          staleTime: 5 * 60 * 1000,
+          staleTime: 30 * 60 * 1000,
+          gcTime: 60 * 60 * 1000,
           refetchOnWindowFocus: false,
           retry: false,
+          placeholderData: (previous: unknown) => previous,
         }))
       : [],
   });
@@ -270,8 +293,14 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
       ? new Date(Date.now() - windowConfig.days * 24 * 60 * 60 * 1000)
       : null;
     const search = deferredSearch.trim().toLowerCase();
+    const focusedKey = focusedEntityId ? String(focusedEntityId).trim().toLowerCase() : null;
 
     return records.filter((record) => {
+      // Focus-on-entity takes priority — exact (case-insensitive) match
+      // on entityId so "Focus" from the duplicate detector reliably surfaces
+      // the row, even if the substring search would have matched too much.
+      if (focusedKey && String(record.entityId).toLowerCase() !== focusedKey) return false;
+
       if (domainFilter !== "all" && !record.pillars.includes(domainFilter)) return false;
       if (issueFilter && !record.issueKeys.includes(issueFilter)) return false;
 
@@ -296,7 +325,23 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
 
       return true;
     });
-  }, [records, domainFilter, issueFilter, dateWindow, deferredSearch]);
+  }, [records, domainFilter, issueFilter, dateWindow, deferredSearch, focusedEntityId]);
+
+  // After data settles, if focus is set but no record matches, tell the
+  // user instead of leaving them on a silent "no records" screen.
+  useEffect(() => {
+    if (!focusedEntityId) return;
+    const stillLoading = serviceQueries.some((query) => query.isFetching);
+    if (stillLoading) return;
+    if (records.length === 0) return;
+    const matched = records.some((record) => String(record.entityId).toLowerCase() === focusedEntityId.toLowerCase());
+    if (!matched) {
+      toast.error(
+        `No service records for ${focusedEntityId} in the current scope. The record may belong to a different service type or to a district you don't have access to.`,
+      );
+      setFocusedEntityId(null);
+    }
+  }, [focusedEntityId, records, serviceQueries]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRecords.length / ITEMS_PER_PAGE));
   const paginatedRecords = useMemo(() => {
@@ -316,12 +361,47 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
       return date && date.getMonth() === thisMonth.getMonth() && date.getFullYear() === thisMonth.getFullYear();
     }).length;
 
+    // Ordered list of issue types that actually showed up, for the
+    // "Records flagged with issues" popover.
+    const issueBreakdown = Object.entries(issueCounts)
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([key, count]) => ({
+        key,
+        count,
+        label: ISSUE_META[key]?.label ?? key,
+        hint: ISSUE_META[key]?.hint,
+      }));
+
+    const noun = meta.shortLabel.toLowerCase();
     return [
-      { label: "Loaded records", value: records.length, icon: Database, tone: "text-slate-600 bg-slate-50 border-slate-100" },
-      { label: "This month", value: monthlyRecords, icon: Activity, tone: "text-emerald-700 bg-emerald-50 border-emerald-100" },
-      { label: "Records with issues", value: recordsWithIssues, icon: AlertTriangle, tone: "text-amber-700 bg-amber-50 border-amber-100" },
+      {
+        key: "loaded",
+        label: `${meta.shortLabel} records on this page`,
+        value: records.length,
+        icon: Database,
+        tone: "text-slate-600 bg-slate-50 border-slate-100",
+        tooltip: `How many ${noun} service records were loaded from the Live database for the district, domain, and date filters above. This is what the table below paginates through.`,
+      },
+      {
+        key: "monthly",
+        label: `This month's ${noun} services`,
+        value: monthlyRecords,
+        icon: Activity,
+        tone: "text-emerald-700 bg-emerald-50 border-emerald-100",
+        tooltip: `${noun.charAt(0).toUpperCase() + noun.slice(1)} service records whose service_date falls in the current calendar month, counted across the same scope as the table.`,
+      },
+      {
+        key: "issues",
+        label: "Records flagged with issues",
+        value: recordsWithIssues,
+        icon: AlertTriangle,
+        tone: "text-amber-700 bg-amber-50 border-amber-100",
+        tooltip: "Records that hit at least one data-quality check. Hover or click for the breakdown.",
+        breakdown: issueBreakdown,
+      },
     ];
-  }, [records]);
+  }, [records, issueCounts, meta.shortLabel]);
 
   const handleExportCsv = () => {
     if (filteredRecords.length === 0) {
@@ -388,29 +468,26 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
   };
 
   const handleDuplicateFocus = (entityId: string) => {
-    // Reset every filter that could exclude the focused record so it
-    // actually surfaces in the table — otherwise the toast fires but the
-    // record stays hidden behind a date window / domain / district scope.
-    setSearchQuery(entityId);
+    // Clear every filter that could hide the focused record. The
+    // focusedEntityId state does an exact-match filter on entityId so
+    // we don't depend on the free-text search resolving.
+    setSearchQuery("");
     setIssueFilter(null);
     setDomainFilter("all");
     setDateWindow("all");
-    if (isDistrictUser && user?.location) {
-      // District-locked users stay scoped to their own district.
-      setSelectedDistrict(user.location);
-    } else if (selectedDistrict !== "All") {
+    setFocusedEntityId(entityId);
+    if (!isDistrictUser && selectedDistrict !== "All") {
       // Broaden to all districts so a duplicate from a different scope
-      // can show up.
+      // can surface. District-locked users stay scoped to their own district.
       setSelectedDistrict("All");
     }
     setCurrentPage(1);
 
-    // Scroll the records table into view so the user sees the result.
     setTimeout(() => {
       document.getElementById("services-records-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
 
-    toast.info(`Focused on ${entityId} — table filtered to that record.`);
+    toast.info(`Searching for ${entityId}…`);
   };
 
   const rawEntries = selectedRecord
@@ -507,22 +584,71 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
         </Select>
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-3 px-1 sm:grid-cols-3">
-        {operationalStats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="rounded-lg border border-slate-200 bg-white p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{stat.label}</span>
-                <span className={cn("rounded-md border p-1.5", stat.tone)}>
-                  <Icon className="h-3.5 w-3.5" />
-                </span>
+      <TooltipProvider delayDuration={150}>
+        <div className="mb-4 grid grid-cols-1 gap-3 px-1 sm:grid-cols-3">
+          {operationalStats.map((stat) => {
+            const Icon = stat.icon;
+            const breakdown = (stat as { breakdown?: Array<{ key: string; count: number; label: string; hint?: string }> }).breakdown;
+            const card = (
+              <div className="rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-emerald-200 hover:bg-emerald-50/30 cursor-help">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{stat.label}</span>
+                  <span className={cn("rounded-md border p-1.5", stat.tone)}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <div className="mt-2 font-mono text-2xl font-bold text-slate-900">{stat.value.toLocaleString()}</div>
               </div>
-              <div className="mt-2 font-mono text-2xl font-bold text-slate-900">{stat.value.toLocaleString()}</div>
-            </div>
-          );
-        })}
-      </div>
+            );
+
+            if (breakdown && breakdown.length > 0) {
+              return (
+                <Popover key={stat.key}>
+                  <PopoverTrigger asChild>{card}</PopoverTrigger>
+                  <PopoverContent side="bottom" align="start" className="w-72 p-3">
+                    <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      Top issues in the loaded records
+                    </div>
+                    <ul className="space-y-2">
+                      {breakdown.map((row) => (
+                        <li key={row.key} className="flex items-start justify-between gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIssueFilter(row.key);
+                              setCurrentPage(1);
+                              document.getElementById("services-records-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }}
+                            className="text-left text-xs text-slate-700 hover:text-emerald-700"
+                          >
+                            <div className="font-semibold">{row.label}</div>
+                            {row.hint && <div className="mt-0.5 text-[10px] text-slate-500">{row.hint}</div>}
+                          </button>
+                          <Badge variant="outline" className="shrink-0 font-mono text-[10px]">
+                            {row.count.toLocaleString()}
+                          </Badge>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 border-t border-slate-100 pt-2 text-[10px] text-slate-500">
+                      Click a row to filter the table to records with that issue.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+
+            return (
+              <Tooltip key={stat.key}>
+                <TooltipTrigger asChild>{card}</TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">
+                  {stat.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
 
       <div className="px-1">
         <CanonicalKpiStrip type={type} district={districtParam} />
@@ -553,7 +679,7 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
         <GlowCard className="min-w-0">
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-sm">
                 <TableProperties className="h-4 w-4 text-primary" />
                 Service Records
                 <Badge variant="outline" className="font-mono text-[10px]">
@@ -562,6 +688,19 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
                 {isRefreshing && (
                   <Badge variant="outline" className="border-sky-200 bg-sky-50 text-[10px] text-sky-700">
                     Syncing
+                  </Badge>
+                )}
+                {focusedEntityId && (
+                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-[10px] text-emerald-700 gap-1.5">
+                    Focused on <span className="font-mono font-bold">{focusedEntityId}</span>
+                    <button
+                      type="button"
+                      className="ml-1 rounded-sm px-1 text-emerald-700 hover:bg-emerald-100"
+                      onClick={() => setFocusedEntityId(null)}
+                      aria-label="Clear focused entity filter"
+                    >
+                      ×
+                    </button>
                   </Badge>
                 )}
               </CardTitle>
@@ -589,9 +728,14 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {isInitialLoading ? (
-              <div className="flex h-56 items-center justify-center">
+            {isInitialLoading || (focusedEntityId && isRefreshing && filteredRecords.length === 0) ? (
+              <div className="flex h-56 flex-col items-center justify-center">
                 <LoadingDots className="text-slate-400" />
+                {focusedEntityId && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Searching for <span className="font-mono font-semibold text-slate-700">{focusedEntityId}</span> across districts…
+                  </p>
+                )}
               </div>
             ) : hasHardError ? (
               <div className="flex h-56 flex-col items-center justify-center text-center text-sm text-rose-600">

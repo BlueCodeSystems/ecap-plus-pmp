@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import LoadingDots from "@/components/aceternity/LoadingDots";
+import MultiFacilityPicker, { parseFacilitiesCsv } from "@/components/MultiFacilityPicker";
 import { createUser, listRoles, type DirectusRole } from "@/lib/directus";
 import { getHouseholdsByDistrict, getFacilityList } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
@@ -100,8 +101,8 @@ const ROLE_CARDS: Array<{
   {
     id: "facility",
     label: "Facility User",
-    scope: "Single facility",
-    description: "Access scoped to one specific facility.",
+    scope: "One or more facilities",
+    description: "Access scoped to the facilities they're attached to.",
     icon: Building2,
     iconBg: "from-amber-100 to-orange-100 text-amber-700",
     glow: "from-amber-200/70 via-orange-200/40",
@@ -167,16 +168,25 @@ const AddUser = () => {
     staleTime: 1000 * 60 * 60,
   });
 
+  // Drop lowercase typo duplicates (e.g. "central", "mkushi", "kapiri mposhi")
+  // — canonical Zambian names are Title Case. If the first letter isn't
+  // uppercase, treat the value as a data-entry mistake and skip it.
+  const isCanonicalName = (s: string | undefined | null) => {
+    if (!s) return false;
+    const trimmed = s.trim();
+    if (!trimmed) return false;
+    return /^[A-Z]/.test(trimmed);
+  };
+
   const { provinces, districtsByProvince } = useMemo(() => {
     const mapping = new Map<string, Set<string>>();
     if (householdsListQuery.data) {
       householdsListQuery.data.forEach((h: any) => {
         const prov = h.province;
         const dist = h.district;
-        if (prov) {
-          if (!mapping.has(prov)) mapping.set(prov, new Set());
-          if (dist) mapping.get(prov)?.add(dist);
-        }
+        if (!isCanonicalName(prov)) return;
+        if (!mapping.has(prov)) mapping.set(prov, new Set());
+        if (isCanonicalName(dist)) mapping.get(prov)?.add(dist);
       });
     }
     const sortedProvinces = Array.from(mapping.keys()).sort();
@@ -238,7 +248,11 @@ const AddUser = () => {
     if (selectedLevel === "support") return "Help desk · Global";
     if (selectedLevel === "province" && formState.province) return formState.province;
     if (selectedLevel === "district" && formState.district) return `${formState.district}, ${formState.province}`;
-    if (selectedLevel === "facility" && formState.facility) return `${formState.facility} · ${formState.district}`;
+    if (selectedLevel === "facility" && formState.facility) {
+      const list = parseFacilitiesCsv(formState.facility);
+      const label = list.length > 1 ? `${list.length} facilities` : list[0] ?? "";
+      return label ? `${label} · ${formState.district}` : "Not configured";
+    }
     return "Not configured";
   }, [selectedLevel, formState.province, formState.district, formState.facility]);
 
@@ -282,7 +296,7 @@ const AddUser = () => {
     } else if (selectedLevel === "facility") {
       if (!formState.province) return toast.error("Please select a Province");
       if (!formState.district) return toast.error("Please select a District");
-      if (!formState.facility) return toast.error("Please select a Facility");
+      if (parseFacilitiesCsv(formState.facility).length === 0) return toast.error("Please select at least one facility");
       title = formState.province;
       location = formState.district;
       facility = formState.facility;
@@ -573,26 +587,17 @@ const AddUser = () => {
                         <div className="space-y-2 sm:col-span-2">
                           <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
                             <Building2 className="h-3 w-3 text-slate-400" />
-                            Facility
+                            Facilities
                             <span className="text-rose-500">*</span>
+                            <span className="ml-2 text-[10px] font-normal text-slate-400">User will only see data from the facilities below</span>
                           </label>
-                          <Select
+                          <MultiFacilityPicker
+                            options={facilitiesQuery.data ?? []}
                             value={formState.facility}
-                            onValueChange={(value) => setFormState((prev) => ({ ...prev, facility: value }))}
-                            disabled={facilitiesQuery.isLoading || !(facilitiesQuery.data ?? []).length}
-                          >
-                            <SelectTrigger className="h-10 bg-white/80 backdrop-blur-md border-slate-200 focus:ring-emerald-500/30 focus:border-emerald-300 text-left">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                <SelectValue placeholder={facilitiesQuery.isLoading ? "Loading facilities…" : "Select facility"} />
-                              </div>
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[260px] rounded-xl border-emerald-100/60 backdrop-blur-xl">
-                              {(facilitiesQuery.data ?? []).map((f) => (
-                                <SelectItem key={f} value={f} className="text-xs font-medium focus:bg-emerald-50/60 focus:text-emerald-700">{f}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onChange={(csv) => setFormState((prev) => ({ ...prev, facility: csv }))}
+                            loading={facilitiesQuery.isLoading}
+                            placeholder="Select one or more facilities"
+                          />
                         </div>
                       )}
                     </div>

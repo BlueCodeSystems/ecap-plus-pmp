@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getHTSRegisterByDistrict, getHouseholdsByDistrict } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useFyFilter } from "@/context/FyFilterContext";
 import { toTitleCase, cn } from "@/lib/utils";
 import {
   BarChart,
@@ -56,11 +57,15 @@ const HTSRegister = () => {
     }
   }, [user, selectedDistrict]);
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   // Discover districts
   const dashboardDistrict = user?.location || "All";
   const householdsListQuery = useQuery({
-    queryKey: ["districts-discovery", dashboardDistrict],
-    queryFn: () => getHouseholdsByDistrict(dashboardDistrict === "All" ? "" : dashboardDistrict),
+    queryKey: ["districts-discovery", dashboardDistrict, fyKey],
+    queryFn: () => getHouseholdsByDistrict(dashboardDistrict === "All" ? "" : dashboardDistrict, fyArg),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -87,7 +92,7 @@ const HTSRegister = () => {
 
   // HTS data query
   const htsQuery = useQuery({
-    queryKey: ["hts-register", "All"],
+    queryKey: ["hts-register", "All", fyKey],
     queryFn: () => getHTSRegisterByDistrict("*"),
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 60,

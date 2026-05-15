@@ -30,6 +30,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toTitleCase } from "@/lib/utils";
 import { DEFAULT_DISTRICT, getHouseholdsByDistrict } from "@/lib/api";
+import { useFyFilter } from "@/context/FyFilterContext";
 import { useAuth } from "@/context/AuthContext";
 import {
   Select,
@@ -126,9 +127,13 @@ const HouseholdRegister = () => {
     return Array.from(discoveredDistrictsMap.keys()).sort();
   }, [discoveredDistrictsMap]);
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   const householdsQuery = useQuery({
-    queryKey: ["households", "All"], // Fetch all for local filtering
-    queryFn: () => getHouseholdsByDistrict(""),
+    queryKey: ["households", "All", fyKey],
+    queryFn: () => getHouseholdsByDistrict("", fyArg),
     staleTime: 1000 * 60 * 10,
   });
 

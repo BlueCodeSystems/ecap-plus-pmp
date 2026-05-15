@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { GlobalSearch } from "./GlobalSearch";
+import FyFilter from "@/components/FyFilter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFileUrl } from "@/lib/directus";
 import { markNotificationRead, clearAllNotifications } from "@/lib/directus";
@@ -212,6 +213,11 @@ const DashboardHeader = ({
         </div>
 
         <div className="flex w-full items-center justify-end gap-2 sm:ml-0 sm:w-auto md:ml-auto">
+          {/* Global FY filter — affects every list/count query app-wide */}
+          <div className="hidden md:block">
+            <FyFilter />
+          </div>
+
           {/* Help & Support */}
           <Button
             variant="ghost"

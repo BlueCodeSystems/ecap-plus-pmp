@@ -94,7 +94,6 @@ const LoginCard = () => {
                 <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   type="email"
-                  placeholder="email@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 pl-9 bg-white/80 backdrop-blur-md border-slate-200 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-300 transition-all"
@@ -112,7 +111,6 @@ const LoginCard = () => {
                 <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within/password:text-emerald-500 transition-colors" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-11 pl-9 pr-11 bg-white/80 backdrop-blur-md border-slate-200 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-300 transition-all font-mono"

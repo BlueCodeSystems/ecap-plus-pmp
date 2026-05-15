@@ -2,9 +2,14 @@ import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import EtlInvalidator from "@/components/EtlInvalidator";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import { FyFilterProvider } from "@/context/FyFilterContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { ThemeProvider } from "@/context/ThemeContext";
 
@@ -31,7 +36,6 @@ import CaregiverRiskRegister from "./pages/CaregiverRiskRegister";
 import VcaRiskRegister from "./pages/VcaRiskRegister";
 import HouseholdRiskRegister from "./pages/HouseholdRiskRegister";
 import HTSRiskRegister from "./pages/HTSRiskRegister";
-import CaseworkerRegister from "./pages/CaseworkerRegister";
 import CaseworkerProfile from "./pages/CaseworkerProfile";
 import Performance from "./pages/Performance";
 
@@ -58,22 +62,79 @@ const CaseworkerJourneys = lazy(() => import("./pages/CaseworkerJourneys"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 2, // 2 minutes
-      refetchOnWindowFocus: false,
+      // Stale-while-revalidate pattern:
+      //  - 60s staleTime: cached data renders instantly; after a minute,
+      //    next mount/focus triggers a *silent background refetch*. The user
+      //    keeps seeing the cached number until the new one arrives, then
+      //    it swaps in without a loading spinner.
+      //  - 24h gcTime: unused data stays in memory all day so navigation
+      //    back to a previous tab is instant.
+      //  - 24h IndexedDB persistence (below): even after a full reload or
+      //    next-day visit, cached data renders immediately.
+      //  - refetchOnMount/Focus/Reconnect all true: every opportunity to
+      //    catch new server data triggers a background refresh.
+      staleTime: 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000,
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      retry: 1,
     },
   },
 });
 
+// IndexedDB-backed persister via idb-keyval. The TanStack cache survives
+// page reloads and tab close/reopen for 24h, giving us stale-while-revalidate
+// behaviour: previously fetched data renders instantly, then a fresh fetch
+// runs in the background.
+const persister = createAsyncStoragePersister({
+  storage: {
+    getItem: (key) => idbGet(key).then((v) => (v === undefined ? null : v)),
+    setItem: (key, value) => idbSet(key, value),
+    removeItem: (key) => idbDel(key),
+  },
+  key: "ecap-plus-pmp-react-query",
+  throttleTime: 1000,
+});
+
+// Bump this when the cache shape changes so old persisted entries are tossed,
+// or to force every user to drop their persisted cache on next load.
+const PERSIST_BUSTER = "v4-2026-05-15-caseworker-fix";
+
+// Auxiliary IDB cache (used by getListFromApiWithCache) is separate from React
+// Query's persister. Clear it once when buster changes so the two caches stay
+// in lock-step — otherwise stale empty-list responses survive a buster bump.
+if (typeof window !== "undefined") {
+  const lastSeen = window.localStorage.getItem("ecap_plus_persist_buster");
+  if (lastSeen !== PERSIST_BUSTER) {
+    void import("@/lib/indexedDbCache").then((m) => m.clearAllCacheEntries());
+    window.localStorage.setItem("ecap_plus_persist_buster", PERSIST_BUSTER);
+  }
+}
+
 const PageLoader = () => null;
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <PersistQueryClientProvider
+    client={queryClient}
+    persistOptions={{
+      persister,
+      maxAge: 24 * 60 * 60 * 1000,
+      buster: PERSIST_BUSTER,
+      dehydrateOptions: {
+        shouldDehydrateQuery: (query) =>
+          query.state.status === "success" && query.state.data !== undefined,
+      },
+    }}
+  >
     <ThemeProvider>
       <AuthProvider>
         <TooltipProvider>
+          <EtlInvalidator />
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <FyFilterProvider>
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -181,14 +242,6 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <CaregiverRiskRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/registers/caseworker-drilldown"
-                  element={
-                    <ProtectedRoute>
-                      <CaseworkerRegister />
                     </ProtectedRoute>
                   }
                 />
@@ -388,11 +441,12 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
+            </FyFilterProvider>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
     </ThemeProvider>
-  </QueryClientProvider>
+  </PersistQueryClientProvider>
 );
 
 export default App;
