@@ -54,7 +54,7 @@ const DashboardLayout = ({ title, subtitle, children }: DashboardLayoutProps) =>
         <AppSidebar />
 
         <main className="flex-1 flex flex-col min-w-0">
-          <GlowHeader className="sticky top-0 z-30 sm:static sm:z-auto">
+          <GlowHeader className="sticky top-0 z-40 sm:relative sm:z-30">
             <div className="flex items-center gap-2 sm:hidden">
               <Sheet>
                 <SheetTrigger asChild>

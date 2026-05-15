@@ -3,6 +3,7 @@ import { Activity, AlertTriangle } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getServiceTimeseries } from "@/lib/api";
 import GlowCard from "@/components/aceternity/GlowCard";
+import { useFyFilter } from "@/context/FyFilterContext";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -13,9 +14,12 @@ interface Props {
 }
 
 const ServicesTimeSeriesChart = ({ type, district, facility }: Props) => {
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["service-timeseries", type, district, facility],
-    queryFn: () => getServiceTimeseries({ type, district, facility }),
+    queryKey: ["service-timeseries", type, district, facility, fyKey],
+    queryFn: () => getServiceTimeseries({ type, district, facility, fy: fyArg }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -28,7 +32,7 @@ const ServicesTimeSeriesChart = ({ type, district, facility }: Props) => {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Activity className="h-4 w-4 text-primary" />
-            Service volume — last 12 months
+            Services delivered per month (last 12 months)
           </CardTitle>
           {!isLoading && !isError && (
             <Badge variant="outline" className="text-[10px] font-mono">

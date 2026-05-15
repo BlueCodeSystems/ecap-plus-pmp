@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useFyFilter } from "@/context/FyFilterContext";
 import {
   ArrowLeft,
   Download,
@@ -88,10 +89,14 @@ const HTSRiskRegister = () => {
     }
   }, [user, selectedDistrict]);
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   // Discover districts
   const householdsListQuery = useQuery({
-    queryKey: ["districts-discovery", selectedDistrict === "All" ? "All" : selectedDistrict],
-    queryFn: () => getHouseholdsByDistrict(selectedDistrict === "All" ? "" : selectedDistrict),
+    queryKey: ["districts-discovery", selectedDistrict === "All" ? "All" : selectedDistrict, fyKey],
+    queryFn: () => getHouseholdsByDistrict(selectedDistrict === "All" ? "" : selectedDistrict, fyArg),
     staleTime: 1000 * 60 * 30,
   });
 
@@ -116,7 +121,7 @@ const HTSRiskRegister = () => {
   }, [discoveredDistrictsMap]);
 
   const htsQuery = useQuery({
-    queryKey: ["hts-register", "All"],
+    queryKey: ["hts-register", "All", fyKey],
     queryFn: () => getHTSRegisterByDistrict("*"),
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 60,

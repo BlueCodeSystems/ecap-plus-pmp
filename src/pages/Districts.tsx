@@ -24,6 +24,7 @@ import {
   getChildrenByDistrict,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useFyFilter } from "@/context/FyFilterContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { cn, toTitleCase } from "@/lib/utils";
@@ -43,21 +44,25 @@ const Districts = () => {
   // ... (Keep existing queries and logic: dashboardDistrict, kpi queries, discovery logic, etc.) ...
   const dashboardDistrict = user?.location || "All";
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   // --- KPI Queries ---
   const householdCountQuery = useQuery({
-    queryKey: ["kpi", "households", dashboardDistrict],
-    queryFn: () => getTotalHouseholdsCount(dashboardDistrict),
+    queryKey: ["kpi", "households", dashboardDistrict, fyKey],
+    queryFn: () => getTotalHouseholdsCount(dashboardDistrict, fyArg),
   });
 
   const vcaCountQuery = useQuery({
-    queryKey: ["kpi", "vcas", dashboardDistrict],
-    queryFn: () => getTotalVcasCount(dashboardDistrict),
+    queryKey: ["kpi", "vcas", dashboardDistrict, fyKey],
+    queryFn: () => getTotalVcasCount(dashboardDistrict, fyArg),
   });
 
   // --- District List Discovery ---
   const householdsListQuery = useQuery({
-    queryKey: ["districts-discovery", dashboardDistrict],
-    queryFn: () => getHouseholdsByDistrict(dashboardDistrict === "All" ? "" : dashboardDistrict),
+    queryKey: ["districts-discovery", dashboardDistrict, fyKey],
+    queryFn: () => getHouseholdsByDistrict(dashboardDistrict === "All" ? "" : dashboardDistrict, fyArg),
     staleTime: 1000 * 60 * 5,
   });
 

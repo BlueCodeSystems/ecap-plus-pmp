@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useFyFilter } from "@/context/FyFilterContext";
 import {
   ArrowLeft,
   Download,
@@ -77,10 +78,15 @@ const HouseholdRiskRegister = () => {
     }
   }, [user, selectedDistrict]);
 
-  // Discover districts
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
+  // Discover districts — list is FY-cohort-scoped so available districts
+  // narrow to those with households actually present in the window.
   const hhListQuery = useQuery({
-    queryKey: ["hh-districts-discovery-reg"],
-    queryFn: () => getHouseholdsByDistrict(""),
+    queryKey: ["hh-districts-discovery-reg", fyKey],
+    queryFn: () => getHouseholdsByDistrict("", fyArg),
     staleTime: 1000 * 60 * 30,
   });
 
@@ -104,9 +110,9 @@ const HouseholdRiskRegister = () => {
     return Array.from(discoveredDistrictsMap.keys()).sort();
   }, [discoveredDistrictsMap]);
 
-  // Data queries
+  // Data queries — services aren't FY-aware yet, but the FY key still rebinds.
   const servicesQuery = useQuery({
-    queryKey: ["hh-services-risk-reg", "All"], // Fetch all for local filtering
+    queryKey: ["hh-services-risk-reg", "All", fyKey],
     queryFn: () => getHouseholdServicesByDistrict(""),
     staleTime: 1000 * 60 * 10,
   });

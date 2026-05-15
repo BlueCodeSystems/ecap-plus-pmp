@@ -77,3 +77,16 @@ export const setCacheEntry = async <T>(key: string, value: T): Promise<void> => 
     console.warn("[IndexedDB] Failed to write cache entry:", key, error);
   }
 };
+
+export const clearAllCacheEntries = async (): Promise<void> => {
+  if (!isIndexedDbAvailable()) return;
+  try {
+    const db = await openCacheDb();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    await runIdbRequest(store.clear());
+    db.close();
+  } catch (error) {
+    console.warn("[IndexedDB] Failed to clear cache:", error);
+  }
+};

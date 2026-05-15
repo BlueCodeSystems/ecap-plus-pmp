@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Download, Filter, Navigation, CalendarIcon, Flame, Play, Pause, SkipBack, SkipForward, Check, ChevronsUpDown, Maximize2, Minimize2 } from "lucide-react";
+import { MapPin, Download, Filter, Navigation, CalendarIcon, Flame, Play, Pause, SkipBack, SkipForward, Check, ChevronsUpDown, Maximize2, Minimize2, Layers, Satellite } from "lucide-react";
 import { MapContainer, TileLayer, CircleMarker, Popup, Polyline, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -37,6 +37,41 @@ import type { JourneyPoint } from "@/lib/api";
 
 const ZAMBIA_CENTER: [number, number] = [-13.1339, 27.8493];
 const DEFAULT_ZOOM = 6;
+
+// Tile-provider config. We default to CartoDB Positron because the muted
+// grey base makes the emerald journey line + heatmap pop, and it's
+// hosted on a real CDN (the public OSM tile server is technically
+// volunteer-only). Satellite uses Esri WorldImagery — free with
+// attribution and high-res over Zambia.
+//
+// `maxNativeZoom` is the deepest zoom level the provider actually has
+// tiles for. Beyond it, Leaflet upscales the last tile (slightly blurry
+// but visible) instead of giving up with blank slots.
+const TILE_LAYERS = {
+  map: {
+    label: "Map",
+    icon: Layers,
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxNativeZoom: 19,
+    maxZoom: 20,
+  },
+  satellite: {
+    label: "Satellite",
+    icon: Satellite,
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution:
+      'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    // Esri WorldImagery has reliable coverage up to z17 worldwide and
+    // typically z18 in urban areas. Rural Zambia often tops out at z17,
+    // so we cap native imagery there and let Leaflet upscale further.
+    maxNativeZoom: 17,
+    maxZoom: 20,
+  },
+} as const;
+type TileMode = keyof typeof TILE_LAYERS;
+const MAP_MAX_ZOOM = 20;
 
 // Map raw OpenSRP entityType values ("ec_household_service_report",
 // "ec_vca_case_plan", etc.) to human-friendly visit categories. The exposed
@@ -147,6 +182,9 @@ const CaseworkerJourneys = () => {
 
   // Fullscreen toggle for the Journey Map card
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+
+  // Tile-layer toggle: map (Positron streets) vs satellite (Esri imagery).
+  const [tileMode, setTileMode] = useState<TileMode>("map");
   useEffect(() => {
     if (!isMapFullscreen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -758,11 +796,40 @@ const CaseworkerJourneys = () => {
                   </div>
                 )}
 
-                <div className={cn("overflow-hidden rounded-lg", isMapFullscreen ? "h-[calc(100vh-130px)]" : "h-[500px]")}>
-                  <MapContainer center={mapCenter} zoom={mapZoom} className="h-full w-full" scrollWheelZoom={true}>
+                <div className={cn("relative overflow-hidden rounded-lg", isMapFullscreen ? "h-[calc(100vh-130px)]" : "h-[500px]")}>
+                  {/* Map / Satellite pill — top-left, above the map */}
+                  <div className="absolute left-3 top-3 z-[400] flex items-center gap-1 rounded-full border border-slate-200 bg-white/95 p-1 shadow-md backdrop-blur-sm">
+                    {(Object.keys(TILE_LAYERS) as TileMode[]).map((mode) => {
+                      const T = TILE_LAYERS[mode];
+                      const Icon = T.icon;
+                      const active = tileMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setTileMode(mode)}
+                          className={cn(
+                            "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                            active
+                              ? "bg-slate-900 text-white shadow-sm"
+                              : "text-slate-600 hover:bg-slate-100",
+                          )}
+                          aria-pressed={active}
+                          title={`Show ${T.label.toLowerCase()} view`}
+                        >
+                          <Icon className="h-3 w-3" />
+                          {T.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <MapContainer center={mapCenter} zoom={mapZoom} maxZoom={MAP_MAX_ZOOM} className="h-full w-full" scrollWheelZoom={true}>
                     <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      key={tileMode}
+                      attribution={TILE_LAYERS[tileMode].attribution}
+                      url={TILE_LAYERS[tileMode].url}
+                      maxNativeZoom={TILE_LAYERS[tileMode].maxNativeZoom}
+                      maxZoom={TILE_LAYERS[tileMode].maxZoom}
                     />
 
                     {/* Journey view */}

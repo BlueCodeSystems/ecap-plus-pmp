@@ -3,6 +3,7 @@ import { PieChart as PieIcon, AlertTriangle } from "lucide-react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { getServiceDistribution } from "@/lib/api";
 import GlowCard from "@/components/aceternity/GlowCard";
+import { useFyFilter } from "@/context/FyFilterContext";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,9 +23,12 @@ const PILLAR_COLORS: Record<string, string> = {
 };
 
 const ServicesDistributionChart = ({ type, district, facility }: Props) => {
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["service-distribution", type, district, facility],
-    queryFn: () => getServiceDistribution({ type, district, facility }),
+    queryKey: ["service-distribution", type, district, facility, fyKey],
+    queryFn: () => getServiceDistribution({ type, district, facility, fy: fyArg }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -36,7 +40,7 @@ const ServicesDistributionChart = ({ type, district, facility }: Props) => {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="flex items-center gap-2 text-sm">
             <PieIcon className="h-4 w-4 text-primary" />
-            Pillar mix — last 90 days
+            Service mix by domain (last 90 days)
           </CardTitle>
           {!isLoading && !isError && data && (
             <Badge variant="outline" className="text-[10px] font-mono">

@@ -6,7 +6,12 @@ const DQA_BASE_URL =
 
 export const DEFAULT_DISTRICT = import.meta.env.VITE_DEFAULT_DISTRICT;
 const SERVICES_CACHE_TTL_MS = 1000 * 60 * 5;
-const LIST_CACHE_TTL_MS = 1000 * 60 * 10;
+// Keep this short — it's a defensive layer in front of React Query's own cache.
+// If a request returns junk (e.g. backend permission error → empty list), we
+// don't want it pinned for minutes. React Query handles the longer-lived
+// memoization upstream (gcTime: 24h) and EtlInvalidator wipes both caches when
+// a Mage ETL run completes.
+const LIST_CACHE_TTL_MS = 1000 * 60;
 const DEBUG_API = import.meta.env.DEV && import.meta.env.VITE_DEBUG_API === "true";
 
 const safeJson = async (response: Response) => {
@@ -229,18 +234,25 @@ const getListFromApiWithCache = async (
   }
 };
 
-export const getTotalVcasCount = async (district?: string) => {
+type FyWindow = { from?: string | null; to?: string | null } | undefined;
+const fyQs = (fy?: FyWindow) => {
+  if (!fy?.from || !fy?.to) return "";
+  const params = new URLSearchParams({ from: fy.from, to: fy.to });
+  return `?${params.toString()}`;
+};
+
+export const getTotalVcasCount = async (district?: string, fy?: FyWindow) => {
   const path = district
-    ? `/child/vcas-count/${encodeURIComponent(district)}`
-    : "/child/vcas-count";
+    ? `/child/vcas-count/${encodeURIComponent(district)}${fyQs(fy)}`
+    : `/child/vcas-count${fyQs(fy)}`;
   const data = await dqaGet(path);
   return getCountValue(data);
 };
 
-export const getTotalHouseholdsCount = async (district?: string) => {
+export const getTotalHouseholdsCount = async (district?: string, fy?: FyWindow) => {
   const path = district
-    ? `/household/households-count/${encodeURIComponent(district)}`
-    : "/household/households-count";
+    ? `/household/households-count/${encodeURIComponent(district)}${fyQs(fy)}`
+    : `/household/households-count${fyQs(fy)}`;
   const data = await dqaGet(path);
   return getCountValue(data);
 };
@@ -268,11 +280,12 @@ export const getVcaCountByDistrict = async (district: string) => {
   return getCountValue(data);
 };
 
-export const getHouseholdsByDistrict = async (district: string) => {
+export const getHouseholdsByDistrict = async (district: string, fy?: FyWindow) => {
   const normalizedDistrict = district || "ALL";
+  const fyKey = fy?.from && fy?.to ? `:${fy.from}_${fy.to}` : "";
   return getListFromApiWithCache(
-    `households_by_district:${normalizedDistrict}`,
-    `/household/all-households/${encodeURIComponent(district)}`,
+    `households_by_district:${normalizedDistrict}${fyKey}`,
+    `/household/all-households/${encodeURIComponent(district)}${fyQs(fy)}`,
     LIST_CACHE_TTL_MS
   );
 };
@@ -284,11 +297,15 @@ export const getHouseholdMembers = async (hhId: string) => {
 
 export const getHouseholdArchivedRegister = async (
   district: string,
-  params?: { de_registration_reason?: string }
+  params?: { de_registration_reason?: string; fy?: FyWindow }
 ) => {
   const queryParams = new URLSearchParams();
   if (params?.de_registration_reason) {
     queryParams.append("de_registration_reason", params.de_registration_reason);
+  }
+  if (params?.fy?.from && params?.fy?.to) {
+    queryParams.append("from", params.fy.from);
+    queryParams.append("to", params.fy.to);
   }
 
   const queryString = queryParams.toString();
@@ -304,11 +321,12 @@ export const getMothersByDistrict = async (district: string) => {
   return getListValue(data);
 };
 
-export const getChildrenByDistrict = async (district: string) => {
+export const getChildrenByDistrict = async (district: string, fy?: FyWindow) => {
   const normalizedDistrict = district || "ALL";
+  const fyKey = fy?.from && fy?.to ? `:${fy.from}_${fy.to}` : "";
   return getListFromApiWithCache(
-    `children_by_district:${normalizedDistrict}`,
-    `/child/vcas-assessed-register/${encodeURIComponent(district)}`,
+    `children_by_district:${normalizedDistrict}${fyKey}`,
+    `/child/vcas-assessed-register/${encodeURIComponent(district)}${fyQs(fy)}`,
     LIST_CACHE_TTL_MS
   );
 };
@@ -320,11 +338,15 @@ export const getVcaProfileById = async (uniqueId: string) => {
 
 export const getChildrenArchivedRegister = async (
   district: string,
-  params?: { reason?: string }
+  params?: { reason?: string; fy?: FyWindow }
 ) => {
   const queryParams = new URLSearchParams();
   if (params?.reason) {
     queryParams.append("reason", params.reason);
+  }
+  if (params?.fy?.from && params?.fy?.to) {
+    queryParams.append("from", params.fy.from);
+    queryParams.append("to", params.fy.to);
   }
 
   const queryString = queryParams.toString();
@@ -449,8 +471,12 @@ export const getFlaggedRecords = async () => {
   if (!token) return [];
 
   try {
+    // Expand Directus user references so flagged_by / user_created / created_by
+    // come back with first_name + last_name instead of bare UUIDs (matches the
+    // dqa-dashboard fetch shape).
+    const fields = "*,flagged_by.first_name,flagged_by.last_name,user_created.first_name,user_created.last_name,created_by.first_name,created_by.last_name";
     const response = await fetch(
-      `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp`,
+      `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp?fields=${encodeURIComponent(fields)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -614,11 +640,12 @@ export interface FacilityPerformance {
   trend_pct: number;
 }
 
-export const getFacilityPerformance = async (params?: { district?: string; facility?: string; ward?: string }): Promise<FacilityPerformance[]> => {
+export const getFacilityPerformance = async (params?: { district?: string; facility?: string; ward?: string; fy?: FyWindow }): Promise<FacilityPerformance[]> => {
   const q = new URLSearchParams();
   if (params?.district && params.district !== "all") q.set("district", params.district);
   if (params?.facility && params.facility !== "all") q.set("facility", params.facility);
   if (params?.ward && params.ward !== "all") q.set("ward", params.ward);
+  if (params?.fy?.from && params?.fy?.to) { q.set("from", params.fy.from); q.set("to", params.fy.to); }
   const data = await dqaGetSkipCache(`/etl/facility-performance${q.toString() ? `?${q}` : ""}`);
   return data?.data ?? [];
 };
@@ -639,11 +666,12 @@ export interface CaseworkerPerformance {
   tier: "top" | "mid" | "bottom" | "inactive";
 }
 
-export const getCaseworkerPerformance = async (params?: { district?: string; facility?: string; ward?: string }): Promise<CaseworkerPerformance[]> => {
+export const getCaseworkerPerformance = async (params?: { district?: string; facility?: string; ward?: string; fy?: FyWindow }): Promise<CaseworkerPerformance[]> => {
   const q = new URLSearchParams();
   if (params?.district && params.district !== "all") q.set("district", params.district);
   if (params?.facility && params.facility !== "all") q.set("facility", params.facility);
   if (params?.ward && params.ward !== "all") q.set("ward", params.ward);
+  if (params?.fy?.from && params?.fy?.to) { q.set("from", params.fy.from); q.set("to", params.fy.to); }
   const data = await dqaGetSkipCache(`/etl/caseworker-performance${q.toString() ? `?${q}` : ""}`);
   return data?.data ?? [];
 };
@@ -659,12 +687,13 @@ export interface ServicePerformance {
   tier: "top" | "mid" | "bottom" | "inactive";
 }
 
-export const getServicePerformance = async (params?: { type?: string; district?: string; facility?: string; ward?: string }): Promise<{ data: ServicePerformance[]; meta: { total_vcas: number; total_households: number } }> => {
+export const getServicePerformance = async (params?: { type?: string; district?: string; facility?: string; ward?: string; fy?: FyWindow }): Promise<{ data: ServicePerformance[]; meta: { total_vcas: number; total_households: number } }> => {
   const q = new URLSearchParams();
   if (params?.type && params.type !== "all") q.set("type", params.type);
   if (params?.district && params.district !== "all") q.set("district", params.district);
   if (params?.facility && params.facility !== "all") q.set("facility", params.facility);
   if (params?.ward && params.ward !== "all") q.set("ward", params.ward);
+  if (params?.fy?.from && params?.fy?.to) { q.set("from", params.fy.from); q.set("to", params.fy.to); }
   const res = await dqaGetSkipCache(`/etl/service-performance${q.toString() ? `?${q}` : ""}`);
   return { data: res?.data ?? [], meta: res?.meta ?? { total_vcas: 0, total_households: 0 } };
 };
@@ -677,11 +706,12 @@ export interface ServiceSummary {
   data: Record<string, number>;
 }
 
-export const getServiceSummary = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string }): Promise<ServiceSummary> => {
+export const getServiceSummary = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string; fy?: FyWindow }): Promise<ServiceSummary> => {
   const q = new URLSearchParams();
   if (params.district && params.district !== "all" && params.district !== "All") q.set("district", params.district);
   if (params.facility && params.facility !== "all") q.set("facility", params.facility);
   if (params.ward && params.ward !== "all") q.set("ward", params.ward);
+  if (params.fy?.from && params.fy?.to) { q.set("from", params.fy.from); q.set("to", params.fy.to); }
   const res = await dqaGetSkipCache(`/etl/services/${params.type}/summary${q.toString() ? `?${q}` : ""}`);
   return { type: params.type, source: res?.source ?? "", generated_at: res?.generated_at ?? "", data: res?.data ?? {} };
 };
@@ -689,11 +719,12 @@ export const getServiceSummary = async (params: { type: "vca" | "caregiver" | "h
 export interface ServiceTimeseriesPoint { month: string; label: string; count: number }
 export interface ServiceTimeseriesResponse { type: string; source: string; generated_at: string; data: ServiceTimeseriesPoint[] }
 
-export const getServiceTimeseries = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string }): Promise<ServiceTimeseriesResponse> => {
+export const getServiceTimeseries = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string; fy?: FyWindow }): Promise<ServiceTimeseriesResponse> => {
   const q = new URLSearchParams();
   if (params.district && params.district !== "all" && params.district !== "All") q.set("district", params.district);
   if (params.facility && params.facility !== "all") q.set("facility", params.facility);
   if (params.ward && params.ward !== "all") q.set("ward", params.ward);
+  if (params.fy?.from && params.fy?.to) { q.set("from", params.fy.from); q.set("to", params.fy.to); }
   const res = await dqaGetSkipCache(`/etl/services/${params.type}/timeseries${q.toString() ? `?${q}` : ""}`);
   return { type: params.type, source: res?.source ?? "", generated_at: res?.generated_at ?? "", data: res?.data ?? [] };
 };
@@ -701,11 +732,12 @@ export const getServiceTimeseries = async (params: { type: "vca" | "caregiver" |
 export interface ServiceDistributionSlice { pillar: string; count: number; pct: number }
 export interface ServiceDistributionResponse { type: string; source: string; generated_at: string; total: number; window_days: number; data: ServiceDistributionSlice[] }
 
-export const getServiceDistribution = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string }): Promise<ServiceDistributionResponse> => {
+export const getServiceDistribution = async (params: { type: "vca" | "caregiver" | "household"; district?: string; facility?: string; ward?: string; fy?: FyWindow }): Promise<ServiceDistributionResponse> => {
   const q = new URLSearchParams();
   if (params.district && params.district !== "all" && params.district !== "All") q.set("district", params.district);
   if (params.facility && params.facility !== "all") q.set("facility", params.facility);
   if (params.ward && params.ward !== "all") q.set("ward", params.ward);
+  if (params.fy?.from && params.fy?.to) { q.set("from", params.fy.from); q.set("to", params.fy.to); }
   const res = await dqaGetSkipCache(`/etl/services/${params.type}/distribution${q.toString() ? `?${q}` : ""}`);
   return { type: params.type, source: res?.source ?? "", generated_at: res?.generated_at ?? "", total: res?.total ?? 0, window_days: res?.window_days ?? 90, data: res?.data ?? [] };
 };
