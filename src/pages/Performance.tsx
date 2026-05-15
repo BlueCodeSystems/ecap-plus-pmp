@@ -42,6 +42,7 @@ import {
   type ServicePerformance,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useFyFilter } from "@/context/FyFilterContext";
 
 const TIER_BADGE: Record<string, { label: string; cls: string }> = {
   top:      { label: "High performer",  cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -555,21 +556,25 @@ const Performance = () => {
     return Array.from(s).sort();
   }, [householdsListQuery.data]);
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   // In ECAP Plus, /etl/facility-list actually returns ward names.
   const wardList = useQuery({ queryKey: ["ward-list"], queryFn: getFacilityList, staleTime: 10 * 60 * 1000 });
   const facilityPerf = useQuery({
-    queryKey: ["facility-performance", district, ward],
-    queryFn: () => getFacilityPerformance({ district, ward }),
+    queryKey: ["facility-performance", district, ward, fyKey],
+    queryFn: () => getFacilityPerformance({ district, ward, fy: fyArg }),
     staleTime: 5 * 60 * 1000,
   });
   const caseworkerPerf = useQuery({
-    queryKey: ["caseworker-performance", district, ward],
-    queryFn: () => getCaseworkerPerformance({ district, ward }),
+    queryKey: ["caseworker-performance", district, ward, fyKey],
+    queryFn: () => getCaseworkerPerformance({ district, ward, fy: fyArg }),
     staleTime: 5 * 60 * 1000,
   });
   const servicePerf = useQuery({
-    queryKey: ["service-performance", district, ward],
-    queryFn: () => getServicePerformance({ district, ward }),
+    queryKey: ["service-performance", district, ward, fyKey],
+    queryFn: () => getServicePerformance({ district, ward, fy: fyArg }),
     staleTime: 5 * 60 * 1000,
   });
 

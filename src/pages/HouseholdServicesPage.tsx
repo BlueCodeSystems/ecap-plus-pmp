@@ -37,16 +37,21 @@ import LoadingDots from "@/components/aceternity/LoadingDots";
 import { useQuery } from "@tanstack/react-query";
 import { getHouseholdServicesByDistrict, getHouseholdsByDistrict, DEFAULT_DISTRICT } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
+import { useFyFilter } from "@/context/FyFilterContext";
 
 const HouseholdServicesPage = () => {
   const navigate = useNavigate();
   const [selectedDistrict, setSelectedDistrict] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   // Discover districts
   const hhListQuery = useQuery({
-    queryKey: ["hh-districts-discovery-services"],
-    queryFn: () => getHouseholdsByDistrict(""),
+    queryKey: ["hh-districts-discovery-services", fyKey],
+    queryFn: () => getHouseholdsByDistrict("", fyArg),
     staleTime: 1000 * 60 * 30,
   });
 
@@ -62,7 +67,7 @@ const HouseholdServicesPage = () => {
 
   // 1. PERFORMANCE: Enhanced query configuration with aggressive caching
   const servicesQuery = useQuery({
-    queryKey: ["household-services-all", selectedDistrict],
+    queryKey: ["household-services-all", selectedDistrict, fyKey],
     queryFn: () => getHouseholdServicesByDistrict(selectedDistrict === "All" ? "*" : selectedDistrict),
     enabled: Boolean(selectedDistrict),
     staleTime: selectedDistrict === "All" ? 1000 * 60 * 30 : 1000 * 60 * 5,

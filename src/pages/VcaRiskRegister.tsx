@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useFyFilter } from "@/context/FyFilterContext";
 import {
   ArrowLeft,
   Download,
@@ -104,15 +105,19 @@ const VcaRiskRegister = () => {
     return Array.from(discoveredDistrictsMap.keys()).sort();
   }, [discoveredDistrictsMap]);
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   // Data queries
   const vcasQuery = useQuery({
-    queryKey: ["vca-vcas-risk-reg", "All"], // Fetch all for local filtering
-    queryFn: () => getChildrenByDistrict(""),
+    queryKey: ["vca-vcas-risk-reg", "All", fyKey],
+    queryFn: () => getChildrenByDistrict("", fyArg),
     staleTime: 1000 * 60 * 10,
   });
 
   const servicesQuery = useQuery({
-    queryKey: ["vca-services-risk-reg", "All"], // Fetch all for local filtering
+    queryKey: ["vca-services-risk-reg", "All", fyKey],
     queryFn: () => getVcaServicesByDistrict(""),
     staleTime: 1000 * 60 * 10,
   });

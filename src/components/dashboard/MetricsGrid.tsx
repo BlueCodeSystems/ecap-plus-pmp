@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   FileCheck,
   Home,
   Users,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";
 import LoadingDots from "@/components/aceternity/LoadingDots";
@@ -18,6 +20,7 @@ import {
   getHouseholdsByDistrict,
 } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useFyFilter } from "@/context/FyFilterContext";
 
 interface MetricCardProps {
   title: string;
@@ -34,6 +37,9 @@ interface MetricCardProps {
     iconText: string;
     borderAccent: string;
   };
+  // When set, the whole card becomes a button that navigates to this route.
+  // Matches the dqa-dashboard MetricsGrid pattern.
+  to?: string;
 }
 
 const MetricCard = ({
@@ -45,7 +51,9 @@ const MetricCard = ({
   variant = "default",
   colorClass,
   isLoading,
+  to,
 }: MetricCardProps & { isLoading?: boolean }) => {
+  const navigate = useNavigate();
   const variantStyles = {
     default: "text-primary",
     success: "text-emerald-500",
@@ -53,19 +61,24 @@ const MetricCard = ({
     danger: "text-destructive",
   };
 
-  return (
+  const inner = (
     <GlowCard hoverable className={colorClass?.borderAccent}>
-      <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-        {colorClass ? (
-          <div className={`rounded-lg p-2 ${colorClass.iconBg} ${colorClass.iconText}`}>
-            {icon}
-          </div>
-        ) : (
-          <div className={variantStyles[variant]}>{icon}</div>
+      <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+        <div className="flex items-center gap-3">
+          {colorClass ? (
+            <div className={`rounded-lg p-2 ${colorClass.iconBg} ${colorClass.iconText}`}>
+              {icon}
+            </div>
+          ) : (
+            <div className={variantStyles[variant]}>{icon}</div>
+          )}
+          <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground">
+            {title}
+          </CardTitle>
+        </div>
+        {to && (
+          <ArrowRight className="h-4 w-4 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-slate-700" />
         )}
-        <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground">
-          {title}
-        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-black text-foreground tracking-tight">
@@ -90,6 +103,19 @@ const MetricCard = ({
       </CardContent>
     </GlowCard>
   );
+
+  if (!to) return inner;
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(to)}
+      className="group block w-full text-left cursor-pointer"
+      aria-label={`${title} — ${subtitle}. Open ${title} register.`}
+    >
+      {inner}
+    </button>
+  );
 };
 
 const MetricsGrid = () => {
@@ -98,15 +124,19 @@ const MetricsGrid = () => {
   const isProvincialUser = user?.description === "Provincial User";
   const userProvince = user?.title;
 
+  const { resolved: fy } = useFyFilter();
+  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
+  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
+
   const totalVcasQuery = useQuery({
-    queryKey: ["metrics", "total-vcas", district],
-    queryFn: () => getTotalVcasCount(district),
+    queryKey: ["metrics", "total-vcas", district, fyKey],
+    queryFn: () => getTotalVcasCount(district, fyArg),
     enabled: !!district,
   });
 
   const totalHouseholdsQuery = useQuery({
-    queryKey: ["metrics", "total-households", district],
-    queryFn: () => getTotalHouseholdsCount(district),
+    queryKey: ["metrics", "total-households", district, fyKey],
+    queryFn: () => getTotalHouseholdsCount(district, fyArg),
     enabled: !!district,
   });
 
@@ -167,6 +197,7 @@ const MetricsGrid = () => {
       icon: <Users className="h-5 w-5" />,
       variant: "default" as const,
       isLoading: totalVcasQuery.isLoading,
+      to: "/vcas",
       colorClass: {
         iconBg: "bg-emerald-50",
         iconText: "text-emerald-600",
@@ -175,11 +206,16 @@ const MetricsGrid = () => {
     },
     {
       title: "Households",
-      value: formatCount(distinctHouseholdsCount),
+      // Use the server-side COUNT(DISTINCT household_id) endpoint rather
+      // than a client-side Set dedupe over the full list — the endpoint
+      // is what the ecapplus-superset 'Total Households' chart uses, so
+      // the two surfaces now agree exactly.
+      value: formatCount(totalHouseholdsQuery.data),
       subtitle: "Distinct households tracked",
       icon: <Home className="h-5 w-5" />,
       variant: "success" as const,
-      isLoading: householdsDataQuery.isLoading,
+      isLoading: totalHouseholdsQuery.isLoading,
+      to: "/households",
       colorClass: {
         iconBg: "bg-emerald-50",
         iconText: "text-emerald-600",
@@ -193,6 +229,7 @@ const MetricsGrid = () => {
       icon: <Users className="h-5 w-5" />,
       variant: "default" as const,
       isLoading: householdsDataQuery.isLoading,
+      to: "/caseworker-journeys",
       colorClass: {
         iconBg: "bg-emerald-50",
         iconText: "text-emerald-600",

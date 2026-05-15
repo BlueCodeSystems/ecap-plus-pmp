@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { useFyFilter } from "@/context/FyFilterContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import GlowCard from "@/components/aceternity/GlowCard";
-import { Activity, Sparkles, ClipboardCheck } from "lucide-react";
+import { Activity, Sparkles, ClipboardCheck, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ const Flags = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [isResolving, setIsResolving] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"all" | "active" | "resolved">("all");
 
   const isDistrictUser = user?.description === "District User";
   const isProvincialUser = user?.description === "Provincial User";
@@ -42,10 +44,14 @@ const Flags = () => {
     queryFn: getFlaggedRecords,
   });
 
-  const records = useMemo(() => {
-    const allRecords = (flagsQuery.data ?? []).filter((r: any) => r.status?.toLowerCase() !== "resolved");
-    // Geographic filtering
-    return allRecords.filter((r: any) => {
+  const isResolvedStatus = (r: any) => {
+    const s = String(r?.status || r?.flag_status || r?.state || "").toLowerCase();
+    return s.includes("resolved") || s.includes("closed") || s.includes("done");
+  };
+
+  // Geographic filtering — applied to every tab.
+  const geoScoped = useMemo(() => {
+    return (flagsQuery.data ?? []).filter((r: any) => {
       if (isDistrictUser && userDistrict && userDistrict !== "All") {
         return r.district === userDistrict;
       }
@@ -55,6 +61,35 @@ const Flags = () => {
       return true;
     });
   }, [flagsQuery.data, isDistrictUser, isProvincialUser, userDistrict, userProvince]);
+
+  // FY filter applied to date_created on the flag itself.
+  const { resolved: fy } = useFyFilter();
+  const fyScoped = useMemo(() => {
+    if (!fy.fromDate || !fy.toDate) return geoScoped;
+    const from = new Date(fy.fromDate).getTime();
+    const to = new Date(`${fy.toDate}T23:59:59Z`).getTime();
+    return geoScoped.filter((r: any) => {
+      const raw = r.date_created || r.created_at || r.flagged_date || r.date;
+      if (!raw) return false;
+      const t = new Date(raw).getTime();
+      return Number.isFinite(t) && t >= from && t <= to;
+    });
+  }, [geoScoped, fy.fromDate, fy.toDate]);
+
+  const counts = useMemo(
+    () => ({
+      all: fyScoped.length,
+      active: fyScoped.filter((r: any) => !isResolvedStatus(r)).length,
+      resolved: fyScoped.filter((r: any) => isResolvedStatus(r)).length,
+    }),
+    [fyScoped],
+  );
+
+  const records = useMemo(() => {
+    if (activeTab === "all") return fyScoped;
+    if (activeTab === "resolved") return fyScoped.filter((r: any) => isResolvedStatus(r));
+    return fyScoped.filter((r: any) => !isResolvedStatus(r));
+  }, [fyScoped, activeTab]);
 
   const filteredRecords = useMemo(() => {
     if (!searchQuery) return records;
@@ -71,7 +106,18 @@ const Flags = () => {
   const pickValue = (record: Record<string, unknown>, keys: string[]): string => {
     for (const key of keys) {
       const value = record[key];
-      if (value !== null && value !== undefined && value !== "") return String(value);
+      if (value === null || value === undefined || value === "") continue;
+      // Directus user reference — extract first_name + last_name when present.
+      if (typeof value === "object") {
+        const v = value as { first_name?: string; last_name?: string };
+        const full = `${v.first_name ?? ""} ${v.last_name ?? ""}`.trim();
+        if (full) return full;
+        continue;
+      }
+      const s = String(value);
+      // A raw UUID is not useful to display — keep looking.
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) continue;
+      return s;
     }
     return "N/A";
   };
@@ -209,7 +255,7 @@ const Flags = () => {
             </div>
             <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
               <span className="bg-gradient-to-r from-rose-700 via-amber-600 to-emerald-700 bg-clip-text text-transparent">
-                Resolve risks &amp; bridge service gaps
+                Flagged forms from the ECAP Plus
               </span>
               <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
                 <ClipboardCheck className="h-3 w-3" /> Review queue
@@ -220,36 +266,72 @@ const Flags = () => {
         </div>
       </div>
 
+      {/* Tab Filter */}
+      <div className="mb-4 inline-flex rounded-xl bg-slate-100/80 p-1 backdrop-blur-sm">
+        {(["all", "active", "resolved"] as const).map((tab) => {
+          const count = tab === "all" ? counts.all : tab === "active" ? counts.active : counts.resolved;
+          const activeCls = tab === "active"
+            ? "bg-white text-rose-700 shadow-sm"
+            : tab === "resolved"
+              ? "bg-white text-emerald-700 shadow-sm"
+              : "bg-white text-slate-800 shadow-sm";
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-xs font-bold transition-all capitalize",
+                activeTab === tab ? activeCls : "text-slate-500 hover:text-slate-800",
+              )}
+            >
+              {tab} <span className="ml-1 text-[10px] font-mono opacity-70">({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Resolution policy note (shown only on Resolved tab) */}
+      {activeTab === "resolved" && (
+        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50/90 via-amber-50/60 to-emerald-50/40 px-4 py-3 shadow-[0_8px_24px_-18px_rgba(244,63,94,0.6)]">
+          <div className="rounded-lg bg-rose-100 p-1.5 text-rose-700">
+            <Info className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0 text-xs text-slate-700 leading-relaxed">
+            <strong className="text-rose-700">Resolution policy:</strong> Only tick a flag as resolved <strong>if and only if the caseworker has fixed the underlying issue</strong> on the actual record. Marking a flag as resolved without verifying the fix will hide real data-quality problems from this queue.
+          </div>
+        </div>
+      )}
+
       <div className="relative">
         <div aria-hidden className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl bg-gradient-to-br from-rose-200/40 via-amber-200/25 to-emerald-200/20 opacity-50 blur-md" />
         <GlowCard>
         <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between border-b border-emerald-100/40 bg-gradient-to-r from-rose-50/30 via-amber-50/15 to-transparent">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-100 to-pink-100 text-rose-700 ring-1 ring-white/60 shadow-sm">
-                <Flag className="h-4 w-4" />
-              </div>
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-rose-800">
-                {user?.location || "All districts"} flagged records
-              </CardTitle>
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-100 to-pink-100 text-rose-700 ring-1 ring-white/60 shadow-sm">
+              <Flag className="h-4 w-4" />
+            </div>
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-rose-800">
+              {user?.location || "All districts"} flagged records
+            </CardTitle>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search records…"
+                className="pl-9 h-10 border-slate-200 bg-white focus-visible:ring-emerald-500/30"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
             <button
               type="button"
               onClick={handleExport}
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
             >
               <Download className="h-3.5 w-3.5" />
               Export CSV
             </button>
-          </div>
-          <div className="relative w-full lg:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search records…"
-              className="pl-9 h-10 border-slate-200 bg-white focus-visible:ring-emerald-500/30"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
           </div>
         </CardHeader>
         <CardContent>
@@ -257,9 +339,9 @@ const Flags = () => {
             <Table>
               <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-rose-50/40">
                 <TableRow className="hover:bg-transparent border-b border-emerald-100/60">
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 hidden sm:table-cell">Form</TableHead>
                   <TableHead className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Subject</TableHead>
                   <TableHead className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 hidden lg:table-cell">Caseworker</TableHead>
+                  <TableHead className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 hidden lg:table-cell">Flagged by</TableHead>
                   <TableHead className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 hidden md:table-cell">Comment</TableHead>
                   <TableHead className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 hidden lg:table-cell w-[120px]">Date</TableHead>
                   <TableHead className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 w-[90px]">Priority</TableHead>
@@ -295,7 +377,14 @@ const Flags = () => {
                   const isResolved = status.includes("resolved") || status.includes("closed");
                   const priority = getPriority(record);
                   const formName = record.form_name || record.form_type || record.title || "Flagged form";
-                  const subject = record.caregiver_name || (record.household_id ? `HH ${record.household_id}` : (record.vca_id ? `CA ${record.vca_id}` : "—"));
+                  // Subject = household_id only (no caregiver name). Ward/facility
+                  // shows beneath as the secondary line.
+                  const subject = record.household_id
+                    ? `HH ${record.household_id}`
+                    : record.vca_id
+                      ? `CA ${record.vca_id}`
+                      : "—";
+                  const wardOrFacility = record.facility || record.ward || record.district || "";
 
                   return (
                     <TableRow
@@ -303,31 +392,15 @@ const Flags = () => {
                       className="cursor-pointer transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent"
                       onClick={() => handleRowClick(record.household_id)}
                     >
-                      <TableCell className="hidden sm:table-cell align-top">
-                        <div className="flex items-center gap-2">
-                          <div className={cn(
-                            "flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-white/60 shadow-sm shrink-0",
-                            isResolved
-                              ? "bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700"
-                              : "bg-gradient-to-br from-rose-100 to-pink-100 text-rose-700"
-                          )}>
-                            {isResolved ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Flag className="h-3.5 w-3.5" />}
-                          </div>
-                          <span className="text-xs font-semibold text-slate-700 truncate max-w-[140px]">{formName}</span>
-                        </div>
-                      </TableCell>
                       <TableCell className="align-top">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-slate-900 leading-tight">{subject}</span>
-                          {(record.facility || record.district) && (
-                            <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
-                              {record.facility || record.district}
+                          {wardOrFacility && (
+                            <span className="text-[10px] text-slate-500 truncate max-w-[200px]">
+                              {wardOrFacility}
                             </span>
                           )}
                           <div className="mt-1 flex flex-wrap gap-2 lg:hidden">
-                            {record.household_id && (
-                              <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1 rounded">HH {record.household_id}</span>
-                            )}
                             {record.caseworker_name && (
                               <span className="text-[10px] text-slate-500">CW: {record.caseworker_name}</span>
                             )}
@@ -336,6 +409,9 @@ const Flags = () => {
                       </TableCell>
                       <TableCell className="hidden lg:table-cell align-top text-xs text-slate-600">
                         {record.caseworker_name || "—"}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell align-top text-xs text-slate-600">
+                        {pickValue(record, ["flagged_by", "user_created", "created_by", "verifier", "supervisor"])}
                       </TableCell>
                       <TableCell className="hidden md:table-cell align-top">
                         <p className="text-xs text-slate-600 leading-snug max-w-[260px] line-clamp-2" title={record.comment}>

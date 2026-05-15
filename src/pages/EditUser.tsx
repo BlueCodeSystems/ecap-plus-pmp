@@ -22,6 +22,7 @@ import {
   type DirectusRole,
 } from "@/lib/directus";
 import { getHouseholdsByDistrict, getFacilityList } from "@/lib/api";
+import MultiFacilityPicker, { parseFacilitiesCsv } from "@/components/MultiFacilityPicker";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/dashboard/ConfirmDialog";
@@ -62,6 +63,15 @@ const EditUser = () => {
     staleTime: 1000 * 60 * 60,
   });
 
+  // Drop lowercase typo duplicates (e.g. "central", "mkushi", "kapiri mposhi")
+  // — canonical Zambian names are Title Case.
+  const isCanonicalName = (s: string | undefined | null) => {
+    if (!s) return false;
+    const trimmed = s.trim();
+    if (!trimmed) return false;
+    return /^[A-Z]/.test(trimmed);
+  };
+
   const { provinces, districtsByProvince } = useMemo(() => {
     const mapping = new Map<string, Set<string>>();
 
@@ -69,13 +79,12 @@ const EditUser = () => {
       householdsListQuery.data.forEach((h: any) => {
         const prov = h.province;
         const dist = h.district;
-        if (prov) {
-          if (!mapping.has(prov)) {
-            mapping.set(prov, new Set());
-          }
-          if (dist) {
-            mapping.get(prov)?.add(dist);
-          }
+        if (!isCanonicalName(prov)) return;
+        if (!mapping.has(prov)) {
+          mapping.set(prov, new Set());
+        }
+        if (isCanonicalName(dist)) {
+          mapping.get(prov)?.add(dist);
         }
       });
     }
@@ -229,7 +238,7 @@ const EditUser = () => {
     } else if (formState.custom_role === "Facility User") {
       if (!formState.province) { toast.error("Please select a Province"); return; }
       if (!formState.district) { toast.error("Please select a District"); return; }
-      if (!formState.facility) { toast.error("Please select a Facility"); return; }
+      if (parseFacilitiesCsv(formState.facility).length === 0) { toast.error("Please select at least one facility"); return; }
       title = formState.province;
       location = formState.district;
       facility = formState.facility;
@@ -430,24 +439,19 @@ const EditUser = () => {
               </div>
             )}
 
-            {/* Facility Selector */}
+            {/* Facility Selector — multi */}
             {formState.custom_role === "Facility User" && (
               <div className="flex flex-col gap-2 sm:col-span-2">
-                <label className="text-sm font-medium text-slate-700">Facility</label>
-                <Select
+                <label className="text-sm font-medium text-slate-700">
+                  Facilities <span className="ml-2 text-[10px] font-normal text-slate-400">User will only see data from the facilities below</span>
+                </label>
+                <MultiFacilityPicker
+                  options={facilitiesQuery.data ?? []}
                   value={formState.facility}
-                  onValueChange={(value) => setFormState((prev) => ({ ...prev, facility: value }))}
-                  disabled={facilitiesQuery.isLoading || !(facilitiesQuery.data ?? []).length}
-                >
-                  <SelectTrigger className="h-10 border-slate-200 bg-white/90 text-sm text-slate-700">
-                    <SelectValue placeholder={facilitiesQuery.isLoading ? "Loading facilities..." : "Select facility"} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[260px]">
-                    {(facilitiesQuery.data ?? []).map((f) => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(csv) => setFormState((prev) => ({ ...prev, facility: csv }))}
+                  loading={facilitiesQuery.isLoading}
+                  placeholder="Select one or more facilities"
+                />
               </div>
             )}
 

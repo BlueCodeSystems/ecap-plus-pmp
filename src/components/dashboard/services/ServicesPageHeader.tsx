@@ -86,7 +86,7 @@ const ServicesPageHeader = ({ type = "household", title, subtitle, source, gener
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             {source && (
               <Badge variant="outline" className="gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
-                <Database className="h-3 w-3" /> data warehouse
+                <Database className="h-3 w-3" /> Live database
               </Badge>
             )}
             {generatedAt && (

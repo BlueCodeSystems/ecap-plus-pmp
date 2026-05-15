@@ -15,6 +15,7 @@ import {
   listRoles,
   listUsers,
   updateUser,
+  UserHasLinkedRecordsError,
   type DirectusRole,
   type DirectusUser,
 } from "@/lib/directus";
@@ -79,70 +80,71 @@ const Users = () => {
       toast.success("User deleted permanently");
     },
     onError: (error) => {
+      if (error instanceof UserHasLinkedRecordsError) {
+        // FK-blocked delete: still refresh the list because we re-stamped
+        // status='suspended' as a fallback.
+        queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
+        toast.warning("Cannot permanently delete", {
+          description: error.message,
+          duration: 8000,
+        });
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Failed to delete user");
     },
   });
 
   const { user: currentUser } = useAuth();
 
-  const filteredUsers = useMemo(() => {
+  // Role-based visibility (applied once, before any status/search filters).
+  // Tab badges and the rendered table both derive from this same set, so the
+  // numbers can never disagree with what the user can actually see.
+  const visibleUsers = useMemo(() => {
     return (usersQuery.data ?? []).filter((user: DirectusUser) => {
-      // Visibility Logic
-      if (currentUser) {
-        // Resolve current user's role name
-        let myRoleName = "User";
-        if (typeof currentUser.role === "string") {
-          myRoleName = rolesById.get(currentUser.role) || "User";
-        } else if (currentUser.role?.name) {
-          myRoleName = currentUser.role.name;
-        }
+      if (!currentUser) return true;
 
-        // Get target user's role name
-        let targetRoleName = "User";
-        if (typeof user.role === "string") {
-          targetRoleName = rolesById.get(user.role) || "User";
-        } else if (user.role?.name) {
-          targetRoleName = user.role.name;
-        }
-
-        const isMyRoleSupport = myRoleName.toLowerCase().includes("support"); // ECAP+ Support or ECAP II Support
-        const isTargetAdmin = targetRoleName === "Administrator"; // Directus Admin
-        const isTargetEcapII = targetRoleName.toLowerCase().includes("ecap ii") || targetRoleName.toLowerCase().includes("ecapii");
-
-        // Universal Rule: Standard Users & Support cannot see Directus Admins
-        if (myRoleName !== "Administrator" && isTargetAdmin) return false;
-
-        // Rule 1: ECAP+ Users (Standard)
-        // Can NOT see ECAP II Support
-        // (Directus Admin already hidden above)
-        if (!isMyRoleSupport && myRoleName !== "Administrator") {
-          if (isTargetEcapII) return false;
-        }
-
-        // Rule 2: Support Users (ECAP+ Support)
-        // Can see everyone (implied by skipping the above block if isMyRoleSupport)
-
-        // Rule 3: Directus Admin
-        // Can see everyone (implied by skipping if myRoleName === "Administrator")
+      let myRoleName = "User";
+      if (typeof currentUser.role === "string") {
+        myRoleName = rolesById.get(currentUser.role) || "User";
+      } else if (currentUser.role?.name) {
+        myRoleName = currentUser.role.name;
       }
 
+      let targetRoleName = "User";
+      if (typeof user.role === "string") {
+        targetRoleName = rolesById.get(user.role) || "User";
+      } else if (user.role?.name) {
+        targetRoleName = user.role.name;
+      }
+
+      const isMyRoleSupport = myRoleName.toLowerCase().includes("support");
+      const isTargetAdmin = targetRoleName === "Administrator";
+      const isTargetEcapII =
+        targetRoleName.toLowerCase().includes("ecap ii") ||
+        targetRoleName.toLowerCase().includes("ecapii");
+
+      if (myRoleName !== "Administrator" && isTargetAdmin) return false;
+      if (!isMyRoleSupport && myRoleName !== "Administrator" && isTargetEcapII) return false;
+      return true;
+    });
+  }, [usersQuery.data, currentUser, rolesById]);
+
+  const filteredUsers = useMemo(() => {
+    return visibleUsers.filter((user: DirectusUser) => {
       const statusMatch = activeTab === "active"
         ? user.status === "active" || !user.status
         : user.status === "suspended";
-
       if (!statusMatch) return false;
 
       const searchLower = searchQuery.toLowerCase();
+      if (!searchLower) return true;
       const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ").toLowerCase();
-      return (
-        fullName.includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower)
-      );
+      return fullName.includes(searchLower) || user.email.toLowerCase().includes(searchLower);
     });
-  }, [usersQuery.data, searchQuery, activeTab, currentUser, rolesById]);
+  }, [visibleUsers, searchQuery, activeTab]);
 
-  const activeCount = (usersQuery.data ?? []).filter(u => u.status === "active" || !u.status).length;
-  const trashCount = (usersQuery.data ?? []).filter(u => u.status === "suspended").length;
+  const activeCount = visibleUsers.filter(u => u.status === "active" || !u.status).length;
+  const trashCount = visibleUsers.filter(u => u.status === "suspended").length;
 
   const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const totalUserCount = activeCount + trashCount;
