@@ -5,6 +5,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="/favicon.ico" />
+
+  <!-- Warm up TCP+TLS to the API origins before the JS bundle requests them.
+       Saves connection-setup time (~100-300ms) on the first calls. -->
+  <link rel="preconnect" href="https://ecapplus-server-dqa.bluecodeltd.com" crossorigin />
+  <link rel="dns-prefetch" href="https://ecapplus-server-dqa.bluecodeltd.com" />
+  <link rel="preconnect" href="https://pmp-api.bluecodeltd.com" crossorigin />
+  <link rel="dns-prefetch" href="https://pmp-api.bluecodeltd.com" />
+
   <title>ECAP+ PMP</title>
   <meta name="description" content="ECAP+ PMP application" />
   <meta name="author" content="ECAP+" />
