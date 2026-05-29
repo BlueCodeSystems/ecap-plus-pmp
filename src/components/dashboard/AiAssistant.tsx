@@ -21,7 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { getAiResponse, Message } from "@/lib/ai-service";
+import { getAiResponse, getAiGreeting, Message } from "@/lib/ai-service";
+import { playDrop } from "@/lib/sounds";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -102,6 +103,7 @@ export const AiAssistant = () => {
 
       const assistantMessage: Message = { role: "assistant", content: cleanContent };
       setMessages(prev => [...prev, assistantMessage]);
+      playDrop();
     } catch (error) {
       const errorMessage: Message = {
         role: "assistant",
@@ -139,6 +141,63 @@ export const AiAssistant = () => {
     }
   }, [messages, storageKey]);
 
+  // Live AI greeting on first open per session. Replaces the static "Hello"
+  // panel with a freshly generated message from the local Ollama model.
+  // Tracks a per-user snapshot of last-visit metadata in localStorage so
+  // returning users get a "welcome back — N days, X new things" summary
+  // instead of an empty greeting.
+  const greetedRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen || greetedRef.current) return;
+    if (messages.length > 0) {
+      greetedRef.current = true;
+      return;
+    }
+    greetedRef.current = true;
+    const userId = user?.id || (user as any)?.email || "guest";
+    const firstName = user?.first_name || "there";
+    const role = (user as any)?.role?.name || (typeof (user as any)?.role === "string" ? (user as any).role : "user");
+    const snapshotKey = `bumi.snapshot.${userId}`;
+    const currentSnap = { ts: Date.now() };
+    let priorSnap: { ts: number } | null = null;
+    try {
+      const raw = localStorage.getItem(snapshotKey);
+      if (raw) priorSnap = JSON.parse(raw);
+    } catch { /* ignore */ }
+
+    let awayLabel: string | undefined;
+    let isReturning = false;
+    if (priorSnap?.ts) {
+      isReturning = true;
+      const mins = Math.max(0, Math.round((Date.now() - priorSnap.ts) / 60000));
+      const days = Math.floor(mins / (60 * 24));
+      const hours = Math.floor((mins % (60 * 24)) / 60);
+      awayLabel = days >= 1 ? `${days} day${days === 1 ? "" : "s"}`
+        : hours >= 1 ? `${hours} hour${hours === 1 ? "" : "s"}`
+        : `${mins} minute${mins === 1 ? "" : "s"}`;
+    }
+    try { localStorage.setItem(snapshotKey, JSON.stringify(currentSnap)); } catch { /* ignore */ }
+
+    setIsLoading(true);
+    getAiGreeting({
+      firstName,
+      role,
+      isReturning,
+      awayLabel,
+      liveSummary: `Platform: ECAP+ PMP. Current page: ${location.pathname}.`,
+      diffSummary: isReturning ? `User last opened the platform ${awayLabel} ago.` : undefined,
+    })
+      .then((text) => {
+        setMessages([{ role: "assistant", content: text || `Hi ${firstName} — ask me anything about ECAP+.` }]);
+        playDrop();
+      })
+      .catch(() => {
+        setMessages([{ role: "assistant", content: `Hi ${firstName} — local agent is warming up. Ask me anything about ECAP+.` }]);
+      })
+      .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   return (
     <div
       className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-4 font-sans"
@@ -160,7 +219,7 @@ export const AiAssistant = () => {
                 <Bot className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <CardTitle className="text-xs font-bold tracking-wide text-slate-800">ECAP+ AI</CardTitle>
+                <CardTitle className="text-xs font-bold tracking-wide text-slate-800">Bumi AI Agent</CardTitle>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-[10px] text-slate-500 font-medium">System intelligence</span>
@@ -200,17 +259,12 @@ export const AiAssistant = () => {
             <>
               <CardContent className="p-0">
                 <ScrollArea ref={scrollRef} className="h-[320px] sm:h-[430px] p-4">
-                  {messages.length === 0 && (
+                  {/* When the chat is empty AND not currently waiting on
+                      the live greeting, show only the suggestion shortcuts
+                      (the welcome message itself comes from the AI). */}
+                  {messages.length === 0 && !isLoading && (
                     <div className="flex h-full flex-col space-y-6 pt-2 px-1">
                       <div className="space-y-6">
-                        <div className="flex items-start gap-3 animate-in fade-in slide-in-from-left-4 duration-700">
-                          <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 text-slate-700 shadow-sm leading-relaxed max-w-[90%]">
-                            <p className="font-semibold text-slate-900 mb-1 text-sm">Hello, {userName}! 👋</p>
-                            <p className="text-[13px] text-slate-600">
-                              I'm here to assist with your Program Management tasks. How can I help you today?
-                            </p>
-                          </div>
-                        </div>
 
                         <div className="flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
                           <p className="text-[10px] font-bold tracking-widest text-slate-400 mb-1 ml-1 px-1">Common queries</p>

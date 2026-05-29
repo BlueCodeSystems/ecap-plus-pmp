@@ -1,10 +1,14 @@
 /**
- * ECAP+ AI Assistant Service
- * Handles communication with the Grok (xAI) API
+ * Bumi · ECAP+ AI Assistant Service
+ *
+ * Talks to the self-hosted Ollama proxy on the ecap-plus-pmp-backend
+ * (POST /agent/chat). PII never leaves the server; no third-party API key.
  */
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const AGENT_BASE_URL =
+  import.meta.env.VITE_ECAP_PLUS_BASE_URL ??
+  import.meta.env.VITE_BACKEND_URL ??
+  "https://server.ecapplus.pmp.bluecodeltd.com";
 
 export interface Message {
   role: "system" | "user" | "assistant";
@@ -12,7 +16,7 @@ export interface Message {
 }
 
 const SYSTEM_PROMPT = `
-You are the ECAP+ AI Assistant, an expert on the ECAP+ Program Management Platform.
+You are Bumi, the ECAP+ PMP Assistant, an expert on the ECAP+ Program Management Platform.
 Your purpose is to help users understand and navigate the platform.
 
 ### SYSTEM CONTEXT:
@@ -42,7 +46,7 @@ Your purpose is to help users understand and navigate the platform.
 - **User Management**: Admin-only section for managing accounts.
 
 ### UI PERSONALIZATION (COLORS ONLY):
-You can help users personalize the UI colors. 
+You can help users personalize the UI colors.
 - You MUST only allow color-related changes.
 - Do NOT perform or suggest: layout changes, component creation/deletion, text modifications, permission changes, or database changes.
 - Allowed targets: banner, sidebar, header, background, button, card, text, theme.
@@ -59,7 +63,7 @@ You can help users personalize the UI colors.
 
 ### STRICT RULES (ZERO-TOLERANCE SCOPE):
 - You MUST ONLY answer questions directly related to the ECAP+ system, its internal data, or specific OVC program workflows.
-- If a user asks a general knowledge question (e.g., geography like "Where is Zambia?", history, coding math, current events), you MUST NOT provide any information whatsoever. 
+- If a user asks a general knowledge question (e.g., geography like "Where is Zambia?", history, coding math, current events), you MUST NOT provide any information whatsoever.
 - In case of off-scope questions, IMMEDIATELY and EXCLUSIVELY respond with: "I'm sorry, my scope is strictly restricted to providing information about the ECAP+ system."
 - Do NOT provide "helpful" context before declining. Do NOT explain why you are declining beyond the standard message.
 - Be professional, precise, and system-focused.
@@ -69,57 +73,92 @@ You will be provided with the current page title/path the user is viewing. Use t
 `;
 
 export const getAiResponse = async (messages: Message[], currentPage?: string) => {
-  if (!GROQ_API_KEY) {
-    throw new Error("Groq API key is missing. Please check your .env file.");
-  }
-
   const contextMessage: Message = {
     role: "system",
-    content: `[Current User Context: The user is currently viewing the ${currentPage || "Dashboard"} page.]`
+    content: `[Current User Context: The user is currently viewing the ${currentPage || "Dashboard"} page.]`,
   };
 
-  const fullMessages = [
-    { role: "system", content: SYSTEM_PROMPT } as Message,
+  const fullMessages: Message[] = [
+    { role: "system", content: SYSTEM_PROMPT },
     contextMessage,
-    ...messages
+    ...messages,
   ];
 
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(`${AGENT_BASE_URL}/agent/chat`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
         messages: fullMessages,
         temperature: 0.7,
         max_tokens: 1024,
-        stream: false
-      })
+      }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("API Error Response:", {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-        fullError: JSON.stringify(errorData, null, 2)
-      });
-      throw new Error(errorData.error?.message || errorData.message || `API request failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        errorData.error?.message ||
+          `Agent request failed: ${response.status} ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
-    console.log("API Success:", { model: data.model, hasContent: !!data.choices?.[0]?.message?.content });
-    return data.choices[0].message.content;
+    return data.choices?.[0]?.message?.content ?? "";
   } catch (error) {
-    console.error("AI Assistant Error:", error);
-    console.error("Error details:", {
-      message: error instanceof Error ? error.message : String(error),
-      apiKey: GROQ_API_KEY ? `${GROQ_API_KEY.substring(0, 10)}...` : 'missing'
-    });
+    console.error("Bumi AI error:", error);
     throw error;
   }
+};
+
+/**
+ * Lightweight greeting helper — used by AiAssistant on first open to ask the
+ * agent to introduce itself with live user + diff context.
+ */
+export const getAiGreeting = async (params: {
+  firstName: string;
+  role?: string;
+  isReturning: boolean;
+  awayLabel?: string;
+  liveSummary: string;
+  diffSummary?: string;
+}) => {
+  const { firstName, role, isReturning, awayLabel, liveSummary, diffSummary } = params;
+  const userCtx = isReturning
+    ? `User: ${firstName}${role ? ` (${role})` : ""}. RETURNING user — last visited ${awayLabel ?? "recently"}.`
+    : `User: ${firstName}${role ? ` (${role})` : ""}. This is their FIRST recorded visit.`;
+
+  const systemPrompt = `You are Bumi — an AI agent for the ECAP+ PMP (Program Management Platform). Self-hosted on Llama 3.2.
+
+Always introduce yourself by name in the greeting, then address the user by their FIRST NAME.
+
+GREETING RULES:
+- New visitor: identify yourself first ("Hi, I'm Bumi — your AI agent for ECAP+"), then a one-line welcome that mentions ONE live data point. Then 3 starter suggestions.
+- Returning user: identify yourself in the same way ("Hi <FirstName>, Bumi here"), reference how long they were away, and highlight the most useful diff item (e.g. "12 new VCAs were registered" or "2 new flags appeared"). Then 3 short next-step suggestions tailored to the diff.
+
+FORMAT (strict):
+- Line 1: self-introduction + greeting + ONE concrete data point.
+- Blank line.
+- 3 bullets each starting with "• " — short imperatives.
+- No markdown headers, max one emoji on line 1.`;
+
+  const response = await fetch(`${AGENT_BASE_URL}/agent/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: `${userCtx} ${liveSummary} ${diffSummary ?? ""} Please greet me now.`,
+        },
+      ],
+      max_tokens: 220,
+      temperature: 0.6,
+    }),
+  });
+
+  if (!response.ok) throw new Error("Greeting fetch failed");
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() ?? `Hi ${firstName} — ask me anything about ECAP+.`;
 };

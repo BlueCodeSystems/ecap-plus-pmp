@@ -29,4 +29,25 @@ export default defineConfig(() => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Stable third-party libs in their own long-lived chunk so an app
+        // deploy doesn't bust the vendor cache for returning users.
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (
+              id.includes("react-dom") ||
+              id.includes("/react/") ||
+              id.includes("react-router") ||
+              id.includes("scheduler") ||
+              id.includes("@tanstack")
+            ) {
+              return "react-vendor";
+            }
+          }
+        },
+      },
+    },
+  },
 }));

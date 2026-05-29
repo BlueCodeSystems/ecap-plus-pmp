@@ -432,7 +432,9 @@ const HouseholdProfile = () => {
 
           <TabsContent value="overview">
             <div className="space-y-6">
-              {/* Caregiver & Personal Info */}
+              {/* Caregiver & Personal Info — fields mirror ecap_plus
+                  `all_households` columns; name/phone kept as confidential
+                  placeholders per data-minimisation policy. */}
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
@@ -443,9 +445,14 @@ const HouseholdProfile = () => {
                   <InfoItem label="Caregiver name" value="Caregiver Name – Confidential" icon={<User className="h-3.5 w-3.5" />} />
                   <InfoItem label="Caregiver sex" value={String(household.caregiver_sex || household.sex || household.gender || "N/A")} />
                   <InfoItem label="Date of birth" value={String(household.caregiver_birthdate || household.caregiver_birth_date || household.dob || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Hiv status" value={String(household.caregiver_hiv_status || household.hiv_status || "N/A")} icon={<Activity className="h-3.5 w-3.5" />} />
+                  <InfoItem label="HIV status" value={String(household.caregiver_hiv_status || household.hiv_status || "N/A")} icon={<Activity className="h-3.5 w-3.5" />} />
+                  <InfoItem label="ART Number" value={String(household.caregiver_art_number || household.art_number || "N/A")} />
+                  <InfoItem label="On HIV Treatment?" value={String(household.is_on_hiv_treatment || household.active_on_treatment || "N/A")} />
+                  <InfoItem label="Date Started ART" value={String(household.date_started_art || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Date HIV Known" value={String(household.date_hiv_known || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
                   <InfoItem label="Marital status" value={String(household.marital_status || "N/A")} />
-                  <InfoItem label="Relation" value={String(household.caregiver_relation || household.relation || "N/A")} />
+                  <InfoItem label="Education" value={String(household.education || "N/A")} />
+                  <InfoItem label="Relation" value={String(household.relation || household.relationship || "N/A")} />
                   <InfoItem label="Phone number" value="Phone – Confidential" />
                 </CardContent>
               </Card>
@@ -461,11 +468,48 @@ const HouseholdProfile = () => {
                   <div className="sm:col-span-2 lg:col-span-1">
                     <InfoItem label="Home Address" value={String(household.homeaddress || household.home_address || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
                   </div>
-                  <InfoItem label="Family Source of Income" value={String(household.fam_source_income || household.family_source_of_income || household.source_of_income || "N/A")} />
-                  <InfoItem label="Monthly expenses" value={String(household.monthlyexpenses || household.monthly_expenses || "N/A")} />
-                  <InfoItem label="Number of beds" value={String(household.beds || household.number_of_beds || "N/A")} />
-                  <InfoItem label="Malaria itns" value={String(household.malaria_itns || household.itns || "N/A")} />
-                  <InfoItem label="Sanitary facilities" value={String(household.sanitary_facilities || "N/A")} />
+                  <InfoItem label="Family Source of Income" value={String(household.fam_source_income || "N/A")} />
+                  <InfoItem label="Monthly Expenses" value={String(household.monthlyexpenses || "N/A")} />
+                  <InfoItem label="Number of Beds" value={String(household.beds || "N/A")} />
+                  <InfoItem label="Malaria ITNs" value={String(household.malaria_itns || "N/A")} />
+                  <InfoItem label="Number of Pregnant Women" value={String(household.number_of_pregnant_women || household.pregnant_woment || "N/A")} />
+                  <InfoItem label="Biological Children" value={String(household.biological_children || "N/A")} />
+                  <InfoItem label="Approved Family?" value={String(household.approved_family || "N/A")} />
+                  <InfoItem label="Acceptance" value={String(household.acceptance || "N/A")} />
+                  <InfoItem label="Screening Location" value={String(household.screening_location || household.screening_location_home || "N/A")} />
+                  <InfoItem label="Screening Date" value={String(household.screening_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Enrolled Date" value={String(household.enrolled_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Date Offered Enrollment" value={String(household.date_offered_enrollment || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Date Referred" value={String(household.date_referred || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Last Service Date" value={String(household.last_service_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Client Screened" value={String(household.client_screened || household.screened || "N/A")} />
+                  <InfoItem label="Client Result" value={String(household.client_result || "N/A")} />
+                  <InfoItem label="HEI" value={String(household.hei || "N/A")} />
+                  <InfoItem label="CALHIV" value={String(household.calhiv || "N/A")} />
+                  <InfoItem label="Child MMD" value={String(household.child_mmd || "N/A")} />
+                  <InfoItem label="VL Results on File?" value={String(household.viral_load_results_on_file || "N/A")} />
+                  <InfoItem label="TPT Client Eligibility" value={String(household.tpt_client_eligibility || "N/A")} />
+                  <InfoItem label="TPT Client Initiated" value={String(household.tpt_client_initiated || "N/A")} />
+                  <InfoItem label="Takes Drugs to Prevent Other Diseases?" value={String(household.takes_drugs_to_prevent_other_diseases || "N/A")} />
+                  <InfoItem label="Is Child's Caregiver an FSW?" value={String(household.is_the_child_caregiver_an_fsw || "N/A")} />
+                  <InfoItem label="Is Biological Mother of Child Living with HIV?" value={String(household.is_biological_mother_of_child_living_with_hiv || "N/A")} />
+                  <InfoItem label="Child Experienced Sexual Violence?" value={String(household.child_ever_experienced_sexual_violence || "N/A")} />
+                  <InfoItem label="Violence in Last 6 Months?" value={String(household.violence_six_months || "N/A")} />
+                  <InfoItem label="Children with Violence (6 Months)?" value={String(household.children_violence_six_months || "N/A")} />
+                  <InfoItem label="VCA Gender" value={String(household.vca_gender || "N/A")} />
+                  <InfoItem label="Adolescent Birthdate" value={String(household.adolescent_birthdate || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Emergency Contact" value={String(household.emergency_name || "N/A")} />
+                  <InfoItem label="School" value={String(household.school || "N/A")} />
+                  <InfoItem label="Service" value={String(household.service || "N/A")} />
+                  <InfoItem label="Quarter" value={String(household.quarter || "N/A")} />
+                  <InfoItem label="Index Check Box" value={String(household.index_check_box || "N/A")} />
+                  <InfoItem label="Consent Check Box" value={String(household.consent_check_box || "N/A")} />
+                  <InfoItem label="ART Check Box" value={String(household.art_check_box || "N/A")} />
+                  <InfoItem label="VL Check Box" value={String(household.vl_check_box || "N/A")} />
+                  <InfoItem label="De-Registration Date" value={String(household.de_registration_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="De-Registration Reason" value={String(household.de_registration_reason || "N/A")} />
+                  <InfoItem label="Exited / Graduation Reason" value={String(household.exited_graduation_reason || "N/A")} />
+                  <InfoItem label="Active on Treatment?" value={String(household.active_on_treatment || "N/A")} />
                 </CardContent>
               </Card>
 

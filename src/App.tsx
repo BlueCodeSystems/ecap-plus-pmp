@@ -13,31 +13,37 @@ import { FyFilterProvider } from "@/context/FyFilterContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { ThemeProvider } from "@/context/ThemeContext";
 
-// --- CORE PAGES (Eagerly Loaded for instant navigation) ---
+// --- CORE PAGES (Eagerly Loaded) — only the entry + post-login home, the two
+// pages almost always loaded first. Splitting these would add a flash, not help.
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
-import HouseholdRegister from "./pages/HouseholdRegister";
-import VcaRegister from "./pages/VcaRegister";
-import HouseholdServices from "./pages/HouseholdServices";
-import HouseholdServicesPage from "./pages/HouseholdServicesPage";
-import VcaServices from "./pages/VcaServices";
-import CaregiverServices from "./pages/CaregiverServices";
-import HTSRegister from "./pages/HTSRegister";
-import PMTCTRegister from "./pages/PMTCTRegister";
-import Users from "./pages/Users";
-import Profile from "./pages/Profile";
-import HouseholdProfile from "./pages/HouseholdProfile";
-import VcaProfile from "./pages/VcaProfile";
-import HTSProfile from "./pages/HTSProfile";
-import VcaServiceProfile from "./pages/VcaServiceProfile";
-import HouseholdServiceProfile from "./pages/HouseholdServiceProfile";
-import CaregiverServiceProfile from "./pages/CaregiverServiceProfile";
-import CaregiverRiskRegister from "./pages/CaregiverRiskRegister";
-import VcaRiskRegister from "./pages/VcaRiskRegister";
-import HouseholdRiskRegister from "./pages/HouseholdRiskRegister";
-import HTSRiskRegister from "./pages/HTSRiskRegister";
-import CaseworkerProfile from "./pages/CaseworkerProfile";
-import Performance from "./pages/Performance";
+
+// Previously these were all eager (~1.5MB initial bundle). Lazy-loading them
+// shrinks the initial download; each becomes its own chunk fetched on first
+// navigation (a few KB gzipped — effectively instant).
+const HouseholdRegister = lazy(() => import("./pages/HouseholdRegister"));
+const VcaRegister = lazy(() => import("./pages/VcaRegister"));
+const HouseholdServices = lazy(() => import("./pages/HouseholdServices"));
+const HouseholdServicesPage = lazy(() => import("./pages/HouseholdServicesPage"));
+const VcaServices = lazy(() => import("./pages/VcaServices"));
+const CaregiverServices = lazy(() => import("./pages/CaregiverServices"));
+const HTSRegister = lazy(() => import("./pages/HTSRegister"));
+const PMTCTRegister = lazy(() => import("./pages/PMTCTRegister"));
+const MotherIndexRegister = lazy(() => import("./pages/MotherIndexRegister"));
+const Users = lazy(() => import("./pages/Users"));
+const Profile = lazy(() => import("./pages/Profile"));
+const HouseholdProfile = lazy(() => import("./pages/HouseholdProfile"));
+const VcaProfile = lazy(() => import("./pages/VcaProfile"));
+const HTSProfile = lazy(() => import("./pages/HTSProfile"));
+const VcaServiceProfile = lazy(() => import("./pages/VcaServiceProfile"));
+const HouseholdServiceProfile = lazy(() => import("./pages/HouseholdServiceProfile"));
+const CaregiverServiceProfile = lazy(() => import("./pages/CaregiverServiceProfile"));
+const CaregiverRiskRegister = lazy(() => import("./pages/CaregiverRiskRegister"));
+const VcaRiskRegister = lazy(() => import("./pages/VcaRiskRegister"));
+const HouseholdRiskRegister = lazy(() => import("./pages/HouseholdRiskRegister"));
+const HTSRiskRegister = lazy(() => import("./pages/HTSRiskRegister"));
+const CaseworkerProfile = lazy(() => import("./pages/CaseworkerProfile"));
+const Performance = lazy(() => import("./pages/Performance"));
 
 
 // --- SECONDARY / HEAVY PAGES (Lazy Loaded to keep initial bundle size optimized) ---
@@ -99,7 +105,7 @@ const persister = createAsyncStoragePersister({
 
 // Bump this when the cache shape changes so old persisted entries are tossed,
 // or to force every user to drop their persisted cache on next load.
-const PERSIST_BUSTER = "v4-2026-05-15-caseworker-fix";
+const PERSIST_BUSTER = "v12-2026-05-27-vendor-chunk-split";
 
 // Auxiliary IDB cache (used by getListFromApiWithCache) is separate from React
 // Query's persister. Clear it once when buster changes so the two caches stay
@@ -193,6 +199,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <PMTCTRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/registers/mother-index"
+                  element={
+                    <ProtectedRoute>
+                      <MotherIndexRegister />
                     </ProtectedRoute>
                   }
                 />
