@@ -519,11 +519,72 @@ const VcaProfile = () => {
                   <CardContent className="grid gap-6 sm:grid-cols-2">
                     {/* Personal info (legal name, address, phone, NRC) intentionally
                         omitted per data-minimisation policy. Only structural attributes remain. */}
+                    {/* Field keys mirror the ecap_plus `children` table columns —
+                        labels that previously read "N/A" did so because the lookup
+                        keys didn't exist on the API response (e.g. relation_to_head
+                        when the column is `relation`). */}
                     <InfoItem label="Date of birth" value={String(vca.birthdate || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Gender identity" value={String(vca.vca_gender || vca.gender || "N/A")} />
-                    <InfoItem label="Age at assessment" value={`${age} Years`} />
-                    <InfoItem label="Geographic ward" value={String(vca.ward || "N/A")} />
-                    <InfoItem label="Province jurisdiction" value={String(vca.province || "N/A")} />
+                    <InfoItem label="Gender" value={String(vca.vca_gender || vca.gender || "N/A")} />
+                    <InfoItem label="Age" value={String(vca.age || `${age} Years`)} />
+                    <InfoItem label="Age Group" value={String(vca.age_group || "N/A")} />
+                    <InfoItem label="School" value={String(vca.school_name || vca.school || "N/A")} />
+                    <InfoItem label="Caregiver Relationship" value={String(vca.relation || "N/A")} />
+                    <InfoItem label="Household ID" value={String(vca.household_id || "N/A")} />
+                    <InfoItem label="Province" value={String(vca.province || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
+                    <InfoItem label="District" value={String(vca.district || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Ward" value={String(vca.ward || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Facility" value={String(vca.facility || "N/A")} icon={<HeartPulse className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Partner" value={String(vca.partner || "N/A")} />
+                    <InfoItem label="Case Status" value={String(vca.case_status || "N/A")} />
+                    <InfoItem label="Member Type" value={String(vca.member_type || "N/A")} />
+                    <InfoItem label="Date Enrolled" value={String(vca.date_enrolled || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Date Referred" value={String(vca.date_referred || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Date Screened" value={String(vca.date_screened || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Last Service Date" value={String(vca.last_service_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Screening Location" value={String(vca.screening_location || "N/A")} />
+                    <InfoItem label="Caseworker Name" value={String(vca.caseworker_name || "N/A")} />
+                    <InfoItem label="Caseworker Phone" value={String(vca.caseworker_phone || "N/A")} />
+                    <InfoItem label="HIV Status" value={String(vca.is_hiv_positive || "N/A")} icon={<HeartPulse className="h-3.5 w-3.5" />} />
+                    <InfoItem label="On HIV Treatment?" value={String(vca.receiving_art || "N/A")} />
+                    <InfoItem label="ART Number" value={String(vca.art_number || "N/A")} />
+                    <InfoItem label="Date HIV Known" value={String(vca.hiv_test_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Date Started ART" value={String(vca.date_started_art || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="MMD Level" value={String(vca.level_mmd || vca.child_mmd || "N/A")} />
+                    <InfoItem label="Last VL Date" value={String(vca.date_last_vl || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Next VL Date" value={String(vca.date_next_vl || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="VL Last Result" value={String(vca.vl_last_result || "N/A")} />
+                    <InfoItem label="VL Next Result" value={String(vca.vl_next_result || "N/A")} />
+                    <InfoItem label="Virally Suppressed?" value={String(vca.vl_suppressed || vca.virally_suppressed || "N/A")} />
+                    <InfoItem label="Child Tested for HIV?" value={String(vca.child_been_tested_for_hiv || "N/A")} />
+                    <InfoItem label="Tested Last Year?" value={String(vca.been_tested_last_year || "N/A")} />
+                    <InfoItem label="Received Results (Last HIV Test)?" value={String(vca.received_results_last_hiv_test || "N/A")} />
+                    <InfoItem label="TB Screening" value={String(vca.tb_screening || "N/A")} />
+                    <InfoItem label="Takes TB Preventive Therapy?" value={String(vca.takes_tb_preventive_therapy || "N/A")} />
+                    <InfoItem label="Takes Drugs to Prevent Other Diseases?" value={String(vca.takes_drugs_to_prevent_other_diseases || "N/A")} />
+                    <InfoItem label="Received Birth Certificate?" value={String(vca.received_birth_certificate || "N/A")} />
+                    <InfoItem label="Pregnant / Breastfeeding?" value={String(vca.is_pregnant_breastfeeding || "N/A")} />
+                    <InfoItem label="Under-5 Malnourished?" value={String(vca.under_5_malnourished || "N/A")} />
+                    <InfoItem label="Is Biological Child?" value={String(vca.is_biological_child || vca.is_biological || "N/A")} />
+                    <InfoItem label="Is Index Case?" value={String(vca.is_index || "N/A")} />
+                    <InfoItem label="Caregiver an FSW?" value={String(vca.is_the_child_caregiver_an_fsw || vca.cfsw || "N/A")} />
+                    <InfoItem label="Mother Currently on Treatment?" value={String(vca.is_mother_currently_on_treatment_wlhiv || "N/A")} />
+                    <InfoItem label="Mother Adhering to Treatment?" value={String(vca.is_mother_adhering_to_treatment_wlhiv || "N/A")} />
+                    <InfoItem label="Mother Virally Suppressed?" value={String(vca.is_mother_virally_suppressed_wlhiv || "N/A")} />
+                    <InfoItem label="Mother ART Number (WLHIV)" value={String(vca.mother_art_number_wlhiv || "N/A")} />
+                    <InfoItem label="Child Experienced Sexual Violence?" value={String(vca.child_ever_experienced_sexual_violence || "N/A")} />
+                    <InfoItem label="Survivor of Other Form of Violence?" value={String(vca.survivors_of_other_form_of_violence || "N/A")} />
+                    <InfoItem label="Living with Disability?" value={String(vca.child_adolescent_living_with_disability || "N/A")} />
+                    <InfoItem label="Aged-Headed Household?" value={String(vca.child_adolescent_in_aged_headed_household || "N/A")} />
+                    <InfoItem label="Child-Headed Household?" value={String(vca.child_adolescent_in_child_headed_household || "N/A")} />
+                    <InfoItem label="Chronically-Ill-Headed Household?" value={String(vca.child_adolescent_in_chronically_ill_headed_household || "N/A")} />
+                    <InfoItem label="Female-Headed Household?" value={String(vca.child_adolescent_in_female_headed_household || "N/A")} />
+                    <InfoItem label="Service" value={String(vca.service || "N/A")} />
+                    <InfoItem label="Quarter" value={String(vca.quarter || "N/A")} />
+                    <InfoItem label="Updated Status" value={String(vca.updated_status || "N/A")} />
+                    <InfoItem label="Date Edited" value={String(vca.date_edited || vca.dateedited || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Time on ART" value={String(vca.time_art || "N/A")} />
+                    <InfoItem label="Time since Last VL" value={String(vca.time_vl || "N/A")} />
+                    <InfoItem label="Time since Last Result" value={String(vca.time_result || "N/A")} />
                   </CardContent>
                 </Card>
               </div>

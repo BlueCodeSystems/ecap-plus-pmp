@@ -11,6 +11,7 @@ import {
   Users,
   UserCog,
   HeartPulse,
+  Baby,
   CircleHelp,
   Calendar,
   Briefcase,
@@ -57,6 +58,7 @@ const sections = [
       { title: "VCAs", url: "/vcas", icon: Users },
       { title: "HTS Register", url: "/registers/hts", icon: Users },
       { title: "PMTCT", url: "/registers/pmtct", icon: HeartPulse },
+      { title: "Mother Index Register", url: "/registers/mother-index", icon: Baby },
     ],
   },
   {
