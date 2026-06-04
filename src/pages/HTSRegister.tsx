@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
-import { RefreshCcw, ChevronRight, AlertCircle, Users, TrendingUp, Info, Activity, ShieldAlert, MapPin, Download } from "lucide-react";
+import {
+  RefreshCcw, AlertCircle, Users,
+  TrendingUp, Info, Activity, MapPin, Download, X,
+} from "lucide-react";
 import { downloadCsv } from "@/lib/exportUtils";
 import { format } from "date-fns";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -15,129 +18,132 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { getHTSRegisterByDistrict, getHouseholdsByDistrict } from "@/lib/api";
+import { getHTSRegisterByDistrict } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useFyFilter } from "@/context/FyFilterContext";
-import { toTitleCase, cn } from "@/lib/utils";
+import { toTitleCase } from "@/lib/utils";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
 } from "recharts";
 import { parseISO, isAfter, subDays } from "date-fns";
 
 
-
-
-
-
 const HTSRegister = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isDistrictUser = user?.description === "District User";
-  const isProvincialUser = user?.description === "Provincial User";
-  const userProvince = user?.title;
+  const { user }          = useAuth();
+  const isDistrictUser    = user?.description === "District User";
+  const isProvincialUser  = user?.description === "Provincial User";
+  const userProvince      = user?.title;
 
-  // Initial state logic for district security
-  const initialDistrict = (isDistrictUser && user?.location)
-    ? user.location
-    : "All";
+  // District lock
+  const lockedDistrict = isDistrictUser && user?.location ? user.location : null;
 
-  const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(
+    lockedDistrict ?? "All"
+  );
 
-  // SECURITY: Enforce district lock for District Users
+  // SECURITY: Re-enforce district lock on user change (e.g. token refresh)
+  // Intentionally omit selectedDistrict from deps to avoid infinite loop
   useEffect(() => {
-    if (isDistrictUser && user?.location && selectedDistrict !== user.location) {
-      setSelectedDistrict(user.location);
+    if (lockedDistrict && selectedDistrict !== lockedDistrict) {
+      setSelectedDistrict(lockedDistrict);
     }
-  }, [user, selectedDistrict]);
+  }, [lockedDistrict]);
 
+  // FY filter
   const { resolved: fy } = useFyFilter();
   const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
   const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
 
-  // Discover districts
-  const dashboardDistrict = user?.location || "All";
-  const householdsListQuery = useQuery({
-    queryKey: ["districts-discovery", dashboardDistrict, fyKey],
-    queryFn: () => getHouseholdsByDistrict(dashboardDistrict === "All" ? "" : dashboardDistrict, fyArg),
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const discoveredDistrictsMap = useMemo(() => {
-    const groups = new Map<string, string[]>();
-    if (householdsListQuery.data) {
-      (householdsListQuery.data as any[]).forEach((h: any) => {
-        if (isProvincialUser && userProvince && h.province !== userProvince) return;
-        const raw = h.district;
-        if (raw) {
-          const normalized = toTitleCase(raw.trim());
-          if (!groups.has(normalized)) groups.set(normalized, []);
-          const variants = groups.get(normalized)!;
-          if (!variants.includes(raw)) variants.push(raw);
-        }
-      });
-    }
-    return groups;
-  }, [householdsListQuery.data, isProvincialUser, userProvince]);
-
-  const discoveredDistricts = useMemo(() => {
-    return Array.from(discoveredDistrictsMap.keys()).sort();
-  }, [discoveredDistrictsMap]);
-
-  // HTS data query
+  // Single HTS fetch (all records, filtered client-side)
+  // Pass fyArg so the API respects the fiscal year selection.
+  // District filtering is done client-side so the dropdown stays in sync.
   const htsQuery = useQuery({
     queryKey: ["hts-register", "All", fyKey],
-    queryFn: () => getHTSRegisterByDistrict("*"),
+    queryFn:  () => getHTSRegisterByDistrict("*", fyArg),
     staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 60,
+    gcTime:    1000 * 60 * 60,
     retry: 1,
   });
 
-  // PERSISTENCE: Restore previous nationwide counts
-  const [cachedNationwideStats, setCachedNationwideStats] = useState<any>(() => {
-    const saved = localStorage.getItem("ecap_cache_nationwide_hts");
-    return saved ? JSON.parse(saved) : null;
-  });
+  // District list derived from HTS data (single source of truth)
+  // Eliminates the separate householdsListQuery and prevents drift between
+  // the dropdown options and the actual data being filtered.
+  const discoveredDistrictsMap = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    if (!htsQuery.data) return groups;
 
-  const allRecords = useMemo(() => {
-    const rawData = (htsQuery.data ?? []) as any[];
-    if (selectedDistrict === "All") {
-      if (isProvincialUser && userProvince) {
-        return rawData.filter(record => record.province === userProvince);
-      }
-      return rawData;
-    }
+    (htsQuery.data as any[]).forEach((h: any) => {
+      // Provincial Users: only include districts in their province
+      if (isProvincialUser && userProvince && h.province !== userProvince) return;
+      const raw: string | undefined = h.district;
+      if (!raw) return;
 
-    const selectedVariants = discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict];
-    return rawData.filter(r => {
-      if (isProvincialUser && userProvince && r.province !== userProvince) return false;
-      const rDist = String(r.district || "");
-      return selectedVariants.includes(rDist);
-    }).sort((a: any, b: any) => {
-      const idA = a.household_id || a.vca_id || a.id || "";
-      const idB = b.household_id || b.vca_id || b.id || "";
-      return String(idB).localeCompare(String(idA));
+      const normalized = toTitleCase(raw.trim());
+      if (!groups.has(normalized)) groups.set(normalized, []);
+      const variants = groups.get(normalized)!;
+      if (!variants.includes(raw)) variants.push(raw);
     });
-  }, [htsQuery.data, selectedDistrict, discoveredDistrictsMap]);
 
+    return groups;
+  }, [htsQuery.data, isProvincialUser, userProvince]);
+
+  const discoveredDistricts = useMemo(
+    () => Array.from(discoveredDistrictsMap.keys()).sort(),
+    [discoveredDistrictsMap]
+  );
+
+  // Filter all records by selected district / province
+  // Both selectedDistrict AND discoveredDistrictsMap are in deps so the
+  // filter re-runs whenever either changes.
+  const allRecords = useMemo(() => {
+    const rawData: any[] = (htsQuery.data ?? []) as any[];
+
+    return rawData
+      .filter((r) => {
+        // Province guard
+        if (isProvincialUser && userProvince && r.province !== userProvince) {
+          return false;
+        }
+
+        // District filter
+        if (selectedDistrict !== "All") {
+          const variants =
+            discoveredDistrictsMap.get(selectedDistrict) ?? [selectedDistrict];
+          const rDist = String(r.district ?? "").trim();
+          if (!variants.includes(rDist)) return false;
+        }
+
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const idA = String(a.household_id || a.vca_id || a.id || "");
+        const idB = String(b.household_id || b.vca_id || b.id || "");
+        return idB.localeCompare(idA);
+      });
+  }, [
+    htsQuery.data,
+    selectedDistrict,
+    discoveredDistrictsMap,
+    isProvincialUser,
+    userProvince,
+  ]);
+
+  // Summary stats
   const dashboardStats = useMemo(() => {
     if (!allRecords.length) return null;
 
-    let pos = 0;
-    let unlinked = 0;
-    let pending = 0;
+    let pos       = 0;
+    let unlinked  = 0;
+    let pending   = 0;
     let newIntakes = 0;
     const workers = new Set<string>();
     const weekAgo = subDays(new Date(), 7);
 
-    allRecords.forEach(r => {
-      const res = String(r.hiv_result || r.hiv_status || "").toLowerCase();
+    allRecords.forEach((r) => {
+      const res   = String(r.hiv_result || r.hiv_status || "").toLowerCase();
       const isPos = res.includes("positive") || res.includes("reactive");
       const hasArt = r.art_date || r.art_date_initiated;
       const dateCreated = r.date_created ? parseISO(r.date_created) : null;
@@ -154,36 +160,68 @@ const HTSRegister = () => {
       if (worker && worker !== "—") workers.add(worker);
     });
 
-    const result = {
-      total: allRecords.length,
-      positives: pos,
+    return {
+      total:           allRecords.length,
+      positives:       pos,
       unlinked,
       pending,
       newIntakes,
-      activeWorkers: workers.size,
-      positivityRate: Math.round((pos / allRecords.length) * 100) || 0
+      activeWorkers:   workers.size,
+      positivityRate:  Math.round((pos / allRecords.length) * 100) || 0,
     };
+  }, [allRecords]);
 
-    if (selectedDistrict === "All" && result.total > 0) {
-      localStorage.setItem("ecap_cache_nationwide_hts", JSON.stringify(result));
+  // Nationwide cache
+  // Only cache when viewing all districts AND current FY selection.
+  // Invalidate when FY changes so stale stats don't bleed through.
+  const cacheKey = `ecap_cache_nationwide_hts_${fyKey}`;
+
+  const [cachedNationwideStats, setCachedNationwideStats] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem(cacheKey);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
     }
-    return result;
-  }, [allRecords, selectedDistrict]);
+  });
 
-  const displayStats = selectedDistrict === "All" ? (dashboardStats || cachedNationwideStats) : dashboardStats;
-  const isRefreshing = htsQuery.isFetching && displayStats?.total > 0;
+  // Persist nationwide stats when available; clear on FY change
+  useEffect(() => {
+    if (selectedDistrict === "All" && dashboardStats && dashboardStats.total > 0) {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(dashboardStats));
+        setCachedNationwideStats(dashboardStats);
+      } catch { /* storage quota */ }
+    }
+  }, [dashboardStats, selectedDistrict, cacheKey]);
 
-  // Chart Data Preparation
+  // Reload cache from storage when FY key changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(cacheKey);
+      setCachedNationwideStats(saved ? JSON.parse(saved) : null);
+    } catch {
+      setCachedNationwideStats(null);
+    }
+  }, [cacheKey]);
+
+  const displayStats =
+    selectedDistrict === "All"
+      ? dashboardStats || cachedNationwideStats
+      : dashboardStats;
+
+  // Chart data
   const facilityData = useMemo(() => {
     const facilities = new Map<string, { name: string; positive: number; linked: number }>();
-    allRecords.forEach(r => {
+
+    allRecords.forEach((r) => {
       const facility = String(r.health_facility || "Unknown Facility");
       if (!facilities.has(facility)) {
         facilities.set(facility, { name: facility, positive: 0, linked: 0 });
       }
-      const data = facilities.get(facility)!;
-      const res = String(r.hiv_result || r.hiv_status || "").toLowerCase();
-      const isPos = res.includes("positive") || res.includes("reactive");
+      const data   = facilities.get(facility)!;
+      const res    = String(r.hiv_result || r.hiv_status || "").toLowerCase();
+      const isPos  = res.includes("positive") || res.includes("reactive");
       const hasArt = r.art_date || r.art_date_initiated;
 
       if (isPos) {
@@ -191,38 +229,40 @@ const HTSRegister = () => {
         if (hasArt) data.linked++;
       }
     });
+
     return Array.from(facilities.values())
-      .filter(f => f.positive > 0)
+      .filter((f) => f.positive > 0)
       .sort((a, b) => b.positive - a.positive)
       .slice(0, 10);
   }, [allRecords]);
 
   const caseworkerData = useMemo(() => {
     const workers = new Map<string, { name: string; positive: number }>();
-    allRecords.forEach(r => {
-      const worker = String(r.caseworker_name || "Unknown").trim();
-      if (worker === "—" || worker === "") return;
-      if (!workers.has(worker)) {
-        workers.set(worker, { name: worker, positive: 0 });
-      }
-      const data = workers.get(worker)!;
-      const res = String(r.hiv_result || r.hiv_status || "").toLowerCase();
-      const isPos = res.includes("positive") || res.includes("reactive");
 
+    allRecords.forEach((r) => {
+      const worker = String(r.caseworker_name || "Unknown").trim();
+      if (!worker || worker === "—") return;
+      if (!workers.has(worker)) workers.set(worker, { name: worker, positive: 0 });
+
+      const data  = workers.get(worker)!;
+      const res   = String(r.hiv_result || r.hiv_status || "").toLowerCase();
+      const isPos = res.includes("positive") || res.includes("reactive");
       if (isPos) data.positive++;
     });
+
     return Array.from(workers.values())
-      .filter(w => w.positive > 0)
+      .filter((w) => w.positive > 0)
       .sort((a, b) => b.positive - a.positive)
       .slice(0, 10);
   }, [allRecords]);
 
+  // CSV Exports
   const handleExportFacility = () => {
     if (!facilityData.length) return;
     const dateStr = format(new Date(), "yyyy-MM-dd");
     downloadCsv(
       ["Facility", "Positives", "Linked to ART"],
-      facilityData.map(f => [f.name, String(f.positive), String(f.linked)]),
+      facilityData.map((f) => [f.name, String(f.positive), String(f.linked)]),
       `hts_facility_linkage_${selectedDistrict}_${dateStr}.csv`
     );
   };
@@ -232,14 +272,16 @@ const HTSRegister = () => {
     const dateStr = format(new Date(), "yyyy-MM-dd");
     downloadCsv(
       ["Caseworker", "Positives Found"],
-      caseworkerData.map(w => [w.name, String(w.positive)]),
+      caseworkerData.map((w) => [w.name, String(w.positive)]),
       `hts_caseworker_yield_${selectedDistrict}_${dateStr}.csv`
     );
   };
 
+  // Render
   return (
     <DashboardLayout subtitle="HTS Register">
-      {/* ── Hero ──────────────────────────────────────────────── */}
+
+      {/* Hero */}
       <div className="relative mb-6 overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(244,63,94,0.15),transparent_45%)]" />
@@ -249,42 +291,71 @@ const HTSRegister = () => {
         <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">HTS register</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+                HTS register
+              </span>
               <span className="text-slate-400 text-[11px]">·</span>
-              <span className="text-[11px] text-slate-600">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
+              <span className="text-[11px] text-slate-600">
+                {new Date().toLocaleDateString("en-GB", {
+                  weekday: "long", day: "numeric", month: "long", year: "numeric",
+                })}
+              </span>
               <Badge variant="outline" className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
                 <Activity className="h-3 w-3" /> {(displayStats?.total || 0).toLocaleString()} tests
               </Badge>
-              <Badge variant="outline" className="gap-1 border-slate-200 bg-white/80 text-[10px] text-slate-600 backdrop-blur-md">
-                <MapPin className="h-3 w-3" /> {selectedDistrict}
-              </Badge>
+
+              {/* Active district chip */}
+              {selectedDistrict !== "All" && (
+                <Badge
+                  variant="outline"
+                  className="gap-1 border-emerald-200 bg-emerald-50/70 text-[10px] text-emerald-700 cursor-pointer hover:border-emerald-400 hover:bg-emerald-100 transition-colors"
+                  onClick={() => !lockedDistrict && setSelectedDistrict("All")}
+                >
+                  <MapPin className="h-3 w-3" />
+                  {selectedDistrict}
+                  {!lockedDistrict && <X className="h-2.5 w-2.5 ml-0.5 opacity-60" />}
+                </Badge>
+              )}
             </div>
+
             <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
               <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-rose-700 bg-clip-text text-transparent">
                 HIV Testing &amp; Services
               </span>
             </h1>
-            <p className="mt-1 text-xs text-slate-600">Testing outcomes, linkage to ART, and contact tracing across the cohort.</p>
+            <p className="mt-1 text-xs text-slate-600">
+              Testing outcomes, linkage to ART, and contact tracing across the cohort.
+            </p>
           </div>
+
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             <Select
               value={selectedDistrict}
-              onValueChange={setSelectedDistrict}
-              disabled={isDistrictUser}
+              onValueChange={(val) => {
+                if (lockedDistrict) return; // District Users cannot change
+                setSelectedDistrict(val);
+              }}
+              disabled={!!lockedDistrict}
             >
               <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white/80 border-slate-200 backdrop-blur-md text-xs">
                 <div className="flex items-center gap-2">
                   <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                  <SelectValue placeholder={householdsListQuery.isLoading ? "Loading…" : "Select District"} />
+                  <SelectValue
+                    placeholder={htsQuery.isLoading ? "Loading…" : "Select District"}
+                  />
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="All">All Districts</SelectItem>
+                {/* Hide "All Districts" for locked users */}
+                {!lockedDistrict && (
+                  <SelectItem value="All">All Districts</SelectItem>
+                )}
                 {discoveredDistricts.map((d) => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
             <button
               onClick={() => htsQuery.refetch()}
               className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
@@ -296,39 +367,44 @@ const HTSRegister = () => {
         </div>
       </div>
 
+      {/* Stat cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <div
           onClick={() => navigate(`/registers/hts-risk?type=unlinked&district=${selectedDistrict}`)}
-          className={cn(
-            "p-4 rounded-xl border bg-white shadow-sm cursor-pointer transition-all hover:shadow-md active:scale-95 border-slate-100"
-          )}
+          className="p-4 rounded-xl border bg-white shadow-sm cursor-pointer transition-all hover:shadow-md active:scale-95 border-slate-100"
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-rose-50 rounded-lg text-rose-600">
               <AlertCircle className="h-4 w-4" />
             </div>
-            <span className="text-xs font-bold tracking-wider text-muted-foreground">Positives not on ART</span>
+            <span className="text-xs font-bold tracking-wider text-muted-foreground">
+              Positives not on ART
+            </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{displayStats?.unlinked || 0}</span>
+            <span className="text-2xl font-black text-slate-900">
+              {displayStats?.unlinked || 0}
+            </span>
           </div>
           <p className="text-[10px] text-slate-500 mt-1">Click to view</p>
         </div>
 
         <div
           onClick={() => navigate(`/registers/hts-risk?type=pending&district=${selectedDistrict}`)}
-          className={cn(
-            "p-4 rounded-xl border bg-white shadow-sm cursor-pointer transition-all hover:shadow-md active:scale-95 border-slate-100"
-          )}
+          className="p-4 rounded-xl border bg-white shadow-sm cursor-pointer transition-all hover:shadow-md active:scale-95 border-slate-100"
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-amber-50 rounded-lg text-amber-600">
               <Info className="h-4 w-4" />
             </div>
-            <span className="text-xs font-bold tracking-wider text-muted-foreground">Pending Outcomes</span>
+            <span className="text-xs font-bold tracking-wider text-muted-foreground">
+              Pending Outcomes
+            </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{displayStats?.pending || 0}</span>
+            <span className="text-2xl font-black text-slate-900">
+              {displayStats?.pending || 0}
+            </span>
           </div>
           <p className="text-[10px] text-slate-500 mt-1">Click to view</p>
         </div>
@@ -341,39 +417,50 @@ const HTSRegister = () => {
             <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
               <Users className="h-4 w-4" />
             </div>
-            <span className="text-xs font-bold tracking-wider text-muted-foreground">Total HTS Register</span>
+            <span className="text-xs font-bold tracking-wider text-muted-foreground">
+              Total HTS Register
+            </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{displayStats?.total || 0}</span>
+            <span className="text-2xl font-black text-slate-900">
+              {displayStats?.total || 0}
+            </span>
           </div>
           <p className="text-[10px] text-slate-500 mt-1">Click to view</p>
         </div>
 
         <div
           onClick={() => navigate(`/registers/hts-risk?type=new&district=${selectedDistrict}`)}
-          className={cn(
-            "p-4 rounded-xl border bg-white shadow-sm cursor-pointer transition-all hover:shadow-md active:scale-95 border-slate-100"
-          )}
+          className="p-4 rounded-xl border bg-white shadow-sm cursor-pointer transition-all hover:shadow-md active:scale-95 border-slate-100"
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
               <TrendingUp className="h-4 w-4" />
             </div>
-            <span className="text-xs font-bold tracking-wider text-muted-foreground">New Positives</span>
+            <span className="text-xs font-bold tracking-wider text-muted-foreground">
+              New Positives
+            </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">{displayStats?.newIntakes || 0}</span>
+            <span className="text-2xl font-black text-slate-900">
+              {displayStats?.newIntakes || 0}
+            </span>
           </div>
           <p className="text-[10px] text-slate-500 mt-1">Click to view</p>
         </div>
       </div>
 
+      {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2 mb-6">
         <GlowCard className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
-              <CardTitle className="text-base font-bold text-slate-900">Facility Linkage Gap</CardTitle>
-              <p className="text-[10px] font-bold text-slate-400 tracking-wider">Comparing positives vs ART initiation</p>
+              <CardTitle className="text-base font-bold text-slate-900">
+                Facility Linkage Gap
+              </CardTitle>
+              <p className="text-[10px] font-bold text-slate-400 tracking-wider">
+                Comparing positives vs ART initiation
+              </p>
             </div>
             <Button
               variant="outline"
@@ -394,18 +481,25 @@ const HTSRegister = () => {
                   dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
+                  tick={{ fontSize: 9, fontWeight: 700, fill: "#94a3b8" }}
                   interval={0}
                   angle={-15}
                   textAnchor="end"
                 />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fontWeight: 600, fill: "#94a3b8" }}
+                />
                 <Tooltip
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  labelStyle={{ fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}
+                  contentStyle={{
+                    borderRadius: "12px", border: "none",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                  }}
+                  labelStyle={{ fontWeight: 800, color: "#0f172a", marginBottom: "4px" }}
                 />
                 <Bar dataKey="positive" name="Positives" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={20} />
-                <Bar dataKey="linked" name="Linked" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="linked"   name="Linked"    fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -414,8 +508,12 @@ const HTSRegister = () => {
         <GlowCard className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
-              <CardTitle className="text-base font-bold text-slate-900">Positive Yield by Caseworker</CardTitle>
-              <p className="text-[10px] font-bold text-slate-400 tracking-wider">Top 10 performing staff by raw count</p>
+              <CardTitle className="text-base font-bold text-slate-900">
+                Positive Yield by Caseworker
+              </CardTitle>
+              <p className="text-[10px] font-bold text-slate-400 tracking-wider">
+                Top 10 performing staff by raw count
+              </p>
             </div>
             <Button
               variant="outline"
@@ -430,7 +528,11 @@ const HTSRegister = () => {
           </CardHeader>
           <CardContent className="h-[250px] p-0 pb-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={caseworkerData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+              <BarChart
+                data={caseworkerData}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                 <XAxis type="number" hide />
                 <YAxis
@@ -438,21 +540,29 @@ const HTSRegister = () => {
                   type="category"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 9, fontWeight: 700, fill: '#475569' }}
+                  tick={{ fontSize: 9, fontWeight: 700, fill: "#475569" }}
                   width={80}
                 />
                 <Tooltip
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  cursor={{ fill: "#f8fafc" }}
+                  contentStyle={{
+                    borderRadius: "12px", border: "none",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                  }}
                 />
-                <Bar dataKey="positive" name="Positives Found" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={15} />
+                <Bar
+                  dataKey="positive"
+                  name="Positives Found"
+                  fill="#6366f1"
+                  radius={[0, 4, 4, 0]}
+                  barSize={15}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </GlowCard>
       </div>
 
-      {/* Redirect hint or CTA can go here if needed */}
     </DashboardLayout>
   );
 };
