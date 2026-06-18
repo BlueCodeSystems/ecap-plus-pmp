@@ -56,6 +56,7 @@ const AddUser = lazy(() => import("./pages/AddUser"));
 const EditUser = lazy(() => import("./pages/EditUser"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ChangePassword = lazy(() => import("./pages/ChangePassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const FlaggedRecordForm = lazy(() => import("./pages/FlaggedRecordForm"));
 const WeeklyExtracts = lazy(() => import("./pages/WeeklyExtracts"));
@@ -105,7 +106,7 @@ const persister = createAsyncStoragePersister({
 
 // Bump this when the cache shape changes so old persisted entries are tossed,
 // or to force every user to drop their persisted cache on next load.
-const PERSIST_BUSTER = "v12-2026-05-27-vendor-chunk-split";
+const PERSIST_BUSTER = "v13-2026-06-16-caseworker-list";
 
 // Auxiliary IDB cache (used by getListFromApiWithCache) is separate from React
 // Query's persister. Clear it once when buster changes so the two caches stay
@@ -146,6 +147,14 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route
+                  path="/change-password"
+                  element={
+                    <ProtectedRoute>
+                      <ChangePassword />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/dashboard"
                   element={

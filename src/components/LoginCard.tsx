@@ -32,14 +32,14 @@ const LoginCard = () => {
     setError(null);
     e.preventDefault();
     login(email, password)
-      .then(() => {
+      .then((profile) => {
         const trimmedEmail = email.trim().toLowerCase();
         const isFirstLogin = !knownUsers.includes(trimmedEmail);
         sessionStorage.setItem("ecap.first_login", isFirstLogin ? "true" : "false");
         const updatedUsers = Array.from(new Set([...knownUsers, trimmedEmail]));
         localStorage.setItem("ecap.known_users", JSON.stringify(updatedUsers));
         localStorage.setItem("ecap.returning_user", "true");
-        navigate("/dashboard");
+        navigate(profile?.password_change_required ? "/change-password" : "/dashboard");
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Login failed");

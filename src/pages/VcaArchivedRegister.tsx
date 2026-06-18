@@ -37,8 +37,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toTitleCase } from "@/lib/utils";
-import { DEFAULT_DISTRICT, getChildrenArchivedRegister, getHouseholdsByDistrict } from "@/lib/api";
-import { useFyFilter } from "@/context/FyFilterContext";
+import { getChildrenArchivedRegister, getHouseholdsByDistrict } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { SubPopulationFilter } from "@/components/dashboard/SubPopulationFilter";
@@ -160,7 +159,7 @@ const VcaArchivedRegister = () => {
   const isProvincialUser = user?.description === "Provincial User";
   const userProvince = user?.title;
   const navigate = useNavigate();
-  const initialDistrict = user?.location || DEFAULT_DISTRICT;
+  const initialDistrict = isDistrictUser && user?.location ? user.location : "All";
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
 
   // SECURITY: Enforce district lock for District Users
@@ -205,16 +204,11 @@ const VcaArchivedRegister = () => {
   const [graduationFilter, setGraduationFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { resolved: fy } = useFyFilter();
-  const fyArg = fy.fromDate && fy.toDate ? { from: fy.fromDate, to: fy.toDate } : undefined;
-  const fyKey = fy.mode === "all" ? "all" : `${fy.fromDate ?? ""}_${fy.toDate ?? ""}`;
-
   const archivedQuery = useQuery({
-    queryKey: ["vcas", "archived", "All", graduationFilter, fyKey],
+    queryKey: ["vcas", "archived", "All", graduationFilter],
     queryFn: () =>
-      getChildrenArchivedRegister("", {
+      getChildrenArchivedRegister("All", {
         reason: graduationFilter === "all" ? undefined : graduationFilter,
-        fy: fyArg,
       }),
     staleTime: 1000 * 60 * 10,
   });
@@ -224,11 +218,12 @@ const VcaArchivedRegister = () => {
   const filteredVcas = useMemo(() => {
     const allArchived = archivedQuery.data ?? [];
     const selectedVariants = selectedDistrict === "All" ? [] : (discoveredDistrictsMap.get(selectedDistrict) || [selectedDistrict]);
+    const selectedVariantsLower = selectedVariants.map(v => v.toLowerCase());
 
     return allArchived.filter((vca: any) => {
-      if (isProvincialUser && userProvince && vca.province !== userProvince) return false;
-      const sDist = String(vca.district || "");
-      if (selectedDistrict !== "All" && !selectedVariants.includes(sDist)) return false;
+      if (isProvincialUser && userProvince && String(vca.province || "").toLowerCase() !== userProvince.toLowerCase()) return false;
+      const sDist = String(vca.district || "").toLowerCase();
+      if (selectedDistrict !== "All" && !selectedVariantsLower.includes(sDist)) return false;
 
       // Global Search
       const lowerCaseQuery = searchQuery.toLowerCase();
@@ -260,7 +255,7 @@ const VcaArchivedRegister = () => {
       const idB = b.household_id || b.vca_id || b.id || "";
       return String(idB).localeCompare(String(idA));
     });
-  }, [archivedVcas, searchQuery, subPopulationFilters]);
+  }, [archivedQuery.data, searchQuery, subPopulationFilters, selectedDistrict, isProvincialUser, userProvince, discoveredDistrictsMap]);
 
   // Reset page when filters change
   useEffect(() => {

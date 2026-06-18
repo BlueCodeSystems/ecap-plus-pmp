@@ -9,12 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 
-import { Search, Trash2, RotateCcw, UserX, UserPlus, Shield, Mail, Calendar } from "lucide-react";
+import { Search, Trash2, RotateCcw, UserX, UserPlus, Shield, Mail, Calendar, KeyRound } from "lucide-react";
 import {
   deleteUser,
   listRoles,
   listUsers,
   updateUser,
+  requestPasswordReset,
   UserHasLinkedRecordsError,
   type DirectusRole,
   type DirectusUser,
@@ -32,6 +33,7 @@ const Users = () => {
   const [activeTab, setActiveTab] = useState("active");
   const [userToTrash, setUserToTrash] = useState<string | null>(null);
   const [userToWipe, setUserToWipe] = useState<string | null>(null);
+  const [userToReset, setUserToReset] = useState<DirectusUser | null>(null);
 
   const usersQuery = useQuery({
     queryKey: ["directus", "users"],
@@ -70,6 +72,20 @@ const Users = () => {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed to restore user");
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: (email: string) => {
+      const resetUrlBase = (import.meta.env.VITE_RESET_PASSWORD_URL || window.location.origin).replace(/\/$/, "");
+      const resetUrl = `${resetUrlBase}/reset-password`;
+      return requestPasswordReset(email, resetUrl);
+    },
+    onSuccess: () => {
+      toast.success("Password reset email sent to user");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to send reset email");
     },
   });
 
@@ -313,6 +329,16 @@ const Users = () => {
                           <>
                             <Button
                               size="sm"
+                              variant="ghost"
+                              className="h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              onClick={() => setUserToReset(user)}
+                              disabled={resetPasswordMutation.isPending}
+                              title="Send Password Reset"
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
                               variant="outline"
                               className="h-8 border-slate-200 hover:bg-slate-100"
                               onClick={() => navigate(`/users/${user.id}/edit`)}
@@ -363,6 +389,19 @@ const Users = () => {
         </div>
       </GlowCard>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!userToReset}
+        onClose={() => setUserToReset(null)}
+        onConfirm={() => {
+          if (userToReset) resetPasswordMutation.mutate(userToReset.email);
+          setUserToReset(null);
+        }}
+        title="Send password reset?"
+        description={`This will send a password reset link to ${userToReset?.email}. The link will expire in 24 hours.`}
+        confirmText="Send Reset Link"
+        variant="default"
+      />
 
       <ConfirmDialog
         isOpen={!!userToTrash}

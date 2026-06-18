@@ -162,6 +162,24 @@ const TIME_PRESETS = [
   { label: "All Time", days: 0 },
 ];
 
+// Robust GPS-availability check for the caseworker dropdown badge. The backend
+// has_gps flag is the primary signal, but it may arrive as a boolean, a number
+// (event count), or a string ("true"/"1"); we also fall back to any count field
+// so the badge stays truthful regardless of how the API serializes it.
+const hasGpsData = (cw: any) => {
+  const raw = cw?.has_gps ?? cw?.hasGps ?? cw?.gps_available ?? cw?.has_gps_data;
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "number") return raw > 0;
+  if (typeof raw === "string") {
+    const v = raw.trim().toLowerCase();
+    if (["true", "1", "yes", "y"].includes(v)) return true;
+    if (["false", "0", "no", "n", ""].includes(v)) return false;
+  }
+
+  const count = Number(cw?.gps_count ?? cw?.gps_points ?? cw?.gps_events ?? cw?.journey_points ?? 0);
+  return Number.isFinite(count) && count > 0;
+};
+
 const CaseworkerJourneys = () => {
   const [selectedCaseworker, setSelectedCaseworker] = useState<string>("");
   const [fromDate, setFromDate] = useState<Date | undefined>();
@@ -214,11 +232,28 @@ const CaseworkerJourneys = () => {
   const userDistrict = isDistrictUser ? (user?.location ?? undefined) : undefined;
   const userProvince = isProvincialUser ? (user?.title ?? undefined) : undefined;
 
-  const { data: caseworkerList = [] } = useQuery({
-    queryKey: ["caseworker-list", userDistrict ?? "all-d", userProvince ?? "all-p"],
-    queryFn: () => getCaseworkerList({ district: userDistrict, province: userProvince }),
+  // Always fetch the FULL caseworker list, then restrict client-side by the
+  // user's jurisdiction. Passing district/province as server-side scope params
+  // made the dropdown collapse to just "All Caseworkers" whenever the backend's
+  // ETL values didn't match the user's location/title exactly, so we filter
+  // here instead — matching how the register pages enforce role scope.
+  const { data: fullCaseworkerList = [] } = useQuery({
+    queryKey: ["caseworker-list", "full", "v2"],
+    queryFn: () => getCaseworkerList(),
     staleTime: 10 * 60 * 1000,
   });
+
+  const caseworkerList = useMemo(() => {
+    const list = fullCaseworkerList as any[];
+    if (!isDistrictUser && !isProvincialUser) return list;
+    const target = (isDistrictUser ? userDistrict : userProvince)?.trim().toLowerCase();
+    if (!target) return list;
+    const field = isDistrictUser ? "district" : "province";
+    const scoped = list.filter((cw) => String(cw?.[field] ?? "").trim().toLowerCase() === target);
+    // Never collapse to an empty dropdown: if the records don't carry the
+    // jurisdiction field (or none match), fall back to the full list.
+    return scoped.length > 0 ? scoped : list;
+  }, [fullCaseworkerList, isDistrictUser, isProvincialUser, userDistrict, userProvince]);
 
   const hasCaseworker = appliedFilters.caseworker && appliedFilters.caseworker !== "all";
   const hasFacility = appliedFilters.facility && appliedFilters.facility !== "all";
@@ -559,7 +594,7 @@ const CaseworkerJourneys = () => {
                                     <Check className={cn("mr-2 h-4 w-4", selectedCaseworker === cw.caseworker ? "opacity-100" : "opacity-0")} />
                                     <span className="flex flex-1 items-center gap-2 truncate">
                                       <span className="truncate">{label}</span>
-                                      {cw.has_gps ? (
+                                      {hasGpsData(cw) ? (
                                         <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700">GPS</span>
                                       ) : (
                                         <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-400">No GPS</span>

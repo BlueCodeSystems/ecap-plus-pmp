@@ -6,7 +6,7 @@ type LoadingScreenProps = {
   label?: string;
 };
 
-const LoadingScreen = ({ label = "ECAPII PMP" }: LoadingScreenProps) => {
+const LoadingScreen = ({ label = "ECAP Plus PMP" }: LoadingScreenProps) => {
   return (
     <AuroraBackground>
       <div className="relative min-h-screen flex items-center justify-center px-6">
