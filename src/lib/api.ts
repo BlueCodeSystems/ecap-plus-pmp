@@ -610,6 +610,8 @@ export const sendEtlReport = async () => dqaPost("/etl/send-report");
 export interface TabletSyncProvider {
   provider: string;
   location_id: string;
+  facility?: string;
+  district?: string;
   last_activity: string;
   total_events: number;
   status: "active" | "stale" | "inactive";
@@ -621,11 +623,17 @@ export interface TabletSyncStatus {
   active_30d: number;
   stale: number;
   providers: TabletSyncProvider[];
+  source?: string;
+  refreshed_at?: string | null;
 }
 
 export const getTabletSyncStatus = async (): Promise<TabletSyncStatus> => {
   const data = await dqaGetSkipCache("/etl/tablet-sync");
   return data?.data;
+};
+
+export const getTabletSyncStreamUrl = (): string => {
+  return `${DQA_BASE_URL}/etl/tablet-sync/stream`;
 };
 
 // ─── Facility Performance API ───────────────────────────────────────
@@ -812,6 +820,23 @@ export interface JourneyPoint {
   lng: string | null;
 }
 
+export interface CaseworkerListItem {
+  caseworker: string;
+  display_name?: string | null;
+  location_id?: string | null;
+  facility?: string | null;
+  district?: string | null;
+  province?: string | null;
+  has_gps?: boolean | number | string | null;
+  hasGps?: boolean | number | string | null;
+  gps_available?: boolean | number | string | null;
+  has_gps_data?: boolean | number | string | null;
+  gps_count?: number | string | null;
+  gps_points?: number | string | null;
+  gps_events?: number | string | null;
+  journey_points?: number | string | null;
+}
+
 export const getCaseworkerJourneys = async (params: {
   caseworker?: string;
   from?: string;
@@ -830,13 +855,50 @@ export const getCaseworkerJourneys = async (params: {
 
 export const getCaseworkerList = async (
   scope?: { district?: string; province?: string },
-): Promise<{ caseworker: string; location_id: string }[]> => {
+): Promise<CaseworkerListItem[]> => {
   const q = new URLSearchParams();
   if (scope?.district && scope.district !== "all" && scope.district !== "All") q.set("district", scope.district);
   if (scope?.province && scope.province !== "all" && scope.province !== "All") q.set("province", scope.province);
   const url = `/etl/caseworker-list${q.toString() ? `?${q}` : ""}`;
   const data = await dqaGetSkipCache(url);
-  return data?.data ?? [];
+  const rows = getListValue(data);
+  const seen = new Set<string>();
+
+  return rows.flatMap((raw) => {
+    const row = raw && typeof raw === "object" ? raw as Record<string, unknown> : { caseworker: raw };
+    const value = (...keys: string[]) => {
+      for (const key of keys) {
+        const v = row[key];
+        const text = String(v ?? "").trim();
+        if (text) return text;
+      }
+      return "";
+    };
+    const caseworker = value("caseworker", "provider", "provider_id", "providerId", "username", "user_name", "caseworker_name", "display_name", "name");
+    const displayName = value("display_name", "caseworker_name", "full_name", "name") || caseworker;
+
+    if (!caseworker) return [];
+    const dedupeKey = caseworker.toLowerCase();
+    if (seen.has(dedupeKey)) return [];
+    seen.add(dedupeKey);
+
+    return [{
+      caseworker,
+      display_name: displayName,
+      location_id: value("location_id", "locationId"),
+      facility: value("facility", "ward", "location_name"),
+      district: value("district"),
+      province: value("province"),
+      has_gps: (row.has_gps ?? row.hasGps ?? row.gps_available ?? row.has_gps_data ?? row.gps_count ?? row.gps_points ?? row.gps_events ?? row.journey_points ?? false) as CaseworkerListItem["has_gps"],
+      hasGps: row.hasGps as CaseworkerListItem["hasGps"],
+      gps_available: row.gps_available as CaseworkerListItem["gps_available"],
+      has_gps_data: row.has_gps_data as CaseworkerListItem["has_gps_data"],
+      gps_count: row.gps_count as CaseworkerListItem["gps_count"],
+      gps_points: row.gps_points as CaseworkerListItem["gps_points"],
+      gps_events: row.gps_events as CaseworkerListItem["gps_events"],
+      journey_points: row.journey_points as CaseworkerListItem["journey_points"],
+    }];
+  });
 };
 
 export const getFacilityList = async (): Promise<string[]> => {
@@ -902,4 +964,3 @@ export const updateFlagStatus = async (flagId: string, status: string) => {
 
   return safeJson(response);
 };
-

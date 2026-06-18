@@ -71,6 +71,7 @@ export type DirectusUser = {
   location?: string;
   avatar?: string; // File ID for profile picture
   last_access?: string;
+  password_change_required?: boolean;
 };
 
 export type DirectusRole = {
@@ -81,7 +82,7 @@ export type DirectusRole = {
 
 export const listUsers = async (status?: string) => {
   const params = new URLSearchParams({
-    fields: "id,email,first_name,last_name,role.id,role.name,status,avatar,last_access",
+    fields: "id,email,first_name,last_name,role.id,role.name,status,description,title,location,facility,avatar,last_access,password_change_required",
     limit: "-1", // Fetch all users for chat list
   });
   if (DIRECTUS_USER_ROLE) {
@@ -103,7 +104,7 @@ export const listUsers = async (status?: string) => {
 
 export const getUser = async (id: string) => {
   const data = await directusRequest(
-    `/users/${encodeURIComponent(id)}?fields=id,email,first_name,last_name,role.id,role.name,status,avatar,last_access`,
+    `/users/${encodeURIComponent(id)}?fields=id,email,first_name,last_name,role.id,role.name,status,description,title,location,facility,avatar,last_access,password_change_required`,
   );
   return data?.data;
 };
@@ -219,6 +220,14 @@ export const listRoles = async () => {
   return data?.data ?? [];
 };
 
+export const getUserByEmail = async (email: string) => {
+  const data = await directusRequest(
+    `/users?filter[email][_eq]=${encodeURIComponent(email)}&fields=id,email,first_name,last_name,role`,
+  );
+  const users = data?.data ?? [];
+  return users.length > 0 ? (users[0] as DirectusUser) : null;
+};
+
 export const createUser = async (payload: {
   email: string;
   first_name?: string;
@@ -226,6 +235,7 @@ export const createUser = async (payload: {
   role?: string;
   status?: string;
   password?: string;
+  password_change_required?: boolean;
   description?: string;
   title?: string;
   location?: string;
@@ -238,6 +248,32 @@ export const createUser = async (payload: {
   return data?.data;
 };
 
+export const inviteUser = async (email: string, roleId: string, inviteUrl: string) => {
+  const data = await directusRequest("/users/invite", {
+    method: "POST",
+    body: JSON.stringify({ email, role: roleId, invite_url: inviteUrl }),
+  });
+  return data;
+};
+
+export const requestPasswordReset = async (email: string, resetUrl: string) => {
+  const baseUrl = requireDirectusUrl().replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}/auth/password/request`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, reset_url: resetUrl }),
+  });
+
+  if (!response.ok) {
+    const data = await safeJson(response);
+    throw new Error(data?.errors?.[0]?.message ?? "Password reset request failed");
+  }
+
+  return true;
+};
+
 export const updateUser = async (
   id: string,
   payload: Partial<{
@@ -247,6 +283,7 @@ export const updateUser = async (
     role?: string;
     status?: string;
     password?: string;
+    password_change_required?: boolean;
     description?: string;
     title?: string;
     location?: string;
@@ -256,6 +293,17 @@ export const updateUser = async (
   const data = await directusRequest(`/users/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+  return data?.data;
+};
+
+export const updateCurrentUserPassword = async (password: string) => {
+  const data = await directusRequest("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify({
+      password,
+      password_change_required: false,
+    }),
   });
   return data?.data;
 };
@@ -715,4 +763,3 @@ export const deleteCalendarEvent = async (id: string) => {
     method: "DELETE",
   });
 };
-

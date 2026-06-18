@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useRef } from "react";
-import { uploadFile, updateUserAvatar, getFileUrl } from "@/lib/directus";
+import { uploadFile, updateUserAvatar, getFileUrl, requestPasswordReset } from "@/lib/directus";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -229,6 +229,16 @@ const Profile = () => {
             <div className="space-y-2">
               <button
                 type="button"
+                onClick={async () => {
+                  const resetUrlBase = (import.meta.env.VITE_RESET_PASSWORD_URL || window.location.origin).replace(/\/$/, "");
+                  const resetUrl = `${resetUrlBase}/reset-password`;
+                  try {
+                    await requestPasswordReset(user.email, resetUrl);
+                    toast.success("Password reset email sent to your inbox");
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Failed to send reset email");
+                  }
+                }}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 h-11 text-xs font-medium text-slate-700 backdrop-blur-md transition-all hover:border-emerald-300 hover:bg-white"
               >
                 <KeyRound className="h-3.5 w-3.5 text-emerald-600" />

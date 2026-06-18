@@ -18,11 +18,11 @@ import {
     TestTubes,
     Mail,
     Smartphone,
+    Sparkles
 } from "lucide-react";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import GlowCard from "@/components/aceternity/GlowCard";
-import { Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -39,8 +39,10 @@ import {
     getEtlDownloadUrl,
     sendEtlReport,
     getTabletSyncStatus,
+    getTabletSyncStreamUrl,
     type EtlRun,
     type EtlFile,
+    type TabletSyncStatus,
 } from "@/lib/api";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { cn } from "@/lib/utils";
@@ -56,6 +58,23 @@ const PIPELINE_META: Record<string, { icon: typeof Database; color: string; desc
         color: "amber",
         description: "Extract HTS register data: HIV testing service records and index contact tracing from ECAP Plus.",
     },
+    ecap_plus_tablet_sync: {
+        icon: Smartphone,
+        color: "teal",
+        description: "Always-on Mage AI refresh of ECAP+ provider tablet-sync status from OpenSRP into the dashboard summary table.",
+    },
+};
+
+const PIPELINE_KEYS = ["ecap_plus", "hts_register"];
+const TABLET_SYNC_PIPELINE_KEY = "ecap_plus_tablet_sync";
+const TABLET_PAGE_SIZE = 20;
+
+const tabletSyncSourceLabel = (source?: string) => {
+    if (source === "ecap_plus_superset_db.tablet_sync_status") return "ECAP+ tablet sync pipeline";
+    if (source === "ecap_plus_superset_db.children") return "ECAP+ pipeline seed snapshot";
+    if (source === "ecap_plus_source.children") return "ECAP+ source snapshot";
+    if (source === "opensrp.core.event") return "Live OpenSRP sync";
+    return "Processed ECAP+ tablet snapshot";
 };
 
 const DataPipelinePage = () => {
@@ -66,6 +85,9 @@ const DataPipelinePage = () => {
     const [filesByPipeline, setFilesByPipeline] = useState<Record<string, EtlFile[]>>({});
     const [isSendingEmail, setIsSendingEmail] = useState(false);
     const [tabletFilter, setTabletFilter] = useState<"all" | "active" | "stale" | "inactive">("all");
+    const [tabletSyncStreamStatus, setTabletSyncStreamStatus] = useState<"idle" | "connecting" | "live" | "reconnecting">("idle");
+    const [tabletSyncStreamContactAt, setTabletSyncStreamContactAt] = useState<number | null>(null);
+    const [tabletPage, setTabletPage] = useState(1);
 
     const pipelinesQuery = useQuery({
         queryKey: ["etl", "pipelines"],
@@ -102,9 +124,8 @@ const DataPipelinePage = () => {
     }, [runningRuns.length]);
 
     const loadFiles = useCallback(async () => {
-        const keys = ["ecap_plus", "hts_register"];
         const results: Record<string, EtlFile[]> = {};
-        for (const key of keys) {
+        for (const key of PIPELINE_KEYS) {
             try {
                 results[key] = await getEtlFiles(key);
             } catch {
@@ -115,6 +136,75 @@ const DataPipelinePage = () => {
     }, []);
 
     useEffect(() => { loadFiles(); }, [loadFiles]);
+
+    useEffect(() => {
+        setTabletPage(1);
+    }, [tabletFilter]);
+
+    useEffect(() => {
+        if (activeTab !== "tablets") {
+            setTabletSyncStreamStatus("idle");
+            return;
+        }
+
+        if (typeof EventSource === "undefined") {
+            setTabletSyncStreamStatus("idle");
+            return;
+        }
+
+        let closed = false;
+        setTabletSyncStreamStatus("connecting");
+
+        const source = new EventSource(getTabletSyncStreamUrl());
+
+        source.onopen = () => {
+            if (!closed) setTabletSyncStreamStatus("live");
+        };
+
+        source.addEventListener("tablet-sync", (event) => {
+            if (closed) return;
+            try {
+                const payload = JSON.parse((event as MessageEvent).data) as {
+                    data?: TabletSyncStatus;
+                    emitted_at?: string;
+                };
+                if (payload.data) {
+                    queryClient.setQueryData(["etl", "tablet-sync"], payload.data);
+                }
+                setTabletSyncStreamContactAt(payload.emitted_at ? new Date(payload.emitted_at).getTime() : Date.now());
+                setTabletSyncStreamStatus("live");
+            } catch (err) {
+                console.error("Failed to parse tablet sync stream payload:", err);
+                setTabletSyncStreamStatus("reconnecting");
+            }
+        });
+
+        source.addEventListener("heartbeat", (event) => {
+            if (closed) return;
+            try {
+                const payload = JSON.parse((event as MessageEvent).data) as { emitted_at?: string };
+                setTabletSyncStreamContactAt(payload.emitted_at ? new Date(payload.emitted_at).getTime() : Date.now());
+            } catch {
+                setTabletSyncStreamContactAt(Date.now());
+            }
+            setTabletSyncStreamStatus("live");
+        });
+
+        source.addEventListener("tablet-sync-error", (event) => {
+            if (closed) return;
+            console.error("Tablet sync stream error:", (event as MessageEvent).data);
+            setTabletSyncStreamStatus("reconnecting");
+        });
+
+        source.onerror = () => {
+            if (!closed) setTabletSyncStreamStatus("reconnecting");
+        };
+
+        return () => {
+            closed = true;
+            source.close();
+        };
+    }, [activeTab, queryClient]);
 
     useEffect(() => {
         if (latestRun && (latestRun.status === "success" || latestRun.status === "failed")) {
@@ -207,6 +297,90 @@ const DataPipelinePage = () => {
     };
 
     const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+    const renderTabletSyncPipelineCard = () => {
+        const meta = PIPELINE_META[TABLET_SYNC_PIPELINE_KEY];
+        const Icon = meta.icon;
+        const pipelineInfo = pipelinesQuery.data?.find((p) => p.id === TABLET_SYNC_PIPELINE_KEY);
+        const lastRefreshAt = tabletSync?.refreshed_at
+            || (tabletSyncQuery.dataUpdatedAt > 0 ? new Date(tabletSyncQuery.dataUpdatedAt).toISOString() : null);
+
+        return (
+            <div className="group relative h-full">
+                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-br from-emerald-200/70 via-teal-200/40 to-transparent opacity-40 blur-md transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="relative h-full flex flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white/75 shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)] backdrop-blur-xl transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-slate-300">
+                    <div className="border-b border-emerald-50/60 bg-gradient-to-r from-emerald-50/30 via-teal-50/15 to-transparent p-5 pb-4">
+                        <div className="flex items-start justify-between">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-white/60 shadow-sm">
+                                <Icon className="h-5 w-5" />
+                            </div>
+                            <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-[10px] text-emerald-700">
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                                Always on
+                            </Badge>
+                        </div>
+                        <h3 className="mt-3 text-base font-bold text-slate-900">
+                            {pipelineInfo?.name ?? "ECAP+ Tablet Sync Status Refresh"}
+                        </h3>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-500">{meta.description}</p>
+                    </div>
+
+                    <div className="flex flex-1 flex-col space-y-4 p-5">
+                        <div className="rounded-xl border border-emerald-100/60 bg-gradient-to-r from-emerald-50/40 via-teal-50/20 to-transparent p-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Last refresh</span>
+                                <Badge variant="secondary" className="h-4 bg-emerald-50 text-[10px] text-emerald-700">
+                                    {tabletSyncStreamStatus === "live" ? "live" : "polling"}
+                                </Badge>
+                            </div>
+                            <p className="mt-1 text-xs font-medium text-slate-700">{formatDate(lastRefreshAt)}</p>
+                            <p className="text-[10px] text-slate-500">
+                                Source: {tabletSyncSourceLabel(tabletSync?.source)}
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="rounded-xl border border-slate-100 bg-white/80 p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</p>
+                                <p className="mt-1 text-lg font-bold text-slate-900">{tabletSync?.total ?? "-"}</p>
+                            </div>
+                            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Active</p>
+                                <p className="mt-1 text-lg font-bold text-emerald-700">{tabletSync?.active_7d ?? "-"}</p>
+                            </div>
+                            <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Stale</p>
+                                <p className="mt-1 text-lg font-bold text-amber-700">{tabletSync?.stale ?? "-"}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 flex-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pipeline output</span>
+                            <div className="flex items-center justify-between rounded-xl border border-emerald-100/60 bg-white/80 p-2.5">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <FileSpreadsheet className="h-4 w-4 flex-shrink-0 text-emerald-600" />
+                                    <div className="min-w-0">
+                                        <p className="truncate text-xs font-semibold text-slate-700">tablet_sync_status</p>
+                                        <p className="text-[10px] text-slate-400">Updated by Mage AI always-on pipeline</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => tabletSyncQuery.refetch()}
+                            disabled={tabletSyncQuery.isFetching}
+                            className="mt-auto inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60"
+                        >
+                            <RefreshCw className={cn("h-3.5 w-3.5", tabletSyncQuery.isFetching && "animate-spin")} />
+                            Refresh status
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <DashboardLayout subtitle="Data Pipeline">
@@ -361,7 +535,7 @@ const DataPipelinePage = () => {
             {/* Pipelines Tab */}
             {activeTab === "pipelines" && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {["ecap_plus", "hts_register"].map((key) => {
+                    {PIPELINE_KEYS.map((key) => {
                         const meta = PIPELINE_META[key];
                         const Icon = meta.icon;
                         const isRunning = !!runningPipelines[key];
@@ -598,14 +772,21 @@ const DataPipelinePage = () => {
             {/* ── Tablet Sync Tab ── */}
             {activeTab === "tablets" && (() => {
                 const filtered = tabletSync?.providers.filter(p => tabletFilter === "all" || p.status === tabletFilter) ?? [];
+                const totalPages = Math.max(1, Math.ceil(filtered.length / TABLET_PAGE_SIZE));
+                const currentPage = Math.min(tabletPage, totalPages);
+                const paginated = filtered.slice((currentPage - 1) * TABLET_PAGE_SIZE, currentPage * TABLET_PAGE_SIZE);
+                const startIndex = filtered.length === 0 ? 0 : (currentPage - 1) * TABLET_PAGE_SIZE + 1;
+                const endIndex = Math.min(currentPage * TABLET_PAGE_SIZE, filtered.length);
                 const exportCsv = () => {
                     const rows = filtered.map(p => [
                         p.provider,
+                        p.district ?? "",
+                        p.facility ?? p.location_id ?? "",
                         p.last_activity ? new Date(p.last_activity).toLocaleString("en-GB") : "",
                         String(p.total_events),
                         p.status,
                     ]);
-                    const header = "Provider,Last Activity,Events,Status\n";
+                    const header = "Provider,District,Facility,Last Activity,Events,Status\n";
                     const csv = header + rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
                     const blob = new Blob([csv], { type: "text/csv" });
                     const a = document.createElement("a");
@@ -615,117 +796,183 @@ const DataPipelinePage = () => {
                 };
 
                 return (
-                <GlowCard>
-                    <CardHeader className="border-b border-slate-50">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <CardTitle className="flex items-center gap-2">
-                                <Smartphone className="h-5 w-5 text-primary" />
-                                Tablet / Provider Sync Status
-                            </CardTitle>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                {tabletSync && (
-                                    <>
-                                        <button onClick={() => setTabletFilter(tabletFilter === "all" ? "all" : "all")}
-                                            className={cn("px-3 py-1 rounded-full text-xs font-medium transition-all border",
-                                                tabletFilter === "all" ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
-                                            )}>
-                                            All ({tabletSync.total})
-                                        </button>
-                                        <button onClick={() => setTabletFilter(tabletFilter === "active" ? "all" : "active")}
-                                            className={cn("px-3 py-1 rounded-full text-xs font-medium transition-all border",
-                                                tabletFilter === "active" ? "bg-emerald-600 text-white border-emerald-600" : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400"
-                                            )}>
-                                            Active ({tabletSync.active_7d})
-                                        </button>
-                                        <button onClick={() => setTabletFilter(tabletFilter === "stale" ? "all" : "stale")}
-                                            className={cn("px-3 py-1 rounded-full text-xs font-medium transition-all border",
-                                                tabletFilter === "stale" ? "bg-amber-600 text-white border-amber-600" : "bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-400"
-                                            )}>
-                                            Stale ({tabletSync.active_30d - tabletSync.active_7d})
-                                        </button>
-                                        <button onClick={() => setTabletFilter(tabletFilter === "inactive" ? "all" : "inactive")}
-                                            className={cn("px-3 py-1 rounded-full text-xs font-medium transition-all border",
-                                                tabletFilter === "inactive" ? "bg-red-600 text-white border-red-600" : "bg-red-50 text-red-700 border-red-200 hover:border-red-400"
-                                            )}>
-                                            Inactive ({tabletSync.total - tabletSync.active_30d})
-                                        </button>
-                                    </>
-                                )}
-                                <Button variant="outline" size="sm" className="border-slate-200 text-xs ml-1"
-                                    onClick={() => { queryClient.invalidateQueries({ queryKey: ["etl", "tablet-sync"] }); toast.info("Refreshing tablet sync data..."); }}
-                                    disabled={tabletSyncQuery.isFetching}
-                                >
-                                    <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", tabletSyncQuery.isFetching && "animate-spin")} />
-                                    Sync Now
-                                </Button>
-                                <Button variant="outline" size="sm" className="border-slate-200 text-xs" onClick={exportCsv} disabled={filtered.length === 0}>
-                                    <Download className="h-3.5 w-3.5 mr-1.5" />
-                                    Export CSV
-                                </Button>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <div className="mx-6 mt-4 flex items-center gap-2 p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-700">
-                        <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span>This data auto-syncs every <strong>15 minutes</strong> from the source database. Use <strong>Sync Now</strong> to refresh immediately.
-                        {tabletSyncQuery.dataUpdatedAt > 0 && (
-                            <> Last synced: <strong>{new Date(tabletSyncQuery.dataUpdatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</strong></>
-                        )}
-                        </span>
+                <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+                    <div className="xl:col-span-1">
+                        {renderTabletSyncPipelineCard()}
                     </div>
-                    <CardContent className="p-0">
-                        {!tabletSync ? (
-                            <div className="flex justify-center py-16"><LoadingDots /></div>
-                        ) : filtered.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                                <Smartphone className="h-10 w-10 mb-3 text-slate-200" />
-                                <p className="font-medium">No providers match this filter</p>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-slate-50/80 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
-                                            <th className="px-6 py-4">#</th>
-                                            <th className="px-6 py-4">Provider</th>
-                                            <th className="px-6 py-4">Last Activity</th>
-                                            <th className="px-6 py-4">Events</th>
-                                            <th className="px-6 py-4">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {filtered.map((p, i) => (
-                                            <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="px-6 py-3 text-xs text-slate-400">{i + 1}</td>
-                                                <td className="px-6 py-3">
-                                                    <span className="text-sm font-medium text-slate-700">{p.provider}</span>
-                                                </td>
-                                                <td className="px-6 py-3">
-                                                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                                        <Clock className="h-3 w-3" />
-                                                        {new Date(p.last_activity).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    <div className="relative xl:col-span-2">
+                        <div aria-hidden className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl bg-gradient-to-br from-emerald-200/40 via-teal-200/25 to-transparent opacity-50 blur-md" />
+                        <GlowCard>
+                            <div className="relative max-h-[70vh] overflow-y-auto rounded-2xl">
+                                <div className="sticky top-0 z-30 bg-white/95 shadow-sm backdrop-blur-md">
+                                    <CardHeader className="border-b border-emerald-50/60 bg-gradient-to-r from-emerald-50/95 via-teal-50/90 to-transparent">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-emerald-800">
+                                                <Smartphone className="h-4 w-4 text-emerald-600" />
+                                                Tablet / Provider Sync Status
+                                            </CardTitle>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {tabletSync && (
+                                                    <>
+                                                        <button type="button" onClick={() => setTabletFilter("all")}
+                                                            className={cn("rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                                                                tabletFilter === "all" ? "border-slate-800 bg-slate-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+                                                            )}>
+                                                            All ({tabletSync.total})
+                                                        </button>
+                                                        <button type="button" onClick={() => setTabletFilter(tabletFilter === "active" ? "all" : "active")}
+                                                            className={cn("rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                                                                tabletFilter === "active" ? "border-emerald-600 bg-emerald-600 text-white" : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-400"
+                                                            )}>
+                                                            Active ({tabletSync.active_7d})
+                                                        </button>
+                                                        <button type="button" onClick={() => setTabletFilter(tabletFilter === "stale" ? "all" : "stale")}
+                                                            className={cn("rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                                                                tabletFilter === "stale" ? "border-amber-600 bg-amber-600 text-white" : "border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-400"
+                                                            )}>
+                                                            Stale ({tabletSync.stale})
+                                                        </button>
+                                                        <button type="button" onClick={() => setTabletFilter(tabletFilter === "inactive" ? "all" : "inactive")}
+                                                            className={cn("rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                                                                tabletFilter === "inactive" ? "border-red-600 bg-red-600 text-white" : "border-red-200 bg-red-50 text-red-700 hover:border-red-400"
+                                                            )}>
+                                                            Inactive ({tabletSync.total - tabletSync.active_30d})
+                                                        </button>
+                                                    </>
+                                                )}
+                                                <Button variant="outline" size="sm" className="border-slate-200 text-xs" onClick={exportCsv} disabled={filtered.length === 0}>
+                                                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                                                    Export CSV
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-emerald-200 bg-white/90 text-xs text-emerald-700 hover:bg-emerald-50"
+                                                    onClick={() => tabletSyncQuery.refetch()}
+                                                    disabled={tabletSyncQuery.isFetching}
+                                                >
+                                                    <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", tabletSyncQuery.isFetching && "animate-spin")} />
+                                                    Refresh
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <div className="mx-6 mb-8 mt-4 flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3 pb-6 text-xs text-blue-700 backdrop-blur-md">
+                                        <Activity className={cn("h-3.5 w-3.5 flex-shrink-0", tabletSyncStreamStatus === "live" && "text-emerald-600")} />
+                                        <span>
+                                            {tabletSyncStreamStatus === "live"
+                                                ? <>Live sync is connected. </>
+                                                : tabletSyncStreamStatus === "connecting"
+                                                  ? <>Connecting to live sync. </>
+                                                  : tabletSyncStreamStatus === "reconnecting"
+                                                    ? <>Live sync is reconnecting. </>
+                                                    : <>Live sync starts when this tab is open. </>}
+                                            Tablet sync updates as soon as the server receives fresh activity.
+                                            {tabletSyncStreamContactAt ? (
+                                                <> Last updated: <strong>{new Date(tabletSyncStreamContactAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</strong></>
+                                            ) : tabletSyncQuery.dataUpdatedAt > 0 ? (
+                                                <> Last updated: <strong>{new Date(tabletSyncQuery.dataUpdatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</strong></>
+                                            ) : null}
+                                            {tabletSync?.source ? (
+                                                <> · Source: <strong>{tabletSyncSourceLabel(tabletSync.source)}</strong></>
+                                            ) : null}
+                                        </span>
+                                    </div>
+                                </div>
+                                <CardContent className="p-0">
+                                    {!tabletSync ? (
+                                        <div className="flex justify-center py-16"><LoadingDots /></div>
+                                    ) : filtered.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                                            <Smartphone className="mb-3 h-10 w-10 text-slate-200" />
+                                            <p className="font-medium">No providers match this filter</p>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-collapse text-left">
+                                                    <thead>
+                                                        <tr className="border-b border-emerald-100/60 bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-amber-50/40 text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                                                            <th className="px-6 py-4">#</th>
+                                                            <th className="px-6 py-4">Provider</th>
+                                                            <th className="px-6 py-4">District</th>
+                                                            <th className="px-6 py-4">Facility</th>
+                                                            <th className="px-6 py-4">Last Activity</th>
+                                                            <th className="px-6 py-4">Events</th>
+                                                            <th className="px-6 py-4">Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-emerald-50/60">
+                                                        {paginated.map((p, i) => (
+                                                            <tr key={`${p.provider}-${p.location_id}-${p.last_activity}`} className="transition-colors hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
+                                                                <td className="px-6 py-3 text-xs text-slate-400">{(currentPage - 1) * TABLET_PAGE_SIZE + i + 1}</td>
+                                                                <td className="px-6 py-3">
+                                                                    <span className="text-sm font-medium text-slate-700">{p.provider}</span>
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <span className="text-sm text-slate-600">{p.district || "Unknown"}</span>
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <span className="text-sm text-slate-600">{p.facility || p.location_id || "Unknown"}</span>
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                                                        <Clock className="h-3 w-3" />
+                                                                        {new Date(p.last_activity).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <span className="font-mono text-sm text-slate-600">{p.total_events.toLocaleString()}</span>
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <Badge variant="secondary" className={cn("text-[10px]",
+                                                                        p.status === "active" ? "bg-emerald-50 text-emerald-700" :
+                                                                        p.status === "stale" ? "bg-amber-50 text-amber-700" :
+                                                                        "bg-red-50 text-red-700"
+                                                                    )}>
+                                                                        {p.status === "active" ? "Active" : p.status === "stale" ? "Stale (7-30d)" : "Inactive (>30d)"}
+                                                                    </Badge>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3 border-t border-emerald-50 bg-white/80 px-6 py-4">
+                                                <p className="text-xs text-slate-500">
+                                                    Showing {startIndex}-{endIndex} of {filtered.length}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 border-slate-200 text-xs"
+                                                        onClick={() => setTabletPage((p) => Math.max(1, p - 1))}
+                                                        disabled={currentPage <= 1}
+                                                    >
+                                                        Previous
+                                                    </Button>
+                                                    <div className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 font-mono text-xs shadow-sm">
+                                                        Page {currentPage} / {totalPages}
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-3">
-                                                    <span className="text-sm font-mono text-slate-600">{p.total_events.toLocaleString()}</span>
-                                                </td>
-                                                <td className="px-6 py-3">
-                                                    <Badge variant="secondary" className={cn("text-[10px]",
-                                                        p.status === "active" ? "bg-emerald-50 text-emerald-700" :
-                                                        p.status === "stale" ? "bg-amber-50 text-amber-700" :
-                                                        "bg-red-50 text-red-700"
-                                                    )}>
-                                                        {p.status === "active" ? "Active" : p.status === "stale" ? "Stale (7-30d)" : "Inactive (>30d)"}
-                                                    </Badge>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 border-slate-200 text-xs"
+                                                        onClick={() => setTabletPage((p) => Math.min(totalPages, p + 1))}
+                                                        disabled={currentPage >= totalPages}
+                                                    >
+                                                        Next
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
                             </div>
-                        )}
-                    </CardContent>
-                </GlowCard>
+                        </GlowCard>
+                    </div>
+                </div>
                 );
             })()}
         </DashboardLayout>

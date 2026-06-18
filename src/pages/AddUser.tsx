@@ -6,7 +6,7 @@ import {
   Activity, Sparkles, UserPlus, ArrowLeft,
   AtSign, User as UserIcon, Shield, Globe, MapPin, Building2,
   KeyRound, Eye, EyeOff, Wand2, Check, AlertCircle,
-  Command, LifeBuoy,
+  Command, Send, LifeBuoy,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,13 +20,14 @@ import {
 } from "@/components/ui/select";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import MultiFacilityPicker, { parseFacilitiesCsv } from "@/components/MultiFacilityPicker";
-import { createUser, listRoles, type DirectusRole } from "@/lib/directus";
+import { createUser, getUserByEmail, listRoles, requestPasswordReset, updateUser, type DirectusRole } from "@/lib/directus";
 import { getHouseholdsByDistrict, getFacilityList } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type RoleLevel = "administrator" | "province" | "district" | "facility" | "support";
+type ActivationMode = "invite";
 
 const ROLE_LABEL: Record<RoleLevel, string> = {
   administrator: "Administrator",
@@ -56,6 +57,17 @@ const emptyForm: UserFormState = {
   province: "",
   district: "",
   facility: "",
+};
+
+type CreateUserProfilePayload = {
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  role: string;
+  description: string;
+  title: string;
+  location: string;
+  facility?: string;
 };
 
 const ROLE_CARDS: Array<{
@@ -158,6 +170,7 @@ const AddUser = () => {
   const navigate = useNavigate();
   const [formState, setFormState] = useState<UserFormState>(emptyForm);
   const [selectedLevel, setSelectedLevel] = useState<RoleLevel | "">("");
+  const [activationMode] = useState<ActivationMode>("invite");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -257,32 +270,85 @@ const AddUser = () => {
   }, [selectedLevel, formState.province, formState.district, formState.facility]);
 
   const createMutation = useMutation({
-    mutationFn: createUser,
-    onSuccess: () => {
+    mutationFn: async ({
+      mode,
+      profilePayload,
+      resetUrl,
+    }: {
+      mode: ActivationMode;
+      profilePayload: CreateUserProfilePayload;
+      resetUrl: string;
+    }) => {
+      const existingUser = await getUserByEmail(profilePayload.email);
+      const payload = {
+        ...profilePayload,
+        status: "active",
+        password_change_required: false,
+      };
+
+      if (existingUser?.id) {
+        await updateUser(existingUser.id, payload);
+      } else {
+        await createUser(payload);
+      }
+
+      if (mode === "invite") {
+        await requestPasswordReset(profilePayload.email, resetUrl);
+      }
+
+      return { mode, existed: Boolean(existingUser?.id) };
+    },
+    onSuccess: ({ mode, existed }) => {
       queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
-      toast.success("User created successfully");
+      toast.success(
+        mode === "invite"
+          ? "Setup email sent"
+          : existed
+            ? "Existing user updated"
+            : "User created successfully",
+        {
+          description:
+            mode === "invite"
+              ? "The user can set a password from the email link."
+              : "The user must change the temporary password at first login.",
+        },
+      );
       navigate("/users");
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create user");
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create user");
     },
   });
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!formState.email.trim()) return toast.error("Email is required");
-    if (!formState.password.trim()) return toast.error("Password is required");
-    if (!selectedLevel) return toast.error("Please select an access level");
-    if (formState.password !== formState.confirm_password) {
-      return toast.error("Passwords do not match");
+    if (!formState.email.trim() || !selectedLevel) {
+      toast.error("Email and role type are required");
+      return;
     }
 
+    if (!isValidEmail(formState.email)) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+
+    const roles = rolesQuery.data ?? [];
+    let finalRoleId = ecapUserRoleId;
+    let description = ROLE_LABEL[selectedLevel];
     let title = "All";
     let location = "All";
-    let description = ROLE_LABEL[selectedLevel];
-    let finalRoleId = ecapUserRoleId;
     let facility: string | undefined;
+
+    if (selectedLevel === "support") {
+      description = "ECAP+ Support";
+      finalRoleId = ecapSupportRoleId || ecapUserRoleId;
+    }
+
+    if (!finalRoleId) {
+      toast.error("Could not find a matching role in Directus.");
+      return;
+    }
 
     if (selectedLevel === "province") {
       if (!formState.province) return toast.error("Please select a Province");
@@ -300,24 +366,24 @@ const AddUser = () => {
       title = formState.province;
       location = formState.district;
       facility = formState.facility;
-    } else if (selectedLevel === "support") {
-      title = "All";
-      location = "All";
-      description = "ECAP+ Support";
-      finalRoleId = ecapSupportRoleId || ecapUserRoleId;
     }
 
-    createMutation.mutate({
+    const profilePayload = {
       email: formState.email.trim(),
       first_name: formState.first_name.trim() || undefined,
       last_name: formState.last_name.trim() || undefined,
-      role: finalRoleId || undefined,
-      status: "active",
-      password: formState.password.trim(),
-      description: description || undefined,
+      role: finalRoleId,
+      description,
       title,
       location,
-      facility,
+      facility: facility || undefined,
+    };
+
+    const baseUrl = import.meta.env.VITE_RESET_PASSWORD_URL || window.location.origin;
+    createMutation.mutate({
+      mode: activationMode,
+      profilePayload,
+      resetUrl: `${baseUrl}/reset-password`,
     });
   };
 
@@ -605,110 +671,37 @@ const AddUser = () => {
                 )}
               </section>
 
-              {/* ── 3 · Login Credentials ────────────────────────────── */}
+              {/* ── 3 · Account Activation ──────────────────────────── */}
               <section className="space-y-4">
                 <header className="flex items-center gap-2">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-sm shadow-emerald-700/20">3</span>
-                  <h3 className="text-sm font-bold text-slate-900">Login credentials</h3>
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Secure access</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const pw = generatePassword();
-                      setFormState((prev) => ({ ...prev, password: pw, confirm_password: pw }));
-                      setShowPassword(true);
-                      toast.success("Strong password generated", { description: "Copy it before saving — it won't be shown later." });
-                    }}
-                    className="ml-auto inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50/60 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 transition-all hover:bg-emerald-100"
-                  >
-                    <Wand2 className="h-3 w-3" />
-                    Auto-generate
-                  </button>
+                  <h3 className="text-sm font-bold text-slate-900">Account activation</h3>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Invite or temporary password</span>
                 </header>
 
-                <div className="space-y-2">
-                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
-                    <KeyRound className="h-3 w-3 text-slate-400" />
-                    Password
-                    <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="At least 8 characters"
-                      value={formState.password}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, password: event.target.value }))
-                      }
-                      className="h-10 pr-10 bg-white/80 backdrop-blur-md focus-visible:ring-emerald-500/30 font-mono"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((s) => !s)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                      tabIndex={-1}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                  {formState.password.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className={cn("h-full rounded-full transition-all duration-300", pwStrength.barCls)} />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className={cn("font-semibold", pwStrength.textCls)}>
-                          {pwStrength.label}
-                        </span>
-                        <span className="text-slate-400 font-mono">{formState.password.length} chars</span>
-                      </div>
-                    </div>
-                  )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => {}}
+                    className="rounded-xl border border-emerald-300 bg-emerald-50/60 ring-2 ring-emerald-200 p-4 text-left transition-all"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                      <Send className="h-4 w-4 text-emerald-600" />
+                      Send setup email
+                    </span>
+                    <span className="mt-1 block text-[11px] leading-relaxed text-slate-500">
+                      The user receives an ECAP+ password setup link before first sign-in.
+                    </span>
+                  </button>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
-                    <KeyRound className="h-3 w-3 text-slate-400" />
-                    Confirm password
-                    <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showConfirm ? "text" : "password"}
-                      placeholder="Re-enter password"
-                      value={formState.confirm_password}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, confirm_password: event.target.value }))
-                      }
-                      className={cn(
-                        "h-10 pr-16 bg-white/80 backdrop-blur-md focus-visible:ring-emerald-500/30 font-mono",
-                        pwMatch === true && "border-emerald-300",
-                        pwMatch === false && "border-rose-300"
-                      )}
-                      required
-                    />
-                    {pwMatch !== null && (
-                      <span className="absolute right-9 top-1/2 -translate-y-1/2">
-                        {pwMatch
-                          ? <Check className="h-4 w-4 text-emerald-600" />
-                          : <AlertCircle className="h-4 w-4 text-rose-500" />}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm((s) => !s)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                      tabIndex={-1}
-                      aria-label={showConfirm ? "Hide password" : "Show password"}
-                    >
-                      {showConfirm ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
+                <div className="rounded-lg border border-emerald-100/60 bg-gradient-to-r from-emerald-50/70 via-teal-50/30 to-transparent p-3">
+                  <div className="flex items-start gap-2">
+                    <Shield className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      The email link opens the ECAP+ password setup screen. No password is shared by the administrator.
+                    </p>
                   </div>
-                  {pwMatch === false && (
-                    <p className="text-[10px] text-rose-600">Passwords don't match.</p>
-                  )}
                 </div>
               </section>
 
@@ -717,20 +710,20 @@ const AddUser = () => {
                 <span className="text-[10px] text-slate-400 inline-flex items-center gap-1">
                   <Command className="h-3 w-3" /> + Enter to save
                 </span>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="group inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 disabled:cursor-not-allowed sm:w-auto w-full"
-                >
-                  {createMutation.isPending ? (
-                    <>Creating account <LoadingDots /></>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4" strokeWidth={2.5} />
-                      Create account
-                    </>
-                  )}
-                </button>
+                  <button
+                    type="submit"
+                    disabled={createMutation.isPending}
+                    className="group inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 disabled:cursor-not-allowed sm:w-auto w-full"
+                  >
+                    {createMutation.isPending ? (
+                      <>Sending setup email <LoadingDots /></>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" strokeWidth={2.5} />
+                        Send setup email
+                      </>
+                    )}
+                  </button>
               </div>
 
               {rolesQuery.isLoading && (
@@ -804,14 +797,10 @@ const AddUser = () => {
                   )}
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white/60 px-3 py-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Password</span>
-                  {formState.password.length === 0 ? (
-                    <span className="text-[11px] text-slate-400">—</span>
-                  ) : (
-                    <span className={cn("text-[11px] font-semibold", pwStrength.textCls)}>
-                      {pwStrength.label}
-                    </span>
-                  )}
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Activation</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+                    <Send className="h-3 w-3" /> Setup email
+                  </span>
                 </div>
               </div>
 
@@ -819,7 +808,7 @@ const AddUser = () => {
                 <div className="flex items-start gap-2">
                   <Shield className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
                   <p className="text-[11px] text-slate-600 leading-relaxed">
-                    The user receives no email. Share the password securely (e.g. password manager or in-person).
+                    ECAP+ sends the setup email. No password is shared by the administrator.
                   </p>
                 </div>
               </div>
