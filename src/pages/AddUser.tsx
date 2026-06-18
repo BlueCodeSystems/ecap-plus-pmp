@@ -24,7 +24,7 @@ import { createUser, getUserByEmail, listRoles, requestPasswordReset, updateUser
 import { getHouseholdsByDistrict, getFacilityList } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, normalizePlaceName } from "@/lib/utils";
 
 type RoleLevel = "administrator" | "province" | "district" | "facility" | "support";
 type ActivationMode = "invite";
@@ -215,17 +215,42 @@ const AddUser = () => {
     return districtsByProvince[formState.province] || [];
   }, [formState.province, districtsByProvince]);
 
+  const wardsByDistrict = useMemo(() => {
+    const mapping = new Map<string, Set<string>>();
+    if (householdsListQuery.data) {
+      householdsListQuery.data.forEach((h: any) => {
+        const dist = normalizePlaceName(h.district);
+        const ward = normalizePlaceName(h.ward);
+        if (dist && ward) {
+          if (!mapping.has(dist)) mapping.set(dist, new Set());
+          mapping.get(dist)?.add(ward);
+        }
+      });
+    }
+    return mapping;
+  }, [householdsListQuery.data]);
+
   const rolesQuery = useQuery({
     queryKey: ["directus", "roles"],
     queryFn: listRoles,
   });
 
-  const facilitiesQuery = useQuery<string[]>({
-    queryKey: ["etl", "facility-list"],
+  const wardsQuery = useQuery<string[]>({
+    queryKey: ["etl", "ward-list"],
     queryFn: getFacilityList,
     enabled: selectedLevel === "facility",
     staleTime: 10 * 60 * 1000,
   });
+
+  const availableWards = useMemo(() => {
+    if (!formState.district) return [];
+    const districtWards = wardsByDistrict.get(formState.district);
+    if (!districtWards || districtWards.size === 0) return [];
+    const lc = new Set([...districtWards].map((s) => s.toLowerCase()));
+    return (wardsQuery.data ?? [])
+      .filter((w) => lc.has(w.toLowerCase()))
+      .map((w) => normalizePlaceName(w));
+  }, [formState.district, wardsByDistrict, wardsQuery.data]);
 
   // Auto-detect ECAP+ role IDs
   const [ecapUserRoleId, setEcapUserRoleId] = useState<string>("");
@@ -653,16 +678,16 @@ const AddUser = () => {
                         <div className="space-y-2 sm:col-span-2">
                           <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
                             <Building2 className="h-3 w-3 text-slate-400" />
-                            Facilities
+                            Ward
                             <span className="text-rose-500">*</span>
-                            <span className="ml-2 text-[10px] font-normal text-slate-400">User will only see data from the facilities below</span>
+                            <span className="ml-2 text-[10px] font-normal text-slate-400">User will only see data from the wards below</span>
                           </label>
                           <MultiFacilityPicker
-                            options={facilitiesQuery.data ?? []}
+                            options={availableWards}
                             value={formState.facility}
                             onChange={(csv) => setFormState((prev) => ({ ...prev, facility: csv }))}
-                            loading={facilitiesQuery.isLoading}
-                            placeholder="Select one or more facilities"
+                            loading={wardsQuery.isLoading}
+                            placeholder={!formState.district ? "Select a district first" : "Select one or more wards"}
                           />
                         </div>
                       )}

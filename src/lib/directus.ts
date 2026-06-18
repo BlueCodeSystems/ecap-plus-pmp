@@ -334,56 +334,32 @@ const isForeignKeyError = (msg: string) => {
   );
 };
 
-// Wipes every row in `collection` that references the given user via any of
-// `fields`. Tries DELETE first (so the row leaves the system entirely); falls
-// back to PATCH-to-null per field if the collection doesn't allow item deletes.
+// Clean up rows in custom collections that FK-reference the user.
+// Uses the standard /items/{collection} API — no system-table hacks.
 const scrubUserReferences = async (
   userId: string,
   collection: string,
   fields: string[],
 ) => {
   for (const field of fields) {
-    let cursor = 0;
-    // Page through items where this user is referenced — Directus caps the
-    // implicit page size, so keep fetching until nothing comes back.
-    while (true) {
-      let items: Array<{ id: string }>;
-      try {
-        const data = await directusRequest(
-          `/items/${collection}?filter[${field}][_eq]=${encodeURIComponent(userId)}&fields=id&limit=100&offset=${cursor}`,
-        );
-        items = Array.isArray(data?.data) ? data.data : [];
-      } catch {
-        break; // collection might not exist on this Directus — skip silently
-      }
-      if (items.length === 0) break;
-
+    try {
+      const data = await directusRequest(
+        `/items/${collection}?filter[${field}][_eq]=${encodeURIComponent(userId)}&fields=id&limit=200`,
+      );
+      const items: Array<{ id: string }> = Array.isArray(data?.data) ? data.data : [];
       for (const it of items) {
-        // Try to delete the referencing row outright. If that's not allowed
-        // (e.g. it has its own dependents), null out the field instead.
-        let deleted = false;
         try {
           await directusRequest(`/items/${collection}/${it.id}`, { method: "DELETE" });
-          deleted = true;
         } catch {
-          // fall through to PATCH
-        }
-        if (!deleted) {
           try {
             await directusRequest(`/items/${collection}/${it.id}`, {
               method: "PATCH",
               body: JSON.stringify({ [field]: null }),
             });
-          } catch {
-            // ignore — best effort
-          }
+          } catch { /* skip */ }
         }
       }
-
-      // If we deleted everything, the next page starts at the same offset (rows
-      // have shifted). Only advance when we did partial PATCH-style scrubs.
-      if (items.length < 100) break;
-    }
+    } catch { /* skip */ }
   }
 };
 
@@ -397,52 +373,14 @@ const purgeUserNotifications = async (userId: string) => {
       for (const n of items) {
         try {
           await directusRequest(`/notifications/${n.id}`, { method: "DELETE" });
-        } catch {
-          // ignore
-        }
+        } catch { /* ignore */ }
       }
-    } catch {
-      // ignore — endpoint or perms missing
-    }
-  }
-};
-
-// Hits a dedicated Directus endpoint (e.g. /shares, /presets, /activity,
-// /revisions) that points at the user via the given field, and deletes
-// every matching row. Falls back to /items/<sys_table> if the endpoint
-// is private.
-const purgeSystemRows = async (
-  userId: string,
-  endpoints: Array<{ path: string; field: string; mode?: "delete" | "patch_null" }>,
-) => {
-  for (const { path, field, mode = "delete" } of endpoints) {
-    try {
-      const data = await directusRequest(
-        `${path}?filter[${field}][_eq]=${encodeURIComponent(userId)}&fields=id&limit=200`,
-      );
-      const items: Array<{ id: number | string }> = data?.data ?? [];
-      for (const it of items) {
-        try {
-          if (mode === "delete") {
-            await directusRequest(`${path}/${it.id}`, { method: "DELETE" });
-          } else {
-            await directusRequest(`${path}/${it.id}`, {
-              method: "PATCH",
-              body: JSON.stringify({ [field]: null }),
-            });
-          }
-        } catch {
-          // ignore individual failures
-        }
-      }
-    } catch {
-      // endpoint may not exist or be locked down — fine
-    }
+    } catch { /* ignore */ }
   }
 };
 
 export const deleteUser = async (id: string) => {
-  // First pass: try a straight delete. Most archived users have no refs left.
+  // Some users have no references — try a straight delete first.
   try {
     await directusRequest(`/users/${id}`, { method: "DELETE" });
     return;
@@ -451,44 +389,15 @@ export const deleteUser = async (id: string) => {
     if (!isForeignKeyError(msg)) throw err;
   }
 
-  // Second pass: scrub everything the user touches that we can reach via the
-  // Directus REST API, then retry the DELETE.
+  // FK blocked — clean up custom table references then retry.
   await purgeUserNotifications(id);
   await scrubUserReferences(id, "flagged_forms_ecapplus_pmp", [
-    "user_created",
-    "created_by",
-    "flagged_by",
-    "caseworker",
+    "user_created", "created_by", "flagged_by", "caseworker",
   ]);
   await scrubUserReferences(id, "flagged_forms_ecapii", [
-    "user_created",
-    "created_by",
-    "flagged_by",
-    "caseworker",
+    "user_created", "created_by", "flagged_by", "caseworker",
   ]);
   await scrubUserReferences(id, "calendar_events", ["user_id", "user_created", "created_by"]);
-
-  // Directus system collections that hold FKs to directus_users.id.
-  // Most of these are deletable by admins via REST; the few that aren't
-  // (older Directus versions lock revisions/activity) are best-effort.
-  await purgeSystemRows(id, [
-    { path: "/shares", field: "user_created" },
-    { path: "/presets", field: "user" },
-    { path: "/comments", field: "user_created" },
-    { path: "/comments", field: "user_updated", mode: "patch_null" },
-    { path: "/dashboards", field: "user_created", mode: "patch_null" },
-    { path: "/panels", field: "user_created", mode: "patch_null" },
-    { path: "/flows", field: "user_created", mode: "patch_null" },
-    { path: "/operations", field: "user_created", mode: "patch_null" },
-    // Files reference user via uploaded_by + modified_by; null them so the
-    // file itself stays available to other users.
-    { path: "/files", field: "uploaded_by", mode: "patch_null" },
-    { path: "/files", field: "modified_by", mode: "patch_null" },
-    // Sessions and activity log — older Directus exposes /items/directus_*.
-    { path: "/items/directus_sessions", field: "user" },
-    { path: "/items/directus_activity", field: "user" },
-    { path: "/items/directus_revisions", field: "user" },
-  ]);
 
   try {
     await directusRequest(`/users/${id}`, { method: "DELETE" });
@@ -496,17 +405,12 @@ export const deleteUser = async (id: string) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (!isForeignKeyError(msg)) throw err;
-    // Last-resort fallback: still keep the row but mark suspended so the UI
-    // hides it. Surface the actual FK error in the message so we can see
-    // which Directus system table is still holding the reference.
     try {
       await directusRequest(`/users/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ status: "suspended" }),
       });
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     throw new UserHasLinkedRecordsError(msg);
   }
 };

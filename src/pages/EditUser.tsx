@@ -26,6 +26,7 @@ import MultiFacilityPicker, { parseFacilitiesCsv } from "@/components/MultiFacil
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/dashboard/ConfirmDialog";
+import { normalizePlaceName } from "@/lib/utils";
 
 type UserFormState = {
   email: string;
@@ -107,17 +108,42 @@ const EditUser = () => {
     return districtsByProvince[formState.province] || [];
   }, [formState.province, districtsByProvince]);
 
+  const wardsByDistrict = useMemo(() => {
+    const mapping = new Map<string, Set<string>>();
+    if (householdsListQuery.data) {
+      householdsListQuery.data.forEach((h: any) => {
+        const dist = normalizePlaceName(h.district);
+        const ward = normalizePlaceName(h.ward);
+        if (dist && ward) {
+          if (!mapping.has(dist)) mapping.set(dist, new Set());
+          mapping.get(dist)?.add(ward);
+        }
+      });
+    }
+    return mapping;
+  }, [householdsListQuery.data]);
+
   const rolesQuery = useQuery({
     queryKey: ["directus", "roles"],
     queryFn: listRoles,
   });
 
-  const facilitiesQuery = useQuery<string[]>({
-    queryKey: ["etl", "facility-list"],
+  const wardsQuery = useQuery<string[]>({
+    queryKey: ["etl", "ward-list"],
     queryFn: getFacilityList,
     enabled: formState.custom_role === "Facility User",
     staleTime: 10 * 60 * 1000,
   });
+
+  const availableWards = useMemo(() => {
+    if (!formState.district) return [];
+    const districtWards = wardsByDistrict.get(formState.district);
+    if (!districtWards || districtWards.size === 0) return [];
+    const lc = new Set([...districtWards].map((s) => s.toLowerCase()));
+    return (wardsQuery.data ?? [])
+      .filter((w) => lc.has(w.toLowerCase()))
+      .map((w) => normalizePlaceName(w));
+  }, [formState.district, wardsByDistrict, wardsQuery.data]);
 
   // Identify ECAP+ User and Support role IDs
   const [ecapUserRoleId, setEcapUserRoleId] = useState<string>("");
@@ -439,18 +465,18 @@ const EditUser = () => {
               </div>
             )}
 
-            {/* Facility Selector — multi */}
+            {/* Ward Selector — multi */}
             {formState.custom_role === "Facility User" && (
               <div className="flex flex-col gap-2 sm:col-span-2">
                 <label className="text-sm font-medium text-slate-700">
-                  Facilities <span className="ml-2 text-[10px] font-normal text-slate-400">User will only see data from the facilities below</span>
+                  Ward <span className="ml-2 text-[10px] font-normal text-slate-400">User will only see data from the wards below</span>
                 </label>
                 <MultiFacilityPicker
-                  options={facilitiesQuery.data ?? []}
+                  options={availableWards}
                   value={formState.facility}
                   onChange={(csv) => setFormState((prev) => ({ ...prev, facility: csv }))}
-                  loading={facilitiesQuery.isLoading}
-                  placeholder="Select one or more facilities"
+                  loading={wardsQuery.isLoading}
+                  placeholder={!formState.district ? "Select a district first" : "Select one or more wards"}
                 />
               </div>
             )}
