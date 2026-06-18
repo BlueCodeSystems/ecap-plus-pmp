@@ -334,7 +334,71 @@ const isForeignKeyError = (msg: string) => {
   );
 };
 
+// Clean up rows in custom collections that FK-reference the user.
+// Uses the standard /items/{collection} API — no system-table hacks.
+const scrubUserReferences = async (
+  userId: string,
+  collection: string,
+  fields: string[],
+) => {
+  for (const field of fields) {
+    try {
+      const data = await directusRequest(
+        `/items/${collection}?filter[${field}][_eq]=${encodeURIComponent(userId)}&fields=id&limit=200`,
+      );
+      const items: Array<{ id: string }> = Array.isArray(data?.data) ? data.data : [];
+      for (const it of items) {
+        try {
+          await directusRequest(`/items/${collection}/${it.id}`, { method: "DELETE" });
+        } catch {
+          try {
+            await directusRequest(`/items/${collection}/${it.id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ [field]: null }),
+            });
+          } catch { /* skip */ }
+        }
+      }
+    } catch { /* skip */ }
+  }
+};
+
+const purgeUserNotifications = async (userId: string) => {
+  for (const field of ["recipient", "sender"] as const) {
+    try {
+      const data = await directusRequest(
+        `/notifications?filter[${field}][_eq]=${encodeURIComponent(userId)}&fields=id&limit=200`,
+      );
+      const items: Array<{ id: number | string }> = data?.data ?? [];
+      for (const n of items) {
+        try {
+          await directusRequest(`/notifications/${n.id}`, { method: "DELETE" });
+        } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
+  }
+};
+
 export const deleteUser = async (id: string) => {
+  // Some users have no references — try a straight delete first.
+  try {
+    await directusRequest(`/users/${id}`, { method: "DELETE" });
+    return;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!isForeignKeyError(msg)) throw err;
+  }
+
+  // FK blocked — clean up custom table references then retry.
+  await purgeUserNotifications(id);
+  await scrubUserReferences(id, "flagged_forms_ecapplus_pmp", [
+    "user_created", "created_by", "flagged_by", "caseworker",
+  ]);
+  await scrubUserReferences(id, "flagged_forms_ecapii", [
+    "user_created", "created_by", "flagged_by", "caseworker",
+  ]);
+  await scrubUserReferences(id, "calendar_events", ["user_id", "user_created", "created_by"]);
+
   try {
     await directusRequest(`/users/${id}`, { method: "DELETE" });
     return;
@@ -346,9 +410,7 @@ export const deleteUser = async (id: string) => {
         method: "PATCH",
         body: JSON.stringify({ status: "suspended" }),
       });
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     throw new UserHasLinkedRecordsError(msg);
   }
 };
