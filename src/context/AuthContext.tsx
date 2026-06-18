@@ -20,13 +20,14 @@ export type AuthUser = {
   avatar?: string;
   description?: string;
   title?: string;
+  password_change_required?: boolean;
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser | null>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 };
@@ -50,7 +51,7 @@ const requireDirectusUrl = () => {
 
 const fetchProfile = async (token: string) => {
   const response = await fetch(
-    `${requireDirectusUrl()}/users/me?fields=id,email,first_name,last_name,role.id,role.name,location,avatar,description,title`,
+    `${requireDirectusUrl()}/users/me?fields=id,email,first_name,last_name,role.id,role.name,location,avatar,description,title,password_change_required`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -132,6 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setStoredToken(token);
       const profile = await fetchProfile(token);
       setUser(profile);
+      return profile;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed";
       setError(message);
