@@ -18,7 +18,8 @@ import {
     TestTubes,
     Mail,
     Smartphone,
-    Sparkles
+    Sparkles,
+    ShieldCheck
 } from "lucide-react";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -58,6 +59,11 @@ const PIPELINE_META: Record<string, { icon: typeof Database; color: string; desc
         color: "amber",
         description: "Extract HTS register data: HIV testing service records and index contact tracing from ECAP Plus.",
     },
+    pmtct: {
+        icon: ShieldCheck,
+        color: "rose",
+        description: "Downstream Prevention of Mother-to-Child Transmission extract for ECAP Plus. Runs after HTS register and provides mother and child download files.",
+    },
     ecap_plus_tablet_sync: {
         icon: Smartphone,
         color: "teal",
@@ -65,7 +71,10 @@ const PIPELINE_META: Record<string, { icon: typeof Database; color: string; desc
     },
 };
 
-const PIPELINE_KEYS = ["ecap_plus", "hts_register"];
+const PIPELINE_KEYS = ["ecap_plus", "hts_register", "pmtct"];
+const DEFAULT_PIPELINE_FILES: Record<string, string[]> = {
+    pmtct: ["pmtct_mother_register.csv", "pmtct_child_register.csv"],
+};
 const TABLET_SYNC_PIPELINE_KEY = "ecap_plus_tablet_sync";
 const TABLET_PAGE_SIZE = 20;
 
@@ -543,20 +552,32 @@ const DataPipelinePage = () => {
                         const files = filesByPipeline[key] ?? [];
                         const lastPipelineRun = runs.find((r) => r.pipeline === key);
                         const pipelineInfo = pipelinesQuery.data?.find((p) => p.id === key);
+                        const displayName = key === "pmtct" ? "Prevention of Mother-to-Child Transmission" : (pipelineInfo?.name ?? key);
+                        const iconStyle = meta.color === "emerald"
+                            ? { backgroundColor: "#ecfdf5", color: "#059669" }
+                            : meta.color === "rose"
+                              ? { backgroundColor: "#fff1f2", color: "#e11d48" }
+                              : { backgroundColor: "#fffbeb", color: "#d97706" };
+                        const outputFiles = files.length > 0
+                            ? files
+                            : (DEFAULT_PIPELINE_FILES[key] ?? []).map((name) => ({
+                                name,
+                                exists: false,
+                                size: null,
+                                sizeFormatted: null,
+                                lastModified: null,
+                            }));
 
                         return (
                             <GlowCard key={key} wrapperClassName="h-full" className="h-full">
                                 <div className="flex flex-col h-full">
                                 <CardHeader>
                                     <div className="flex items-center gap-3">
-                                        <div className="p-3 rounded-2xl" style={{
-                                            backgroundColor: meta.color === "emerald" ? "#ecfdf5" : "#fffbeb",
-                                            color: meta.color === "emerald" ? "#059669" : "#d97706",
-                                        }}>
+                                        <div className="p-3 rounded-2xl" style={iconStyle}>
                                             <Icon className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <CardTitle className="text-base">{pipelineInfo?.name ?? key}</CardTitle>
+                                            <CardTitle className="text-base">{displayName}</CardTitle>
                                             {isRunning && (
                                                 <Badge className="bg-blue-50 text-blue-700 text-[10px] mt-1 gap-1">
                                                     <RefreshCw className="h-3 w-3 animate-spin" />
@@ -590,10 +611,10 @@ const DataPipelinePage = () => {
 
                                     <div className="space-y-2 flex-1">
                                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Output Files</span>
-                                        {files.length > 0 ? files.map((f) => (
+                                        {outputFiles.length > 0 ? outputFiles.map((f) => (
                                             <div key={f.name} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-white">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <FileSpreadsheet className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                                                    <FileSpreadsheet className={cn("h-4 w-4 flex-shrink-0", key === "pmtct" ? "text-rose-500" : "text-emerald-500")} />
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-medium text-slate-700 truncate">{f.name}</p>
                                                         <p className="text-[10px] text-slate-400">

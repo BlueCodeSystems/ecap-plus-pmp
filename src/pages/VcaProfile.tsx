@@ -494,6 +494,9 @@ const VcaProfile = () => {
                 <TabsTrigger value="history" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
                   Caseplans
                 </TabsTrigger>
+                <TabsTrigger value="services" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                  Services
+                </TabsTrigger>
                 <TabsTrigger value="audit" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
                   Referrals
                 </TabsTrigger>
@@ -501,9 +504,6 @@ const VcaProfile = () => {
                   Flag form
                 </TabsTrigger>
               </TabsList>
-            </div>
-            <div className="hidden text-xs font-bold text-slate-400 md:block">
-              VCA ID: <span className="text-slate-900">{id}</span>
             </div>
           </div>
 
@@ -653,16 +653,15 @@ const VcaProfile = () => {
                   <div className="w-full overflow-x-auto">
                     <Table className="table-fixed w-full">
                       <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[120px]">Date</TableHead>
-                          <TableHead className="w-[120px]">Status</TableHead>
-                          <TableHead className="w-[150px]">Created at</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sortedCasePlans.map((plan: any, idx: number) => (
-                          <CasePlanRow key={idx} plan={plan} servicesSource={sortedVcaServices} />
+                          <TableRow>
+                            <TableHead className="w-[120px]">Date</TableHead>
+                            <TableHead className="w-[120px]">Status</TableHead>
+                            <TableHead className="w-[150px]">Created at</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sortedCasePlans.map((plan: any, idx: number) => (
+                          <CasePlanRow key={idx} plan={plan} />
                         ))}
                       </TableBody>
                     </Table>
@@ -671,6 +670,21 @@ const VcaProfile = () => {
                   <EmptyState icon={<FileText className="h-7 w-7" />} title="No caseplans recorded" description="No case plans have been created for this VCA yet." />
                 )}
               </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="services" className="mt-0 w-full overflow-hidden">
+            <Card className="overflow-hidden border-slate-200">
+              <div className="bg-white p-6 flex flex-col gap-3 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">VCA services</h3>
+                  <p className="mt-1 text-xs font-medium text-slate-500">Services are ordered from most recent to oldest.</p>
+                </div>
+                <Badge variant="outline" className="w-fit border-emerald-100 bg-emerald-50 text-emerald-700 font-black text-[10px]">
+                  {sortedVcaServices.length} records
+                </Badge>
+              </div>
+              <VcaServicesDetailTable data={sortedVcaServices} isLoading={isLoadingVcaServices} />
             </Card>
           </TabsContent>
 
@@ -957,6 +971,48 @@ const cleanArrayString = (str: string | null | undefined) => {
   }
 };
 
+const VcaServicesDetailTable = ({ data, isLoading }: { data: any[]; isLoading: boolean }) => {
+  if (isLoading) return <div className="p-20 text-center"><LoadingDots /></div>;
+  if (data.length === 0) {
+    return (
+      <div className="p-20 text-center text-slate-400 font-bold text-xs tracking-widest">
+        No VCA services found.
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <Table className="min-w-[1200px] table-fixed">
+        <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
+          <TableRow>
+            <TableHead className="w-36 border-r border-slate-100 text-[10px] font-black text-slate-900">Service Date</TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Health Services</TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">HIV Services</TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Other Health</TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Safe</TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">School Services</TableHead>
+            <TableHead className="text-[10px] font-black text-slate-900">Stable</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((svc: any, i: number) => (
+            <TableRow key={svc.id || svc.unique_id || `${svc.service_date || svc.visit_date || "service"}-${i}`} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
+              <TableCell className="py-4 font-bold text-slate-900 border-r border-slate-100">{svc.service_date || svc.visit_date || svc.date || "N/A"}</TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.health_services)}</TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.hiv_services)}</TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_health_services)}</TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.safe_services)}</TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.schooled_services)}</TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed">{cleanArrayString(svc.stable_services)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
 const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any; servicesSource?: any[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -1041,16 +1097,6 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any; servicesSource?
           {plan.date_created || plan.created_at || plan.case_plan?.created_at
             ? new Date(plan.date_created || plan.created_at || plan.case_plan?.created_at).toLocaleDateString()
             : "N/A"}
-        </TableCell>
-        <TableCell className="text-right">
-          <Button
-            variant={isOpen ? "secondary" : "outline"}
-            size="sm"
-            className="h-8 text-xs font-bold"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? "Hide Services" : "View Services"}
-          </Button>
         </TableCell>
       </TableRow>
       {isOpen && (
