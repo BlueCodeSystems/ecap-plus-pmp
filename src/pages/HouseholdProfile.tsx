@@ -60,6 +60,13 @@ const formatServiceDate = (value: any) => {
   return format(parsed, "dd MMM yyyy");
 };
 
+const formatBirthDate = (value: any) => {
+  if (!value) return "N/A";
+  const parsed = new Date(value);
+  if (isNaN(parsed.getTime())) return String(value);
+  return format(parsed, "dd MMM yyyy");
+};
+
 const HouseholdProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -451,7 +458,7 @@ const HouseholdProfile = () => {
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   <InfoItem label="Caregiver name" value="Caregiver Name – Confidential" icon={<User className="h-3.5 w-3.5" />} />
                   <InfoItem label="Caregiver sex" value={String(household.caregiver_sex || household.sex || household.gender || "N/A")} />
-                  <InfoItem label="Date of birth" value={String(household.caregiver_birthdate || household.caregiver_birth_date || household.dob || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                  <InfoItem label="Date of birth" value={formatBirthDate(household.caregiver_birthdate || household.caregiver_birth_date || household.dob)} icon={<Calendar className="h-3.5 w-3.5" />} />
                   <InfoItem label="HIV status" value={String(household.caregiver_hiv_status || household.hiv_status || "N/A")} icon={<Activity className="h-3.5 w-3.5" />} />
                   <InfoItem label="ART Number" value={String(household.caregiver_art_number || household.art_number || "N/A")} />
                   <InfoItem label="On HIV Treatment?" value={String(household.is_on_hiv_treatment || household.active_on_treatment || "N/A")} />
