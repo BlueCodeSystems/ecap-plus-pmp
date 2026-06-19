@@ -53,6 +53,13 @@ const safeParseDate = (dateStr: any) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+const formatServiceDate = (value: any) => {
+  if (!value) return "N/A";
+  const parsed = new Date(value);
+  if (isNaN(parsed.getTime())) return String(value);
+  return format(parsed, "dd MMM yyyy");
+};
+
 const HouseholdProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -933,7 +940,7 @@ const HouseholdServicesDetailTable = ({ data, isLoading }: { data: any[]; isLoad
         <TableBody>
           {data.map((svc: any, i: number) => (
             <TableRow key={svc.id || svc.unique_id || `${svc.service_date || svc.visit_date || "service"}-${i}`} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
-              <TableCell className="py-4 font-bold text-slate-900 border-r border-slate-100">{svc.service_date || svc.visit_date || svc.date || "N/A"}</TableCell>
+              <TableCell className="py-4 font-bold text-slate-900 border-r border-slate-100">{formatServiceDate(svc.service_date || svc.visit_date || svc.date)}</TableCell>
               <TableCell className="py-4 text-slate-700 border-r border-slate-100">{svc.is_hiv_positive || "N/A"}</TableCell>
               <TableCell className="py-4 text-slate-700 border-r border-slate-100">{svc.vl_last_result || "N/A"}</TableCell>
               <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.health_services)}</TableCell>
@@ -1083,7 +1090,7 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
                       <TableBody>
                         {linkedServices.map((svc: any, i: number) => (
                           <TableRow key={i} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">{svc.service_date || "N/A"}</TableCell>
+                          <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">{formatServiceDate(svc.service_date)}</TableCell>
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 text-slate-700 border-r border-slate-100">{svc.is_hiv_positive || "N/A"}</TableCell>
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 text-slate-700 border-r border-slate-100">{svc.vl_last_result || "N/A"}</TableCell>
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.health_services)}</TableCell>
