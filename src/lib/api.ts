@@ -243,6 +243,12 @@ const fyQs = (fy?: FyWindow) => {
   return `?${params.toString()}`;
 };
 
+export const clearApiCache = async () => {
+  await Promise.allSettled([
+    import("@/lib/indexedDbCache").then((m) => m.clearAllCacheEntries()),
+  ]);
+};
+
 export const getTotalVcasCount = async (district?: string, fy?: FyWindow) => {
   const path = district
     ? `/child/vcas-count/${encodeURIComponent(district)}${fyQs(fy)}`
@@ -264,8 +270,8 @@ export const getTotalHouseholdsCount = async (
 
 export const getTotalMothersCount = async (district?: string) => {
   const path = district
-    ? `/household/members-count/${encodeURIComponent(district)}`
-    : "/household/members-count";
+    ? `/mother/members-count/${encodeURIComponent(district)}`
+    : "/mother/total/count";
   const data = await dqaGet(path);
   return getCountValue(data);
 };
@@ -331,8 +337,18 @@ export const getHouseholdArchivedRegister = async (
   return getListValue(data);
 };
 
-export const getMothersByDistrict = async (district: string) => {
-  const data = await dqaGet(`/mother/district/${encodeURIComponent(district)}`);
+export const getMothersByDistrict = async (district: string, fy?: FyWindow) => {
+  const data = await dqaGet(`/mother/district/${encodeURIComponent(district)}/filtered${fyQs(fy)}`);
+  return getListValue(data);
+};
+
+export const getPmtctChildRegisterByDistrict = async (district: string, fy?: FyWindow) => {
+  const data = await dqaGet(`/etl/pmtct-child-register/${encodeURIComponent(district)}${fyQs(fy)}`);
+  return getListValue(data);
+};
+
+export const getPmtctMotherRegisterByDistrict = async (district: string, fy?: FyWindow) => {
+  const data = await dqaGet(`/etl/pmtct-mother-register/${encodeURIComponent(district)}${fyQs(fy)}`);
   return getListValue(data);
 };
 
@@ -396,7 +412,7 @@ export const getHouseholdServicesByDistrict = async (district: string) => {
   );
 };
 
-export const getHTSRegisterByDistrict = async (district: string) => {
+export const getHTSRegisterByDistrict = async (district: string, _fy?: FyWindow) => {
   // Backend route: /household/hts-register-by-district/:district(*)
   const data = await dqaGet(
     `/household/hts-register-by-district/${encodeURIComponent(district)}`,
@@ -406,6 +422,8 @@ export const getHTSRegisterByDistrict = async (district: string) => {
   }
   return getListValue(data);
 };
+
+export const getHtsRegisterByDistrict = getHTSRegisterByDistrict;
 
 export const getCaregiverServicesByHousehold = async (hhId: string) => {
   const data = await dqaGet(

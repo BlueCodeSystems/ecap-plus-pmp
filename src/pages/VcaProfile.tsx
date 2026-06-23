@@ -131,6 +131,20 @@ const safeParseDate = (dateStr: any) => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+const formatServiceDate = (value: any) => {
+  if (!value) return "N/A";
+  const parsed = new Date(value);
+  if (isNaN(parsed.getTime())) return String(value);
+  return format(parsed, "dd MMM yyyy");
+};
+
+const formatBirthDate = (value: any) => {
+  if (!value) return "N/A";
+  const parsed = new Date(value);
+  if (isNaN(parsed.getTime())) return String(value);
+  return format(parsed, "dd MMM yyyy");
+};
+
 const flagSchema = z.object({
   category: z.string().optional(),
   severity: z.string().optional(),
@@ -523,7 +537,7 @@ const VcaProfile = () => {
                         labels that previously read "N/A" did so because the lookup
                         keys didn't exist on the API response (e.g. relation_to_head
                         when the column is `relation`). */}
-                    <InfoItem label="Date of birth" value={String(vca.birthdate || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
+                    <InfoItem label="Date of birth" value={formatBirthDate(vca.birthdate)} icon={<Calendar className="h-3.5 w-3.5" />} />
                     <InfoItem label="Gender" value={String(vca.vca_gender || vca.gender || "N/A")} />
                     <InfoItem label="Age" value={String(vca.age || `${age} Years`)} />
                     <InfoItem label="Age Group" value={String(vca.age_group || "N/A")} />
@@ -998,7 +1012,7 @@ const VcaServicesDetailTable = ({ data, isLoading }: { data: any[]; isLoading: b
         <TableBody>
           {data.map((svc: any, i: number) => (
             <TableRow key={svc.id || svc.unique_id || `${svc.service_date || svc.visit_date || "service"}-${i}`} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
-              <TableCell className="py-4 font-bold text-slate-900 border-r border-slate-100">{svc.service_date || svc.visit_date || svc.date || "N/A"}</TableCell>
+              <TableCell className="py-4 font-bold text-slate-900 border-r border-slate-100">{formatServiceDate(svc.service_date || svc.visit_date || svc.date)}</TableCell>
               <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.health_services)}</TableCell>
               <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.hiv_services)}</TableCell>
               <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_health_services)}</TableCell>
@@ -1150,7 +1164,7 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any; servicesSource?
                         {linkedServices.map((svc: any, i: number) => (
                           <TableRow key={i} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">
-                              {svc.service_date || "N/A"}
+                              {formatServiceDate(svc.service_date)}
                             </TableCell>
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
                               {cleanArrayString(svc.health_services)}

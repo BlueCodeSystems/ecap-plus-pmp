@@ -5,6 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const CAREGIVER_CONFIDENTIAL_LABEL = "Caregiver Name - Confidential";
+
+export const anonymizeCaregiverName = (value: unknown) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || ["N/A", "Not Provided", "null", "undefined"].includes(text)) {
+    return CAREGIVER_CONFIDENTIAL_LABEL;
+  }
+  return CAREGIVER_CONFIDENTIAL_LABEL;
+};
+
 export function toTitleCase(str: string) {
   if (!str) return "";
   return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
