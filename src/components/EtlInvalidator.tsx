@@ -24,7 +24,7 @@ import { clearAllCacheEntries } from "@/lib/indexedDbCache";
  * Render output is null — it's a behavioural component.
  */
 const POLL_INTERVAL_MS = 30 * 1000;
-const DQA_BASE_URL = import.meta.env.VITE_DQA_BASE_URL ?? "";
+const DQA_BASE_URL = import.meta.env.REACT_PUBLIC_API_URL ?? import.meta.env.VITE_DQA_BASE_URL ?? "";
 
 async function fetchLastSuccess(): Promise<string | null> {
   try {

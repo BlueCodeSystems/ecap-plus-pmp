@@ -71,6 +71,7 @@ const HouseholdProfile = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const routeState = (location.state as Record<string, unknown> | null) ?? null;
 
   // Retrieve ID from location state or search params or sessionStorage fallback
   const id = useMemo(() => {
@@ -135,7 +136,7 @@ const HouseholdProfile = () => {
   const queryClient = useQueryClient();
 
   const household = useMemo(() => {
-    return [...(households || []), ...(archivedHouseholds || [])].find((h: any) => {
+    const matched = [...(households || []), ...(archivedHouseholds || [])].find((h: any) => {
       const hId = id?.toLowerCase();
       return (
         String(h.uid || "").toLowerCase() === hId ||
@@ -145,7 +146,27 @@ const HouseholdProfile = () => {
         String(h.id || "").toLowerCase() === hId
       );
     });
-  }, [households, archivedHouseholds, id]);
+
+    if (matched) return matched;
+
+    if (routeState && id) {
+      const stateId = String(routeState.id || routeState.household_id || routeState.unique_id || "").toLowerCase();
+      if (
+        stateId === String(id).toLowerCase() ||
+        String(routeState.household_id || "").toLowerCase() === String(id).toLowerCase()
+      ) {
+        return {
+          ...routeState,
+          id,
+          household_id: routeState.household_id || id,
+          unique_id: routeState.unique_id || id,
+          household_code: routeState.household_code || routeState.household_id || id,
+        } as Record<string, unknown>;
+      }
+    }
+
+    return undefined;
+  }, [households, archivedHouseholds, id, routeState]);
 
 
   const form = useForm<z.infer<typeof flagSchema>>({
@@ -303,6 +324,7 @@ const HouseholdProfile = () => {
 
   const caregiverName = String(household.caregiver_name || household.name || "N/A");
   const isArchived = Boolean(household.de_registration_date);
+  const primaryStatus = isArchived ? "Archived" : "Active";
 
   // Pick the latest service date dynamically from the sorted services list
   const lastServiceDate = householdServices[0]?.service_date || household.last_service_date || "N/A";
@@ -315,45 +337,45 @@ const HouseholdProfile = () => {
         {/* ── Hero ──────────────────────────────────────────────── */}
         <div className="relative overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(14,165,233,0.15),transparent_45%)]" />
-          <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
-          <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-sky-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(244,114,182,0.14),transparent_45%)]" />
+          <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/30 blur-[110px] animate-pulse [animation-duration:6s]" />
+          <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-rose-300/25 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
 
-          <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
+          <div className="relative z-10 flex flex-col gap-5 px-5 py-5 sm:px-7 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">Household profile</span>
-                <span className="text-slate-400 text-[11px]">·</span>
-                <span className="text-[11px] text-slate-600">{dateStr}</span>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+                <span>Household profile</span>
+                <span className="text-slate-400">·</span>
+                <span className="font-normal text-slate-600">{dateStr}</span>
                 <Badge variant="outline" className={cn(
-                  "ml-1 gap-1 text-[10px]",
+                  "gap-1 text-[10px]",
                   isArchived
                     ? "border-amber-200 bg-amber-50/80 text-amber-700"
                     : "border-emerald-200 bg-emerald-50/80 text-emerald-700"
                 )}>
                   {isArchived ? <Archive className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
-                  {isArchived ? "Archived" : "Active"}
+                  {primaryStatus}
+                </Badge>
+                <Badge variant="outline" className="gap-1 border-slate-200 bg-white/80 text-[10px] font-mono text-slate-500">
+                  #{id || "N/A"}
                 </Badge>
                 <Badge variant="outline" className="gap-1 border-violet-200 bg-violet-50/80 text-[10px] text-violet-700">
                   <Users className="h-3 w-3" /> {householdVcas.length} VCAs
                 </Badge>
               </div>
-              <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
-                <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-sky-700 bg-clip-text text-transparent">
-                  Caregiver – Confidential
+              <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
+                <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-rose-700 bg-clip-text text-transparent">
+                  Caregiver - Confidential
                 </span>
-                <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
-                  <Sparkles className="h-3 w-3" /> Members · Caseplans · Referrals
-                </Badge>
               </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
                 <span className="inline-flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5 text-slate-400" />
-                  ID: <span className="font-mono font-semibold text-slate-700">{id}</span>
+                  <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                  {String(household.district || "N/A")} &middot; {String(household.facility || "N/A")}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                  {String(household.district || "N/A")}
+                  <Activity className="h-3.5 w-3.5 text-emerald-600" />
+                  Last updated: {String(lastServiceDate || "N/A")}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <Briefcase className="h-3.5 w-3.5 text-slate-400" />
@@ -361,14 +383,22 @@ const HouseholdProfile = () => {
                 </span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => navigate("/profile/household-details", { state: { id, household_id: id, ...(household || {}) } })}
+                className="group inline-flex items-center gap-2 rounded-lg border border-pink-200 bg-pink-50/80 px-3 py-1.5 text-xs font-semibold text-pink-700 backdrop-blur-md transition-all hover:border-pink-300 hover:bg-pink-100"
+              >
+                View Household Profile
+                <ArrowLeft className="h-3.5 w-3.5 rotate-180 transition-transform group-hover:translate-x-0.5" />
+              </button>
               <button
                 type="button"
                 onClick={() => navigate(-1)}
                 className="group inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 backdrop-blur-md transition-all hover:border-emerald-300 hover:bg-white"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Back
+                <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+                Back to register
               </button>
             </div>
           </div>

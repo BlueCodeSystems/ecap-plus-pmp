@@ -35,6 +35,8 @@ const Profile = lazy(() => import("./pages/Profile"));
 const HouseholdProfile = lazy(() => import("./pages/HouseholdProfile"));
 const VcaProfile = lazy(() => import("./pages/VcaProfile"));
 const HTSProfile = lazy(() => import("./pages/HTSProfile"));
+const PMTCTProfile = lazy(() => import("./pages/PMTCTProfile"));
+const MotherIndexDetails = lazy(() => import("./pages/MotherIndexDetails"));
 const VcaServiceProfile = lazy(() => import("./pages/VcaServiceProfile"));
 const HouseholdServiceProfile = lazy(() => import("./pages/HouseholdServiceProfile"));
 const CaregiverServiceProfile = lazy(() => import("./pages/CaregiverServiceProfile"));
@@ -369,6 +371,22 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <HTSProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/pmtct-details"
+                  element={
+                    <ProtectedRoute>
+                      <PMTCTProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/mother-index-details"
+                  element={
+                    <ProtectedRoute>
+                      <MotherIndexDetails />
                     </ProtectedRoute>
                   }
                 />
