@@ -92,9 +92,11 @@ import {
   getServiceSummary,
   getServiceRecords,
   getServiceRecordDetail,
-  triggerServiceExport, // add this
+  triggerServiceExport,
   type ServiceRecordRow,
 } from "@/lib/api";
+
+type ExportState = "idle" | "preparing" | "downloading" | "done" | "error";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -214,6 +216,7 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
     null,
   );
   const [detailLoading, setDetailLoading] = useState(false);
+  const [exportState, setExportState] = useState<ExportState>("idle");
 
   // Debounce search — only triggers a new query after 350 ms of no typing
   const debouncedSearch = useDebounce(searchQuery, 350);
@@ -432,22 +435,41 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
   };
 
   // ── CSV export — fetch all matching records for the current filters ───────
-  const handleExportCsv = () => {
-    if (!type) return;
+  const handleExportCsv = async () => {
+    if (!type || exportState !== "idle") return;
 
-    toast.info(
-      "Preparing download — your file will start downloading shortly.",
-    );
-
-    triggerServiceExport({
-      type,
-      district: districtParam,
-      search: debouncedSearch || undefined,
-      domain: domainFilter !== "all" ? domainFilter : undefined,
-      issue: issueFilter || undefined,
-      dateWindow: dateWindow !== "all" ? dateWindow : undefined,
-      entityId: focusedEntityId || undefined,
-    });
+    try {
+      await triggerServiceExport(
+        {
+          type,
+          district: districtParam,
+          search: debouncedSearch || undefined,
+          domain: domainFilter !== "all" ? domainFilter : undefined,
+          issue: issueFilter || undefined,
+          dateWindow: dateWindow !== "all" ? dateWindow : undefined,
+          entityId: focusedEntityId || undefined,
+        },
+        (state) => {
+          setExportState(state);
+          if (state === "preparing") {
+            toast.info(
+              "Preparing your export — this may take a moment for large datasets.",
+            );
+          }
+          if (state === "done") {
+            toast.success("Export downloaded successfully.");
+            setTimeout(() => setExportState("idle"), 3000);
+          }
+          if (state === "error") {
+            toast.error("Export failed. Please try again.");
+            setTimeout(() => setExportState("idle"), 3000);
+          }
+        },
+      );
+    } catch {
+      toast.error("Export failed. Please try again.");
+      setExportState("idle");
+    }
   };
 
   // ── Navigation to individual record view ─────────────────────────────────
@@ -550,9 +572,21 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
             size="sm"
             className="gap-2"
             onClick={handleExportCsv}
+            disabled={exportState !== "idle"}
           >
-            <Download className="h-3.5 w-3.5" />
-            Export
+            <Download
+              className={cn(
+                "h-3.5 w-3.5",
+                exportState === "preparing" || exportState === "downloading"
+                  ? "animate-pulse"
+                  : "",
+              )}
+            />
+            {exportState === "idle" && "Export"}
+            {exportState === "preparing" && "Preparing…"}
+            {exportState === "downloading" && "Downloading…"}
+            {exportState === "done" && "Downloaded ✓"}
+            {exportState === "error" && "Failed — retry"}
           </Button>
         </div>
       </div>
