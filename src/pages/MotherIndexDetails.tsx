@@ -242,7 +242,7 @@ const MotherIndexDetails = () => {
                         <div className="flex items-center gap-2 shrink-0">
                           {isIndex && <Badge className="border-none bg-amber-50 text-amber-700 px-2 uppercase text-[9px] font-black tracking-widest">Primary CA</Badge>}
                           <Badge className={cn("border-none px-2 uppercase text-[9px] font-black tracking-widest", hivPos ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600")}>{hivPos ? "Positive" : "Negative"}</Badge>
-                          <button type="button" onClick={(e) => { e.stopPropagation(); navigate("/vcas/view", { state: { ...(child || {}), district: child.district || district } }); }} className="inline-flex items-center gap-1 rounded-md border border-pink-200 bg-pink-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-pink-700 transition-colors hover:bg-pink-100 hover:border-pink-300">
+                          <button type="button" disabled={cid === "N/A"} onClick={(e) => { e.stopPropagation(); if (cid === "N/A") return; navigate("/profile/vca-details", { state: { id: String(cid), district: child.district || district } }); }} className="inline-flex items-center gap-1 rounded-md border border-pink-200 bg-pink-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-pink-700 transition-colors hover:bg-pink-100 hover:border-pink-300 disabled:opacity-40 disabled:cursor-not-allowed">
                             View
                             <ExternalLink className="h-3 w-3" />
                           </button>
