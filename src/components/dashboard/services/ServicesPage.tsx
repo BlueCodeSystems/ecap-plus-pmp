@@ -466,14 +466,14 @@ const ServicesPage = ({ type, title, subtitle }: Props) => {
       household_id: record.type !== "vca" ? record.entityId : raw.household_id,
     };
     if (record.type === "vca") {
-      navigate("/vca-services/view", { state });
+      navigate("/profile/vca-service-details", { state });
       return;
     }
     if (record.type === "caregiver") {
-      navigate("/caregiver-services/view", { state });
+      navigate("/profile/caregiver-service-details", { state });
       return;
     }
-    navigate("/households/view", { state });
+    navigate("/profile/household-service-details", { state });
   };
 
   // ── Duplicate focus handler ───────────────────────────────────────────────

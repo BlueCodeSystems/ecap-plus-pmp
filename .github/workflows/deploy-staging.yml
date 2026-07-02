@@ -1,0 +1,69 @@
+name: Deploy Staging
+
+# Auto-deploys development to the staging server:
+# ecapplus.stage.pmp.bluecodeltd.com -> PM2 ecap-plus-pmp-staging on :3041
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ecap-plus-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and reload staging
+    runs-on: [self-hosted, staging]
+    environment: staging
+    env:
+      APP_DIR: /home/bluecode2022/mvaccbackup/ecapbackup/staging/ecap-plus-pmp
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+
+      - name: Sync checkout to stable staging directory
+        run: |
+          mkdir -p "$APP_DIR"
+          rsync -a --delete \
+            --exclude node_modules \
+            --exclude logs \
+            --exclude .env \
+            ./ "$APP_DIR"/
+
+      - name: Install dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci
+
+      - name: Build
+        working-directory: ${{ env.APP_DIR }}
+        run: npm run build
+
+      - name: Reload PM2 (start if not yet registered)
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          if pm2 describe ecap-plus-pmp-staging > /dev/null 2>&1; then
+            pm2 reload ecosystem.staging.config.cjs --update-env
+          else
+            pm2 start ecosystem.staging.config.cjs --update-env
+          fi
+          pm2 save
+
+      - name: Smoke check
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3041; then
+              echo "Staging responding on :3041"
+              exit 0
+            fi
+            echo "Attempt $i: not up yet, retrying..."
+            sleep 3
+          done
+          echo "Staging did not respond on :3041"
+          pm2 logs ecap-plus-pmp-staging --lines 50 --nostream || true
+          exit 1

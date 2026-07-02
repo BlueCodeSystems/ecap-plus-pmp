@@ -177,7 +177,7 @@ export function GlobalSearch() {
             {quickHelpLinks.map((item) => (
               <CommandItem
                 key={item.title}
-                onSelect={() => runCommand(() => navigate("/support-center"))}
+                onSelect={() => runCommand(() => navigate("/support"))}
                 className="flex items-center gap-3 px-4 py-3"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
@@ -192,7 +192,7 @@ export function GlobalSearch() {
             {faqs.map((faq) => (
               <CommandItem
                 key={faq.question}
-                onSelect={() => runCommand(() => navigate("/support-center"))}
+                onSelect={() => runCommand(() => navigate("/support"))}
                 className="flex items-center gap-3 px-4 py-3"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
