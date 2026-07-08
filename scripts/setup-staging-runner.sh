@@ -8,6 +8,9 @@
 #      RUNNER_TOKEN=<paste-token> bash setup-staging-runner.sh
 #
 # Re-runnable: if a runner is already configured it skips re-config.
+# App env expectations:
+#   REACT_APP_BASE_URL      -> Directus
+#   REACT_PUBLIC_API_URL    -> ECAP Plus backend
 set -euo pipefail
 
 REPO_URL="https://github.com/BlueCodeSystems/ecap-plus-pmp"
@@ -18,6 +21,8 @@ RUNNER_DIR="$HOME/actions-runner"
 STAGING_DOMAIN="ecapplus.stage.pmp.bluecodeltd.com"
 STAGING_PORT="3041"
 STAGING_NGINX_SITE="/etc/nginx/sites-available/${STAGING_DOMAIN}"
+STAGING_SSL_CERT="/etc/letsencrypt/live/${STAGING_DOMAIN}/fullchain.pem"
+STAGING_SSL_KEY="/etc/letsencrypt/live/${STAGING_DOMAIN}/privkey.pem"
 TARBALL="actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
 DOWNLOAD_URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/${TARBALL}"
 
@@ -78,6 +83,17 @@ if command -v nginx >/dev/null 2>&1; then
 server {
     listen 80;
     server_name ${STAGING_DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name ${STAGING_DOMAIN};
+
+    ssl_certificate ${STAGING_SSL_CERT};
+    ssl_certificate_key ${STAGING_SSL_KEY};
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     location / {
         proxy_pass http://127.0.0.1:${STAGING_PORT};

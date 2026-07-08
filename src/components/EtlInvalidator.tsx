@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { clearAllCacheEntries } from "@/lib/indexedDbCache";
+import { getBackendBaseUrl } from "@/lib/env";
 
 /**
  * Push-style cache invalidation tied to Mage AI ETL outcomes.
@@ -24,7 +25,7 @@ import { clearAllCacheEntries } from "@/lib/indexedDbCache";
  * Render output is null — it's a behavioural component.
  */
 const POLL_INTERVAL_MS = 30 * 1000;
-const DQA_BASE_URL = import.meta.env.REACT_PUBLIC_API_URL ?? import.meta.env.VITE_DQA_BASE_URL ?? "";
+const DQA_BASE_URL = getBackendBaseUrl();
 
 async function fetchLastSuccess(): Promise<string | null> {
   try {

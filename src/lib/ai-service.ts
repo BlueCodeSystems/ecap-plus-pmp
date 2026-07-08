@@ -4,10 +4,10 @@
  * Talks to the self-hosted Ollama proxy on the ecap-plus-pmp-backend
  * (POST /agent/chat). PII never leaves the server; no third-party API key.
  */
+import { getBackendBaseUrl } from "@/lib/env";
 
 const AGENT_BASE_URL =
-  import.meta.env.VITE_ECAP_PLUS_BASE_URL ??
-  import.meta.env.VITE_BACKEND_URL ??
+  getBackendBaseUrl() ||
   "https://server.ecapplus.pmp.bluecodeltd.com";
 
 export interface Message {
