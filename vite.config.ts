@@ -18,10 +18,12 @@ export default defineConfig(() => ({
         rewrite: (p: string) => p.replace(/^\/superset-api/, ""),
       },
     },
+    allowedHosts: ["ecapplus.pmp.bluecodeltd.com", "ecapplus.stage.pmp.bluecodeltd.com"],
   },
   preview: {
     host: "::",
     port: 3040,
+    allowedHosts: ["ecapplus.pmp.bluecodeltd.com", "ecapplus.stage.pmp.bluecodeltd.com"],
   },
   plugins: [react()],
   resolve: {

@@ -29,6 +29,25 @@ const pickValue = (record: Record<string, unknown>, keys: string[]) => {
   return "N/A";
 };
 
+const pickPmctctId = (record: Record<string, unknown>) =>
+  pickValue(record, [
+    "pmtct_id",
+    "pmtctid",
+    "ecap_id",
+    "ecapid",
+    "mother_id",
+    "motherid",
+    "client_number",
+    "client_no",
+    "ca_id",
+    "caid",
+    "household_id",
+    "householdId",
+    "unique_id",
+    "uid",
+    "id",
+  ]);
+
 const dateToTime = (date: any) => {
   if (!date || date === "N/A") return 0;
   const d = new Date(date);
@@ -82,7 +101,7 @@ const PMTCTRegister = () => {
 
   const rows = useMemo(() => {
     const infants = childQueries.flatMap((q) => (q.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
-      id: pickValue(r, ["pmtct_id", "ca_id", "id"]),
+      id: pickPmctctId(r),
       householdId: pickValue(r, ["ca_id", "child_id", "unique_id"]),
       hivStatus: pickValue(r, ["test_result_at_birth", "infant_hiv_status", "hiv_status"]),
       facility: pickValue(r, ["facility", "facility_name"]),
@@ -92,7 +111,7 @@ const PMTCTRegister = () => {
       raw: r,
     }));
     const mothers = motherQueries.flatMap((q) => (q.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
-      id: pickValue(r, ["pmtct_id", "ecap_id", "id"]),
+      id: pickPmctctId(r),
       householdId: pickValue(r, ["ecap_id", "household_id", "hh_id"]),
       hivStatus: pickValue(r, ["result_of_hiv_test", "result_r_nr", "hiv_status"]),
       facility: pickValue(r, ["facility", "facility_name"]),
@@ -224,7 +243,6 @@ const PMTCTRegister = () => {
                       <card.icon className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div className="text-2xl font-bold text-slate-900">{isLoading ? <LoadingDots /> : card.value.toLocaleString()}</div>
-                    <p className="text-[10px] text-slate-400 font-medium">Click to view register</p>
                   </GlowCard>
                 </div>
               ))}
@@ -297,7 +315,14 @@ const PMTCTRegister = () => {
                         <TableCell className="py-4 text-slate-600">{item.hivStatus}</TableCell>
                         <TableCell className="py-4 text-slate-600">{item.date}</TableCell>
                         <TableCell className="py-4 text-slate-600">{item.facility}</TableCell>
-                        <TableCell className="py-4 pr-8 text-right"><Button variant="ghost" size="sm" onClick={() => navigate("/profile/pmtct-details", { state: { record: item.raw } })}>View</Button></TableCell>
+                        <TableCell className="py-4 pr-8 text-right"><Button variant="ghost" size="sm" onClick={() => {
+                          try {
+                            sessionStorage.setItem("pmtct_profile_record", JSON.stringify(item.raw));
+                          } catch {
+                            // ignore storage failures
+                          }
+                          navigate("/profile/pmtct-details", { state: { record: item.raw } });
+                        }}>View</Button></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

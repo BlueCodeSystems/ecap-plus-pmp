@@ -338,17 +338,29 @@ export const getHouseholdArchivedRegister = async (
 };
 
 export const getMothersByDistrict = async (district: string, fy?: FyWindow) => {
-  const data = await dqaGet(`/mother/district/${encodeURIComponent(district)}/filtered${fyQs(fy)}`);
+  const data = await dqaGet(
+    `/mother/district/${encodeURIComponent(district)}/filtered${fyQs(fy)}`,
+  );
   return getListValue(data);
 };
 
-export const getPmtctChildRegisterByDistrict = async (district: string, fy?: FyWindow) => {
-  const data = await dqaGet(`/etl/pmtct-child-register/${encodeURIComponent(district)}${fyQs(fy)}`);
+export const getPmtctChildRegisterByDistrict = async (
+  district: string,
+  fy?: FyWindow,
+) => {
+  const data = await dqaGet(
+    `/etl/pmtct-child-register/${encodeURIComponent(district)}${fyQs(fy)}`,
+  );
   return getListValue(data);
 };
 
-export const getPmtctMotherRegisterByDistrict = async (district: string, fy?: FyWindow) => {
-  const data = await dqaGet(`/etl/pmtct-mother-register/${encodeURIComponent(district)}${fyQs(fy)}`);
+export const getPmtctMotherRegisterByDistrict = async (
+  district: string,
+  fy?: FyWindow,
+) => {
+  const data = await dqaGet(
+    `/etl/pmtct-mother-register/${encodeURIComponent(district)}${fyQs(fy)}`,
+  );
   return getListValue(data);
 };
 
@@ -412,7 +424,10 @@ export const getHouseholdServicesByDistrict = async (district: string) => {
   );
 };
 
-export const getHTSRegisterByDistrict = async (district: string, _fy?: FyWindow) => {
+export const getHTSRegisterByDistrict = async (
+  district: string,
+  _fy?: FyWindow,
+) => {
   // Backend route: /household/hts-register-by-district/:district(*)
   const data = await dqaGet(
     `/household/hts-register-by-district/${encodeURIComponent(district)}`,
@@ -1082,7 +1097,10 @@ export const getCaseworkerList = async (scope?: {
   const seen = new Set<string>();
 
   return rows.flatMap((raw) => {
-    const row = raw && typeof raw === "object" ? raw as Record<string, unknown> : { caseworker: raw };
+    const row =
+      raw && typeof raw === "object"
+        ? (raw as Record<string, unknown>)
+        : { caseworker: raw };
     const value = (...keys: string[]) => {
       for (const key of keys) {
         const v = row[key];
@@ -1091,30 +1109,53 @@ export const getCaseworkerList = async (scope?: {
       }
       return "";
     };
-    const caseworker = value("caseworker", "provider", "provider_id", "providerId", "username", "user_name", "caseworker_name", "display_name", "name");
-    const displayName = value("display_name", "caseworker_name", "full_name", "name") || caseworker;
+    const caseworker = value(
+      "caseworker",
+      "provider",
+      "provider_id",
+      "providerId",
+      "username",
+      "user_name",
+      "caseworker_name",
+      "display_name",
+      "name",
+    );
+    const displayName =
+      value("display_name", "caseworker_name", "full_name", "name") ||
+      caseworker;
 
     if (!caseworker) return [];
     const dedupeKey = caseworker.toLowerCase();
     if (seen.has(dedupeKey)) return [];
     seen.add(dedupeKey);
 
-    return [{
-      caseworker,
-      display_name: displayName,
-      location_id: value("location_id", "locationId"),
-      facility: value("facility", "ward", "location_name"),
-      district: value("district"),
-      province: value("province"),
-      has_gps: (row.has_gps ?? row.hasGps ?? row.gps_available ?? row.has_gps_data ?? row.gps_count ?? row.gps_points ?? row.gps_events ?? row.journey_points ?? false) as CaseworkerListItem["has_gps"],
-      hasGps: row.hasGps as CaseworkerListItem["hasGps"],
-      gps_available: row.gps_available as CaseworkerListItem["gps_available"],
-      has_gps_data: row.has_gps_data as CaseworkerListItem["has_gps_data"],
-      gps_count: row.gps_count as CaseworkerListItem["gps_count"],
-      gps_points: row.gps_points as CaseworkerListItem["gps_points"],
-      gps_events: row.gps_events as CaseworkerListItem["gps_events"],
-      journey_points: row.journey_points as CaseworkerListItem["journey_points"],
-    }];
+    return [
+      {
+        caseworker,
+        display_name: displayName,
+        location_id: value("location_id", "locationId"),
+        facility: value("facility", "ward", "location_name"),
+        district: value("district"),
+        province: value("province"),
+        has_gps: (row.has_gps ??
+          row.hasGps ??
+          row.gps_available ??
+          row.has_gps_data ??
+          row.gps_count ??
+          row.gps_points ??
+          row.gps_events ??
+          row.journey_points ??
+          false) as CaseworkerListItem["has_gps"],
+        hasGps: row.hasGps as CaseworkerListItem["hasGps"],
+        gps_available: row.gps_available as CaseworkerListItem["gps_available"],
+        has_gps_data: row.has_gps_data as CaseworkerListItem["has_gps_data"],
+        gps_count: row.gps_count as CaseworkerListItem["gps_count"],
+        gps_points: row.gps_points as CaseworkerListItem["gps_points"],
+        gps_events: row.gps_events as CaseworkerListItem["gps_events"],
+        journey_points:
+          row.journey_points as CaseworkerListItem["journey_points"],
+      },
+    ];
   });
 };
 
@@ -1292,15 +1333,21 @@ export const getServiceRecordDetail = async (params: {
  * directly to the streaming export endpoint. The browser handles the download
  * natively — no fetch, no memory allocation, no page-by-page batching.
  */
-export const triggerServiceExport = (params: {
-  type: "vca" | "caregiver" | "household";
-  district?: string;
-  search?: string;
-  domain?: string;
-  issue?: string;
-  dateWindow?: string;
-  entityId?: string;
-}): void => {
+// In your api.ts — replace triggerServiceExport with a fetch-based version
+// that shows progress and handles errors gracefully
+
+export const triggerServiceExport = async (
+  params: {
+    type: "vca" | "caregiver" | "household";
+    district?: string;
+    search?: string;
+    domain?: string;
+    issue?: string;
+    dateWindow?: string;
+    entityId?: string;
+  },
+  onProgress?: (state: "preparing" | "downloading" | "done" | "error") => void,
+): Promise<void> => {
   const q = new URLSearchParams();
   if (params.district && params.district !== "All")
     q.set("district", params.district);
@@ -1311,20 +1358,52 @@ export const triggerServiceExport = (params: {
     q.set("dateWindow", params.dateWindow);
   if (params.entityId) q.set("entityId", params.entityId);
 
-  // Include the auth token as a query param so the browser's native download
-  // mechanism can authenticate. The endpoint reads it from ?token= if the
-  // Authorization header is absent.
   const token = getStoredToken();
   if (token) q.set("token", token);
 
   const url = `${import.meta.env.VITE_DQA_BASE_URL}/etl/services/${params.type}/export${q.toString() ? `?${q}` : ""}`;
 
-  // Create a hidden anchor and click it — this triggers a native browser
-  // download without opening a new tab or affecting the current page.
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${params.type}-services-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  onProgress?.("preparing");
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      onProgress?.("error");
+      throw new Error(`Export failed: ${response.status}`);
+    }
+
+    if (!response.body) {
+      onProgress?.("error");
+      throw new Error("No response body");
+    }
+
+    onProgress?.("downloading");
+
+    // Stream the response into a blob
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
+
+    // Combine chunks and trigger download
+    const blob = new Blob(chunks, { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${params.type}-services-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+    onProgress?.("done");
+  } catch (error) {
+    onProgress?.("error");
+    console.error("Export error:", error);
+    throw error;
+  }
 };

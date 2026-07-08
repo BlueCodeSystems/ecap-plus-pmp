@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useMemo, useState, useRef, useEffect } from "react";
+import moment from "moment";
 import { cn, toTitleCase } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmptyState from "@/components/EmptyState";
@@ -42,29 +43,25 @@ const flagSchema = z.object({
   comment: z.string().min(10, "Flag observations must be at least 10 characters long."),
 });
 
+const parseMomentDate = (value: any) => {
+  if (!value || value === "N/A") return null;
+  const parsed = moment(String(value), [moment.ISO_8601, "YYYY-MM-DD", "DD-MM-YYYY", "DD/MM/YYYY", "MM/DD/YYYY", "YYYY/MM/DD"], true);
+  return parsed.isValid() ? parsed : moment(String(value));
+};
+
 const safeParseDate = (dateStr: any) => {
-  if (!dateStr) return 0;
-  const str = String(dateStr);
-  const dmY = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (dmY) {
-    return new Date(parseInt(dmY[3]), parseInt(dmY[2]) - 1, parseInt(dmY[1])).getTime();
-  }
-  const parsed = Date.parse(str);
-  return isNaN(parsed) ? 0 : parsed;
+  const parsed = parseMomentDate(dateStr);
+  return parsed ? parsed.valueOf() : 0;
 };
 
 const formatServiceDate = (value: any) => {
-  if (!value) return "N/A";
-  const parsed = new Date(value);
-  if (isNaN(parsed.getTime())) return String(value);
-  return format(parsed, "dd MMM yyyy");
+  const parsed = parseMomentDate(value);
+  return parsed ? parsed.format("DD MMM YYYY") : "N/A";
 };
 
 const formatBirthDate = (value: any) => {
-  if (!value) return "N/A";
-  const parsed = new Date(value);
-  if (isNaN(parsed.getTime())) return String(value);
-  return format(parsed, "dd MMM yyyy");
+  const parsed = parseMomentDate(value);
+  return parsed ? parsed.format("DD MMM YYYY") : "N/A";
 };
 
 const HouseholdProfile = () => {
@@ -327,7 +324,7 @@ const HouseholdProfile = () => {
   const primaryStatus = isArchived ? "Archived" : "Active";
 
   // Pick the latest service date dynamically from the sorted services list
-  const lastServiceDate = householdServices[0]?.service_date || household.last_service_date || "N/A";
+  const lastServiceDate = formatServiceDate(householdServices[0]?.service_date || household.last_service_date);
 
   const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -1179,7 +1176,7 @@ const ActivityTable = ({ data, isLoading, type, emptyMessage }: { data: any[], i
                 {String(item.service || item.service_name || item.form_name || item.referral || item.referral_type || item.referral_name || "N/A")}
               </TableCell>
               <TableCell className="text-sm">
-                {String(item.service_date || item.visit_date || item.date || item.referral_date || item.date_created || item.created_at || "N/A")}
+                {formatServiceDate(item.service_date || item.visit_date || item.date || item.referral_date || item.date_created || item.created_at)}
               </TableCell>
               <TableCell className="pr-6">
                 <Badge variant="outline" className="text-[10px] font-bold text-emerald-600">

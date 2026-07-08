@@ -1,4 +1,5 @@
-import { Suspense, lazy } from "react";
+import { Component, Suspense } from "react";
+import { lazyWithRetry, isChunkLoadError } from "@/lib/lazyWithRetry";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,52 +22,52 @@ import Dashboard from "./pages/Dashboard";
 // Previously these were all eager (~1.5MB initial bundle). Lazy-loading them
 // shrinks the initial download; each becomes its own chunk fetched on first
 // navigation (a few KB gzipped — effectively instant).
-const HouseholdRegister = lazy(() => import("./pages/HouseholdRegister"));
-const VcaRegister = lazy(() => import("./pages/VcaRegister"));
-const HouseholdServices = lazy(() => import("./pages/HouseholdServices"));
-const HouseholdServicesPage = lazy(() => import("./pages/HouseholdServicesPage"));
-const VcaServices = lazy(() => import("./pages/VcaServices"));
-const CaregiverServices = lazy(() => import("./pages/CaregiverServices"));
-const HTSRegister = lazy(() => import("./pages/HTSRegister"));
-const PMTCTRegister = lazy(() => import("./pages/PMTCTRegister"));
-const MotherIndexRegister = lazy(() => import("./pages/MotherIndexRegister"));
-const Users = lazy(() => import("./pages/Users"));
-const Profile = lazy(() => import("./pages/Profile"));
-const HouseholdProfile = lazy(() => import("./pages/HouseholdProfile"));
-const VcaProfile = lazy(() => import("./pages/VcaProfile"));
-const HTSProfile = lazy(() => import("./pages/HTSProfile"));
-const PMTCTProfile = lazy(() => import("./pages/PMTCTProfile"));
-const MotherIndexDetails = lazy(() => import("./pages/MotherIndexDetails"));
-const VcaServiceProfile = lazy(() => import("./pages/VcaServiceProfile"));
-const HouseholdServiceProfile = lazy(() => import("./pages/HouseholdServiceProfile"));
-const CaregiverServiceProfile = lazy(() => import("./pages/CaregiverServiceProfile"));
-const CaregiverRiskRegister = lazy(() => import("./pages/CaregiverRiskRegister"));
-const VcaRiskRegister = lazy(() => import("./pages/VcaRiskRegister"));
-const HouseholdRiskRegister = lazy(() => import("./pages/HouseholdRiskRegister"));
-const HTSRiskRegister = lazy(() => import("./pages/HTSRiskRegister"));
-const CaseworkerProfile = lazy(() => import("./pages/CaseworkerProfile"));
-const Performance = lazy(() => import("./pages/Performance"));
+const HouseholdRegister = lazyWithRetry(() => import("./pages/HouseholdRegister"));
+const VcaRegister = lazyWithRetry(() => import("./pages/VcaRegister"));
+const HouseholdServices = lazyWithRetry(() => import("./pages/HouseholdServices"));
+const HouseholdServicesPage = lazyWithRetry(() => import("./pages/HouseholdServicesPage"));
+const VcaServices = lazyWithRetry(() => import("./pages/VcaServices"));
+const CaregiverServices = lazyWithRetry(() => import("./pages/CaregiverServices"));
+const HTSRegister = lazyWithRetry(() => import("./pages/HTSRegister"));
+const PMTCTRegister = lazyWithRetry(() => import("./pages/PMTCTRegister"));
+const MotherIndexRegister = lazyWithRetry(() => import("./pages/MotherIndexRegister"));
+const Users = lazyWithRetry(() => import("./pages/Users"));
+const Profile = lazyWithRetry(() => import("./pages/Profile"));
+const HouseholdProfile = lazyWithRetry(() => import("./pages/HouseholdProfile"));
+const VcaProfile = lazyWithRetry(() => import("./pages/VcaProfile"));
+const HTSProfile = lazyWithRetry(() => import("./pages/HTSProfile"));
+const PMTCTProfile = lazyWithRetry(() => import("./pages/PMTCTProfile"));
+const MotherIndexDetails = lazyWithRetry(() => import("./pages/MotherIndexDetails"));
+const VcaServiceProfile = lazyWithRetry(() => import("./pages/VcaServiceProfile"));
+const HouseholdServiceProfile = lazyWithRetry(() => import("./pages/HouseholdServiceProfile"));
+const CaregiverServiceProfile = lazyWithRetry(() => import("./pages/CaregiverServiceProfile"));
+const CaregiverRiskRegister = lazyWithRetry(() => import("./pages/CaregiverRiskRegister"));
+const VcaRiskRegister = lazyWithRetry(() => import("./pages/VcaRiskRegister"));
+const HouseholdRiskRegister = lazyWithRetry(() => import("./pages/HouseholdRiskRegister"));
+const HTSRiskRegister = lazyWithRetry(() => import("./pages/HTSRiskRegister"));
+const CaseworkerProfile = lazyWithRetry(() => import("./pages/CaseworkerProfile"));
+const Performance = lazyWithRetry(() => import("./pages/Performance"));
 
 
 // --- SECONDARY / HEAVY PAGES (Lazy Loaded to keep initial bundle size optimized) ---
-const Districts = lazy(() => import("./pages/Districts"));
-const Flags = lazy(() => import("./pages/Flags"));
-const HouseholdArchivedRegister = lazy(() => import("./pages/HouseholdArchivedRegister"));
-const VcaArchivedRegister = lazy(() => import("./pages/VcaArchivedRegister"));
-const Charts = lazy(() => import("./pages/Charts"));
-const AddUser = lazy(() => import("./pages/AddUser"));
-const EditUser = lazy(() => import("./pages/EditUser"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const ChangePassword = lazy(() => import("./pages/ChangePassword"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const FlaggedRecordForm = lazy(() => import("./pages/FlaggedRecordForm"));
-const WeeklyExtracts = lazy(() => import("./pages/WeeklyExtracts"));
-const SupportCenter = lazy(() => import("./pages/SupportCenter"));
-const Calendar = lazy(() => import("./pages/Calendar"));
-const Documentation = lazy(() => import("./pages/Documentation"));
-const DocumentationArticle = lazy(() => import("./pages/DocumentationArticle"));
-const CaseworkerJourneys = lazy(() => import("./pages/CaseworkerJourneys"));
+const Districts = lazyWithRetry(() => import("./pages/Districts"));
+const Flags = lazyWithRetry(() => import("./pages/Flags"));
+const HouseholdArchivedRegister = lazyWithRetry(() => import("./pages/HouseholdArchivedRegister"));
+const VcaArchivedRegister = lazyWithRetry(() => import("./pages/VcaArchivedRegister"));
+const Charts = lazyWithRetry(() => import("./pages/Charts"));
+const AddUser = lazyWithRetry(() => import("./pages/AddUser"));
+const EditUser = lazyWithRetry(() => import("./pages/EditUser"));
+const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const FlaggedRecordForm = lazyWithRetry(() => import("./pages/FlaggedRecordForm"));
+const WeeklyExtracts = lazyWithRetry(() => import("./pages/WeeklyExtracts"));
+const SupportCenter = lazyWithRetry(() => import("./pages/SupportCenter"));
+const Calendar = lazyWithRetry(() => import("./pages/Calendar"));
+const Documentation = lazyWithRetry(() => import("./pages/Documentation"));
+const DocumentationArticle = lazyWithRetry(() => import("./pages/DocumentationArticle"));
+const CaseworkerJourneys = lazyWithRetry(() => import("./pages/CaseworkerJourneys"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -123,6 +124,47 @@ if (typeof window !== "undefined") {
 
 const PageLoader = () => null;
 
+// Last-resort backstop. `lazyWithRetry` already performs one guarded hard
+// reload on a stale-chunk error; if the chunk is STILL missing after that
+// reload, the error reaches here and we show an explicit message instead of a
+// blank screen. We do NOT auto-reload here — that would defeat the guard and
+// loop forever.
+class ChunkErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(error: unknown) {
+    if (isChunkLoadError(error)) {
+      return { hasError: true };
+    }
+    // Not a chunk error — leave state untouched so it isn't masked here.
+    return null;
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+          <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+            <h1 className="text-lg font-bold text-slate-900">Reload required</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              A new version of the app is available. Please reload to continue.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Reload now
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const App = () => (
   <PersistQueryClientProvider
     client={queryClient}
@@ -144,8 +186,9 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <FyFilterProvider>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
+              <ChunkErrorBoundary>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
@@ -480,8 +523,9 @@ const App = () => (
                 />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
+                  </Routes>
+                </Suspense>
+              </ChunkErrorBoundary>
             </FyFilterProvider>
           </BrowserRouter>
         </TooltipProvider>

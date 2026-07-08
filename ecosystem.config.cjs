@@ -4,7 +4,7 @@ module.exports = {
       name: "ecap-plus-pmp",
       cwd: __dirname,
       script: "npm",
-      args: "run preview",
+      args: "run preview -- --host 0.0.0.0 --port 3040 --strictPort",
       env: {
         NODE_ENV: "production",
         PORT: "3040",
@@ -18,4 +18,3 @@ module.exports = {
     },
   ],
 };
-

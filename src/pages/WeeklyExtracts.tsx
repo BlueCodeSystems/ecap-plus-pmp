@@ -10,7 +10,6 @@ import {
     Timer,
     Workflow,
     BarChart3,
-    Play,
     RotateCcw,
     Download,
     FileSpreadsheet,
@@ -31,10 +30,8 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-    triggerEtlPipeline,
     getEtlRuns,
     getEtlRunById,
-    cancelEtlRun,
     getEtlPipelines,
     getEtlFiles,
     getEtlDownloadUrl,
@@ -72,8 +69,28 @@ const PIPELINE_META: Record<string, { icon: typeof Database; color: string; desc
 };
 
 const PIPELINE_KEYS = ["ecap_plus", "hts_register", "pmtct"];
+
+const currentMondayStamp = () => {
+    const d = new Date();
+    const dow = d.getDay() === 0 ? 7 : d.getDay();
+    d.setDate(d.getDate() - (dow - 1));
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}${mm}${yy}`;
+};
+
+const CURRENT_FILE_STAMP = currentMondayStamp();
 const DEFAULT_PIPELINE_FILES: Record<string, string[]> = {
-    pmtct: ["pmtct_mother_register.csv", "pmtct_child_register.csv"],
+    ecap_plus: [
+        `monthly_caregiver_ecapplus_services_${CURRENT_FILE_STAMP}.csv`,
+        `monthly_vca_ecapplus_services_${CURRENT_FILE_STAMP}.csv`,
+    ],
+    hts_register: [`hts_register_ecapplus_${CURRENT_FILE_STAMP}.csv`],
+    pmtct: [
+        `pmtct_mother_ecapplus_register_${CURRENT_FILE_STAMP}.csv`,
+        `pmtct_child_ecapplus_register_${CURRENT_FILE_STAMP}.csv`,
+    ],
 };
 const TABLET_SYNC_PIPELINE_KEY = "ecap_plus_tablet_sync";
 const TABLET_PAGE_SIZE = 20;
@@ -220,26 +237,6 @@ const DataPipelinePage = () => {
             loadFiles();
         }
     }, [latestRun?.status, latestRun?.run_id, loadFiles]);
-
-    const handleTrigger = async (pipelineKey: string) => {
-        try {
-            const run = await triggerEtlPipeline(pipelineKey);
-            toast.success(`Pipeline started: ${run.pipeline_name}`, { description: `Run ID: ${run.run_id}` });
-            queryClient.invalidateQueries({ queryKey: ["etl", "runs"] });
-        } catch (err: any) {
-            toast.error("Failed to start pipeline", { description: err.message });
-        }
-    };
-
-    const handleCancel = async (runId: string) => {
-        try {
-            await cancelEtlRun(runId);
-            toast.info(`Run ${runId} cancelled`);
-            queryClient.invalidateQueries({ queryKey: ["etl", "runs"] });
-        } catch (err: any) {
-            toast.error("Failed to cancel", { description: err.message });
-        }
-    };
 
     const handleViewLogs = async (runId: string) => {
         try {
@@ -553,6 +550,9 @@ const DataPipelinePage = () => {
                         const lastPipelineRun = runs.find((r) => r.pipeline === key);
                         const pipelineInfo = pipelinesQuery.data?.find((p) => p.id === key);
                         const displayName = key === "pmtct" ? "Prevention of Mother-to-Child Transmission" : (pipelineInfo?.name ?? key);
+                        const expectedFiles = pipelineInfo?.downloadFiles?.length
+                            ? pipelineInfo.downloadFiles
+                            : (DEFAULT_PIPELINE_FILES[key] ?? []);
                         const iconStyle = meta.color === "emerald"
                             ? { backgroundColor: "#ecfdf5", color: "#059669" }
                             : meta.color === "rose"
@@ -560,7 +560,7 @@ const DataPipelinePage = () => {
                               : { backgroundColor: "#fffbeb", color: "#d97706" };
                         const outputFiles = files.length > 0
                             ? files
-                            : (DEFAULT_PIPELINE_FILES[key] ?? []).map((name) => ({
+                            : expectedFiles.map((name) => ({
                                 name,
                                 exists: false,
                                 size: null,
@@ -632,26 +632,11 @@ const DataPipelinePage = () => {
                                         )}
                                     </div>
 
+                                    {/* Monitoring actions only. Mage AI owns ETL execution. */}
                                     <div className="flex gap-2 pt-2 mt-auto">
-                                        {isRunning ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleCancel(runId)}
-                                                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-rose-600 transition-all hover:border-rose-300 hover:bg-rose-50/60"
-                                            >
-                                                <XCircle className="h-3.5 w-3.5" />
-                                                Cancel Run
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleTrigger(key)}
-                                                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700 active:scale-95"
-                                            >
-                                                <Play className="h-3.5 w-3.5" />
-                                                Run Pipeline
-                                            </button>
-                                        )}
+                                        <div className="flex-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-xs font-semibold text-slate-500">
+                                            Mage AI controlled
+                                        </div>
                                         {lastPipelineRun && (
                                             <button
                                                 type="button"
@@ -725,11 +710,6 @@ const DataPipelinePage = () => {
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex items-center justify-end gap-1">
-                                                            {run.status === "running" && (
-                                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-red-500 hover:bg-red-50" onClick={() => handleCancel(run.run_id)}>
-                                                                    <XCircle className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            )}
                                                             <Button size="sm" variant="ghost" className="h-7 px-2 text-primary hover:bg-primary/5 font-semibold" onClick={() => handleViewLogs(run.run_id)}>
                                                                 Logs <ArrowRight className="h-3 w-3 ml-1" />
                                                             </Button>

@@ -1,0 +1,96 @@
+name: Deploy Production
+
+# Deploys main to production:
+# ecapplus.pmp.bluecodeltd.com -> PM2 ecap-plus-pmp on :3040
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ecap-plus-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Verify build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  deploy:
+    name: Build and reload production
+    needs: build
+    runs-on: [self-hosted, production]
+    environment: production
+    env:
+      APP_DIR: /home/bluecode2022/mvaccbackup/ecapbackup/production/ecap-plus-pmp
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sync checkout to stable production directory
+        run: |
+          mkdir -p "$APP_DIR"
+          rsync -a --delete \
+            --exclude node_modules \
+            --exclude logs \
+            --exclude .env \
+            ./ "$APP_DIR"/
+
+      - name: Install dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci
+
+      - name: Build
+        working-directory: ${{ env.APP_DIR }}
+        run: npm run build
+
+      - name: Reload PM2 (start if not yet registered)
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          if pm2 describe ecap-plus-pmp > /dev/null 2>&1; then
+            pm2 reload ecosystem.config.cjs --update-env
+          else
+            pm2 start ecosystem.config.cjs --update-env
+          fi
+          pm2 save
+
+      - name: Smoke check
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3040; then
+              echo "Production responding on :3040"
+              exit 0
+            fi
+            echo "Attempt $i: not up yet, retrying..."
+            sleep 3
+          done
+          echo "Production did not respond on :3040"
+          pm2 logs ecap-plus-pmp --lines 50 --nostream || true
+          exit 1

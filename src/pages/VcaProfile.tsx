@@ -13,6 +13,7 @@ import {
   updateFlagStatus
 } from "@/lib/api";
 import { useMemo, useState, useRef, useEffect } from "react";
+import moment from "moment";
 import { useAuth } from "@/context/AuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -120,29 +121,25 @@ const calculateAge = (birthdate: any): number => {
   return age;
 };
 
+const parseMomentDate = (value: any) => {
+  if (!value || value === "N/A") return null;
+  const parsed = moment(String(value), [moment.ISO_8601, "YYYY-MM-DD", "DD-MM-YYYY", "DD/MM/YYYY", "MM/DD/YYYY", "YYYY/MM/DD"], true);
+  return parsed.isValid() ? parsed : moment(String(value));
+};
+
 const safeParseDate = (dateStr: any) => {
-  if (!dateStr) return 0;
-  const str = String(dateStr);
-  const dmY = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (dmY) {
-    return new Date(parseInt(dmY[3]), parseInt(dmY[2]) - 1, parseInt(dmY[1])).getTime();
-  }
-  const parsed = Date.parse(str);
-  return isNaN(parsed) ? 0 : parsed;
+  const parsed = parseMomentDate(dateStr);
+  return parsed ? parsed.valueOf() : 0;
 };
 
 const formatServiceDate = (value: any) => {
-  if (!value) return "N/A";
-  const parsed = new Date(value);
-  if (isNaN(parsed.getTime())) return String(value);
-  return format(parsed, "dd MMM yyyy");
+  const parsed = parseMomentDate(value);
+  return parsed ? parsed.format("DD MMM YYYY") : "N/A";
 };
 
 const formatBirthDate = (value: any) => {
-  if (!value) return "N/A";
-  const parsed = new Date(value);
-  if (isNaN(parsed.getTime())) return String(value);
-  return format(parsed, "dd MMM yyyy");
+  const parsed = parseMomentDate(value);
+  return parsed ? parsed.format("DD MMM YYYY") : "N/A";
 };
 
 const flagSchema = z.object({
@@ -370,7 +367,7 @@ const VcaProfile = () => {
   const isMale = gender === "male" || gender === "m";
 
   // Pick the latest service date dynamically from the sorted services list
-  const lastServiceDate = sortedVcaServices[0]?.service_date || vca.last_service_date || "N/A";
+  const lastServiceDate = formatServiceDate(sortedVcaServices[0]?.service_date || vca.last_service_date);
 
   const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -951,7 +948,7 @@ const ActivityTable = ({ data, isLoading, type, emptyMessage }: { data: any[], i
                 {String(item.service || item.service_name || item.form_name || item.referral_type || "N/A")}
               </TableCell>
               <TableCell className="text-sm">
-                {String(item.service_date || item.visit_date || item.date || "N/A")}
+                {formatServiceDate(item.service_date || item.visit_date || item.date)}
               </TableCell>
               <TableCell className="pr-6">
                 <Badge variant="outline" className="text-[10px] font-bold text-primary">
@@ -1164,7 +1161,7 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any; servicesSource?
                         {linkedServices.map((svc: any, i: number) => (
                           <TableRow key={i} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">
-                              {formatServiceDate(svc.service_date)}
+                              {formatServiceDate(svc.service_date || svc.visit_date || svc.date)}
                             </TableCell>
                             <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
                               {cleanArrayString(svc.health_services)}
