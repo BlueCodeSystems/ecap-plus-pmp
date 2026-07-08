@@ -70,17 +70,16 @@ const PIPELINE_META: Record<string, { icon: typeof Database; color: string; desc
 
 const PIPELINE_KEYS = ["ecap_plus", "hts_register", "pmtct"];
 
-const currentMondayStamp = () => {
-    const d = new Date();
-    const dow = d.getDay() === 0 ? 7 : d.getDay();
-    d.setDate(d.getDate() - (dow - 1));
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yy = String(d.getFullYear()).slice(-2);
-    return `${dd}${mm}${yy}`;
+const currentFileStamp = () => {
+    return new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Africa/Lusaka",
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+    }).format(new Date()).replace(/\D/g, "");
 };
 
-const CURRENT_FILE_STAMP = currentMondayStamp();
+const CURRENT_FILE_STAMP = currentFileStamp();
 const DEFAULT_PIPELINE_FILES: Record<string, string[]> = {
     ecap_plus: [
         `monthly_caregiver_ecapplus_services_${CURRENT_FILE_STAMP}.csv`,
