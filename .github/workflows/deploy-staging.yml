@@ -17,7 +17,7 @@ jobs:
     runs-on: [self-hosted, staging]
     environment: staging
     env:
-      APP_DIR: /home/bluecode2022/mvaccbackup/ecapbackup/staging/ecap-plus-pmp
+      APP_DIR: /home/bluecode2022/mvaccbackup/ecapbackup/pmp-applications-staging/ecap-plus-pmp
     steps:
       - name: Checkout
         uses: actions/checkout@v4
