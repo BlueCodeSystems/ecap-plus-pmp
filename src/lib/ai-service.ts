@@ -8,7 +8,7 @@ import { getBackendBaseUrl } from "@/lib/env";
 
 const AGENT_BASE_URL =
   getBackendBaseUrl() ||
-  "https://server.ecapplus.pmp.bluecodeltd.com";
+  "https://ecapplus-server-dqa.bluecodeltd.com";
 
 export interface Message {
   role: "system" | "user" | "assistant";
