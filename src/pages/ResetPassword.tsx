@@ -7,9 +7,7 @@ import { toast } from "@/components/ui/sonner";
 import AuroraBackground from "@/components/aceternity/AuroraBackground";
 import VersionFooter from "@/components/VersionFooter";
 import RightImageSlider from "@/components/RightImageSlider";
-
-const DIRECTUS_URL =
-  import.meta.env.VITE_DIRECTUS_URL ?? "";
+import { getDirectusBaseUrl } from "@/lib/env";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -40,7 +38,7 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${DIRECTUS_URL}/auth/password/reset`, {
+      const response = await fetch(`${getDirectusBaseUrl()}/auth/password/reset`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

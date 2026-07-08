@@ -1,13 +1,13 @@
 import { getStoredToken } from "@/lib/auth";
-
-const DIRECTUS_URL = import.meta.env.VITE_DIRECTUS_URL;
+import { getDirectusBaseUrl } from "@/lib/env";
 const DIRECTUS_USER_ROLE = import.meta.env.VITE_DIRECTUS_USER_ROLE;
 
 const requireDirectusUrl = () => {
-  if (!DIRECTUS_URL) {
-    throw new Error("VITE_DIRECTUS_URL is not set");
+  const directusUrl = getDirectusBaseUrl();
+  if (!directusUrl) {
+    throw new Error("REACT_APP_BASE_URL is not set");
   }
-  return DIRECTUS_URL;
+  return directusUrl;
 };
 
 const safeJson = async (response: Response) => {
