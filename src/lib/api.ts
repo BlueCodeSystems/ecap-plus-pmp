@@ -1,7 +1,8 @@
 import { getStoredToken } from "@/lib/auth";
 import { getCacheEntry, setCacheEntry } from "@/lib/indexedDbCache";
+import { getBackendBaseUrl, getDirectusBaseUrl } from "@/lib/env";
 
-const DQA_BASE_URL = import.meta.env.VITE_DQA_BASE_URL;
+const DQA_BASE_URL = getBackendBaseUrl();
 
 export const DEFAULT_DISTRICT = import.meta.env.VITE_DEFAULT_DISTRICT;
 const SERVICES_CACHE_TTL_MS = 1000 * 60 * 5;
@@ -545,7 +546,7 @@ export const getFlaggedRecords = async () => {
     const fields =
       "*,flagged_by.first_name,flagged_by.last_name,user_created.first_name,user_created.last_name,created_by.first_name,created_by.last_name";
     const response = await fetch(
-      `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp?fields=${encodeURIComponent(fields)}`,
+      `${getDirectusBaseUrl()}/items/flagged_forms_ecapplus_pmp?fields=${encodeURIComponent(fields)}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -565,7 +566,7 @@ export const createFlaggedRecord = async (payload: any) => {
   if (!token) throw new Error("Not authenticated");
 
   const response = await fetch(
-    `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp`,
+    `${getDirectusBaseUrl()}/items/flagged_forms_ecapplus_pmp`,
     {
       method: "POST",
       headers: {
@@ -1208,7 +1209,7 @@ export const updateFlagStatus = async (flagId: string, status: string) => {
   if (!token) throw new Error("Not authenticated");
 
   const response = await fetch(
-    `${import.meta.env.VITE_DIRECTUS_URL}/items/flagged_forms_ecapplus_pmp/${flagId}`,
+    `${getDirectusBaseUrl()}/items/flagged_forms_ecapplus_pmp/${flagId}`,
     {
       method: "PATCH",
       headers: {
@@ -1361,7 +1362,7 @@ export const triggerServiceExport = async (
   const token = getStoredToken();
   if (token) q.set("token", token);
 
-  const url = `${import.meta.env.VITE_DQA_BASE_URL}/etl/services/${params.type}/export${q.toString() ? `?${q}` : ""}`;
+  const url = `${getBackendBaseUrl()}/etl/services/${params.type}/export${q.toString() ? `?${q}` : ""}`;
 
   onProgress?.("preparing");
 

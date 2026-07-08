@@ -11,17 +11,16 @@
  *   npm run setup:weekly-flow
  *
  * Required .env vars:
- *   VITE_DIRECTUS_URL, DIRECTUS_EMAIL, DIRECTUS_PASSWORD
+ *   REACT_APP_BASE_URL, DIRECTUS_EMAIL, DIRECTUS_PASSWORD
  */
 
-const DIRECTUS_URL =
-  process.env.VITE_DIRECTUS_URL || process.env.DIRECTUS_URL;
+const DIRECTUS_URL = process.env.REACT_APP_BASE_URL;
 const EMAIL = process.env.DIRECTUS_EMAIL;
 const PASSWORD = process.env.DIRECTUS_PASSWORD;
 
 if (!DIRECTUS_URL || !EMAIL || !PASSWORD) {
   console.error("\nMissing required environment variables:\n");
-  console.error("  VITE_DIRECTUS_URL    — Your Directus instance URL");
+  console.error("  REACT_APP_BASE_URL   — Your Directus instance URL");
   console.error("  DIRECTUS_EMAIL       — Admin email");
   console.error("  DIRECTUS_PASSWORD    — Admin password\n");
   process.exit(1);

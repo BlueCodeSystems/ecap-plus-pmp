@@ -7,9 +7,7 @@ import { toast } from "@/components/ui/sonner";
 import AuroraBackground from "@/components/aceternity/AuroraBackground";
 import VersionFooter from "@/components/VersionFooter";
 import RightImageSlider from "@/components/RightImageSlider";
-
-const DIRECTUS_URL =
-  import.meta.env.VITE_DIRECTUS_URL ?? "";
+import { getDirectusBaseUrl } from "@/lib/env";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -29,8 +27,9 @@ const ForgotPassword = () => {
 
       const resetUrlBase = (import.meta.env.VITE_RESET_PASSWORD_URL || window.location.origin).replace(/\/$/, "");
       const resetUrl = `${resetUrlBase}/reset-password`;
+      const directusUrl = getDirectusBaseUrl();
 
-      const response = await fetch(`${DIRECTUS_URL}/auth/password/request`, {
+      const response = await fetch(`${directusUrl}/auth/password/request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

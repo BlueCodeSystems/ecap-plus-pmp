@@ -18,6 +18,11 @@ RUNNER_DIR="$HOME/actions-runner"
 PROD_DOMAIN="ecapplus.pmp.bluecodeltd.com"
 PROD_PORT="3040"
 PROD_NGINX_SITE="/etc/nginx/sites-available/${PROD_DOMAIN}"
+# ECAP Plus backend API (REACT_PUBLIC_API_URL) - shared by both the production
+# and staging frontends.
+BACKEND_DOMAIN="server.ecapplus.pmp.bluecodeltd.com"
+BACKEND_PORT="${BACKEND_PORT:-9003}"
+BACKEND_NGINX_SITE="/etc/nginx/sites-available/${BACKEND_DOMAIN}"
 TARBALL="actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
 DOWNLOAD_URL="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/${TARBALL}"
 
@@ -101,6 +106,37 @@ NGINX
       printf '\n\033[1;33mWARNING: Certbot did not complete. Confirm DNS points here, then run: sudo certbot --nginx -d %s --redirect\033[0m\n' "$PROD_DOMAIN"
   else
     printf '\n\033[1;33mWARNING: certbot not found. Install certbot, then run: sudo certbot --nginx -d %s --redirect\033[0m\n' "$PROD_DOMAIN"
+  fi
+
+  say "Configuring Nginx vhost for the ECAP Plus backend (${BACKEND_DOMAIN} -> 127.0.0.1:${BACKEND_PORT})..."
+  printf '\033[1;33mNOTE: this only works once %s has a DNS A record pointing at this server'"'"'s IP.\033[0m\n' "$BACKEND_DOMAIN"
+  sudo tee "$BACKEND_NGINX_SITE" >/dev/null <<NGINX
+server {
+    listen 80;
+    server_name ${BACKEND_DOMAIN};
+
+    location / {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+NGINX
+  sudo ln -sf "$BACKEND_NGINX_SITE" "/etc/nginx/sites-enabled/${BACKEND_DOMAIN}"
+  sudo nginx -t
+  sudo systemctl reload nginx
+
+  if command -v certbot >/dev/null 2>&1; then
+    say "Requesting/refreshing HTTPS certificate for ${BACKEND_DOMAIN}..."
+    sudo certbot --nginx -d "$BACKEND_DOMAIN" --non-interactive --agree-tos --redirect || \
+      printf '\n\033[1;33mWARNING: Certbot did not complete. Confirm DNS points here, then run: sudo certbot --nginx -d %s --redirect\033[0m\n' "$BACKEND_DOMAIN"
+  else
+    printf '\n\033[1;33mWARNING: certbot not found. Install certbot, then run: sudo certbot --nginx -d %s --redirect\033[0m\n' "$BACKEND_DOMAIN"
   fi
 else
   printf '\n\033[1;33mWARNING: nginx not found; skipping production reverse proxy setup.\033[0m\n'
