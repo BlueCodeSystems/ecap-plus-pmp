@@ -821,7 +821,6 @@ const HouseholdProfile = () => {
                       household.client_screened || household.screened || "N/A",
                     )}
                   />
-                  {/*<InfoItem label="Client Result" value={String(household.client_result || "N/A")} />*/}
                   <InfoItem
                     label="HEI"
                     value={String(household.hei || "N/A")}
