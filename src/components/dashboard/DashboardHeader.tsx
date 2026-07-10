@@ -1,4 +1,14 @@
-import { Bell, BellOff, User, X, DatabaseZap, CircleHelp, Calendar, LogOut, Sparkles } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  User,
+  X,
+  DatabaseZap,
+  CircleHelp,
+  Calendar,
+  LogOut,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch } from "./GlobalSearch";
 import FyFilter from "@/components/FyFilter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,12 +32,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useState, useMemo, useRef } from "react";
 
 const SOUND_STORAGE_KEY = "ecapplus.notifications.sound";
+const HIDDEN_ROUTES = ["/dashboard", "/districts"];
 
 // Synthesized two-tone beep via the WebAudio API — no asset file needed,
 // works regardless of bundler/public-folder state.
 function playNotificationBeep() {
   try {
-    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    const Ctx =
+      (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!Ctx) return;
     const ctx = new Ctx();
     const gain = ctx.createGain();
@@ -61,6 +73,9 @@ type DashboardHeaderProps = {
 const DashboardHeader = ({
   subtitle = "Data quality & program operations",
 }: DashboardHeaderProps) => {
+  const { pathname } = useLocation();
+  const hideSearchAndFilter = HIDDEN_ROUTES.includes(pathname);
+
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -96,9 +111,11 @@ const DashboardHeader = ({
           title: n.subject,
           description: n.message,
           date: new Date(n.timestamp),
-          icon: isExtract
-            ? <DatabaseZap className="h-4 w-4 text-emerald-600" />
-            : <Bell className="h-4 w-4 text-primary" />,
+          icon: isExtract ? (
+            <DatabaseZap className="h-4 w-4 text-emerald-600" />
+          ) : (
+            <Bell className="h-4 w-4 text-primary" />
+          ),
           link: isExtract
             ? "/weekly-extracts"
             : n.collection?.startsWith("support") && n.sender
@@ -130,7 +147,10 @@ const DashboardHeader = ({
       ) {
         try {
           new Notification("ECAP+ PMP", {
-            body: delta === 1 ? "You have a new notification" : `You have ${delta} new notifications`,
+            body:
+              delta === 1
+                ? "You have a new notification"
+                : `You have ${delta} new notifications`,
             icon: "/ecap-logo.png",
             silent: !soundEnabled,
           });
@@ -182,7 +202,11 @@ const DashboardHeader = ({
     try {
       const cleared = await clearAllNotifications(user.id);
       queryClient.invalidateQueries({ queryKey: ["directus-notifications"] });
-      toast.success(cleared > 0 ? `Cleared ${cleared} notification${cleared === 1 ? "" : "s"}` : "Inbox already clear");
+      toast.success(
+        cleared > 0
+          ? `Cleared ${cleared} notification${cleared === 1 ? "" : "s"}`
+          : "Inbox already clear",
+      );
     } catch (error) {
       console.error("Failed to clear notifications:", error);
       toast.error("Couldn't clear notifications");
@@ -203,20 +227,26 @@ const DashboardHeader = ({
   return (
     <div className="flex-1 flex items-center justify-between">
       <div className="hidden sm:flex flex-col">
-        {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+        {subtitle && (
+          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+        )}
       </div>
 
       <div className="flex flex-1 items-center gap-3 md:pl-6">
         {/* Global Search Component */}
-        <div className="flex-1 max-w-xl">
-          <GlobalSearch />
-        </div>
+        {!hideSearchAndFilter && (
+          <div className="flex-1 max-w-xl">
+            <GlobalSearch />
+          </div>
+        )}
 
         <div className="flex w-full items-center justify-end gap-2 sm:ml-0 sm:w-auto md:ml-auto">
           {/* Global FY filter — affects every list/count query app-wide */}
-          <div className="hidden md:block">
-            <FyFilter />
-          </div>
+          {!hideSearchAndFilter && (
+            <div className="hidden md:block">
+              <FyFilter />
+            </div>
+          )}
 
           {/* Help & Support */}
           <Button
@@ -250,7 +280,10 @@ const DashboardHeader = ({
                 <Bell className="h-5 w-5 text-slate-500" />
                 {unreadCount > 0 && (
                   <>
-                    <span aria-hidden className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-emerald-400 animate-ping opacity-50" />
+                    <span
+                      aria-hidden
+                      className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-emerald-400 animate-ping opacity-50"
+                    />
                     <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 px-1 text-[10px] font-bold text-white shadow-sm shadow-emerald-700/30 ring-2 ring-white">
                       {unreadCount}
                     </span>
@@ -274,23 +307,35 @@ const DashboardHeader = ({
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-white/60 shadow-sm">
                       <Sparkles className="h-3.5 w-3.5" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Notifications
+                    </h3>
                     {unreadCount > 0 && (
                       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-100 px-1.5 text-[10px] font-bold text-emerald-700">
                         {unreadCount}
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-500">Tasks and alerts for {district || "your area"}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Tasks and alerts for {district || "your area"}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
                     className="text-slate-400 hover:text-emerald-700 transition-colors p-1 rounded-md hover:bg-emerald-50/70"
                     onClick={toggleSound}
-                    title={soundEnabled ? "Mute notification sound" : "Enable notification sound"}
+                    title={
+                      soundEnabled
+                        ? "Mute notification sound"
+                        : "Enable notification sound"
+                    }
                   >
-                    {soundEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                    {soundEnabled ? (
+                      <Bell className="h-3.5 w-3.5" />
+                    ) : (
+                      <BellOff className="h-3.5 w-3.5" />
+                    )}
                   </button>
                   {unreadCount > 0 && (
                     <button
@@ -308,8 +353,12 @@ const DashboardHeader = ({
                     <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
                       <Bell className="h-4 w-4" />
                     </div>
-                    <p className="text-sm font-bold text-slate-900">All caught up</p>
-                    <p className="text-[11px] text-slate-500">No recent notifications.</p>
+                    <p className="text-sm font-bold text-slate-900">
+                      All caught up
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      No recent notifications.
+                    </p>
                   </div>
                 ) : (
                   notifications.map((n) => (
@@ -320,10 +369,16 @@ const DashboardHeader = ({
                         if (n.link) navigate(n.link);
                       }}
                     >
-                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-white/60 shadow-sm">{n.icon}</div>
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-700 ring-1 ring-white/60 shadow-sm">
+                        {n.icon}
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-slate-900">{n.title}</p>
-                        <p className="text-xs text-slate-600 line-clamp-2 whitespace-normal leading-relaxed">{n.description}</p>
+                        <p className="text-sm font-bold text-slate-900">
+                          {n.title}
+                        </p>
+                        <p className="text-xs text-slate-600 line-clamp-2 whitespace-normal leading-relaxed">
+                          {n.description}
+                        </p>
                         <p className="text-[10px] text-emerald-600/80 mt-1 font-semibold">
                           {formatDistanceToNow(n.date, { addSuffix: true })}
                         </p>
@@ -360,15 +415,23 @@ const DashboardHeader = ({
                 className="gap-2 px-1 sm:px-2 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-50/60"
               >
                 <div className="relative">
-                  <div aria-hidden className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70" />
+                  <div
+                    aria-hidden
+                    className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70"
+                  />
                   <Avatar className="relative h-8 w-8 ring-2 ring-white shadow-sm">
-                    <AvatarImage src={user?.avatar ? getFileUrl(user.avatar) : undefined} className="object-cover" />
+                    <AvatarImage
+                      src={user?.avatar ? getFileUrl(user.avatar) : undefined}
+                      className="object-cover"
+                    />
                     <AvatarFallback className="bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 text-white text-xs sm:text-sm font-extrabold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                 </div>
-                <span className="hidden sm:block text-sm font-bold text-slate-700">{displayName}</span>
+                <span className="hidden sm:block text-sm font-bold text-slate-700">
+                  {displayName}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -384,7 +447,10 @@ const DashboardHeader = ({
               <DropdownMenuLabel className="px-3 py-3">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div aria-hidden className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70" />
+                    <div
+                      aria-hidden
+                      className="absolute -inset-0.5 rounded-xl bg-gradient-to-br from-emerald-400/60 via-teal-400/40 to-sky-400/40 blur-sm opacity-70"
+                    />
                     <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 ring-2 ring-white shadow-sm overflow-hidden">
                       {user?.avatar ? (
                         <img
@@ -393,13 +459,19 @@ const DashboardHeader = ({
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm font-extrabold text-white">{initials}</span>
+                        <span className="text-sm font-extrabold text-white">
+                          {initials}
+                        </span>
                       )}
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold text-slate-900 truncate">{displayName}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{user?.email}</div>
+                    <div className="text-sm font-bold text-slate-900 truncate">
+                      {displayName}
+                    </div>
+                    <div className="text-[10px] text-slate-500 truncate">
+                      {user?.email}
+                    </div>
                   </div>
                 </div>
                 <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -417,7 +489,9 @@ const DashboardHeader = ({
                 <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 mr-2 transition-colors group-focus:bg-emerald-100">
                   <User className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-sm font-semibold text-slate-700 group-focus:text-emerald-700">Profile</span>
+                <span className="text-sm font-semibold text-slate-700 group-focus:text-emerald-700">
+                  Profile
+                </span>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="bg-emerald-100/40" />
