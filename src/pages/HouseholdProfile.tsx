@@ -549,7 +549,7 @@ const HouseholdProfile = () => {
               },
               {
                 icon: HeartPulse,
-                label: "Primary facility",
+                label: "Facility",
                 value: String(household.facility || "N/A"),
                 iconBg: "from-rose-100 to-pink-100 text-rose-700",
                 glow: "from-rose-200/70 via-pink-200/40",
@@ -820,6 +820,10 @@ const HouseholdProfile = () => {
                     value={String(
                       household.client_screened || household.screened || "N/A",
                     )}
+                  />
+                  <InfoItem
+                    label="Client Result"
+                    value={String(household.client_result || "N/A")}
                   />
                   <InfoItem
                     label="HEI"
