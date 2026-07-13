@@ -549,7 +549,7 @@ const HouseholdProfile = () => {
               },
               {
                 icon: HeartPulse,
-                label: "Primary facility",
+                label: "Facility",
                 value: String(household.facility || "N/A"),
                 iconBg: "from-rose-100 to-pink-100 text-rose-700",
                 glow: "from-rose-200/70 via-pink-200/40",
