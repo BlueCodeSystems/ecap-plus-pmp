@@ -1070,7 +1070,7 @@ const HouseholdProfile = () => {
                               </span>
                             </TableCell>
                             <TableCell className="text-sm">
-                              {String(m.birthdate || "N/A")}
+                              {formatBirthDate(m.birthdate || "N/A")}
                             </TableCell>
                             <TableCell className="text-sm border-slate-200">
                               {String(m.vca_gender || m.gender || "N/A")}
