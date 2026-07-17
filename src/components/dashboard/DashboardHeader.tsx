@@ -412,7 +412,7 @@ const DashboardHeader = ({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="gap-2 px-1 sm:px-2 transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-50/60"
+                className="gap-2 px-1 sm:px-2 transition-colors duration-150 hover:bg-emerald-50/60"
               >
                 <div className="relative">
                   <div
@@ -434,16 +434,18 @@ const DashboardHeader = ({
                 </span>
               </Button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent
               align="end"
               className="w-64 rounded-2xl shadow-[0_30px_80px_-30px_rgba(15,118,110,0.4)] border border-emerald-100/60 bg-white/90 backdrop-blur-xl p-1.5 overflow-hidden"
             >
-              {/* Aurora background */}
+              {/* Static aurora background */}
               <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden rounded-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.10),transparent_55%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(14,165,233,0.08),transparent_50%)]" />
               </div>
 
+              {/* User info header */}
               <DropdownMenuLabel className="px-3 py-3">
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -482,11 +484,16 @@ const DashboardHeader = ({
 
               <DropdownMenuSeparator className="bg-emerald-100/40" />
 
+              {/* Profile */}
               <DropdownMenuItem
-                className="rounded-lg px-3 py-2.5 cursor-pointer transition-all focus:bg-gradient-to-r focus:from-emerald-50/80 focus:via-teal-50/40 focus:to-transparent focus:text-emerald-700 group"
+                className="rounded-lg px-3 py-2.5 cursor-pointer transition-colors duration-150
+                  text-slate-700
+                  hover:bg-emerald-50 hover:text-emerald-700
+                  data-[highlighted]:bg-emerald-50 data-[highlighted]:text-emerald-700
+                  focus:outline-none"
                 onClick={() => navigate("/profile")}
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 mr-2 transition-colors group-focus:bg-emerald-100">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 mr-2">
                   <User className="h-3.5 w-3.5" />
                 </div>
                 <span className="text-sm font-semibold text-slate-700 group-focus:text-emerald-700">
@@ -496,17 +503,22 @@ const DashboardHeader = ({
 
               <DropdownMenuSeparator className="bg-emerald-100/40" />
 
+              {/* Logout */}
               <DropdownMenuItem
-                className="rounded-lg px-3 py-2.5 cursor-pointer transition-all focus:bg-gradient-to-r focus:from-rose-50/80 focus:via-pink-50/40 focus:to-transparent focus:text-rose-700 group"
+                className="rounded-lg px-3 py-2.5 cursor-pointer transition-colors duration-150
+                  text-rose-600
+                  hover:bg-rose-50 hover:text-rose-700
+                  data-[highlighted]:bg-rose-50 data-[highlighted]:text-rose-700
+                  focus:outline-none"
                 onClick={() => {
                   logout();
                   navigate("/");
                 }}
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-100 mr-2 transition-colors group-focus:bg-rose-100">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-rose-600 ring-1 ring-rose-100 mr-2">
                   <LogOut className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-sm font-bold text-rose-600">Logout</span>
+                <span className="text-sm font-bold">Logout</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

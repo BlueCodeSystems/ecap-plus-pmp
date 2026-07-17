@@ -2,8 +2,31 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Book, FileText, Search, Settings, Shield, User, ChevronRight, HelpCircle, XCircle, ArrowLeft, Activity, Sparkles, Users, Home, HeartPulse, Database } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Book,
+  FileText,
+  Search,
+  Settings,
+  Shield,
+  User,
+  ChevronRight,
+  HelpCircle,
+  XCircle,
+  ArrowLeft,
+  Activity,
+  Sparkles,
+  Users,
+  Home,
+  HeartPulse,
+  Database,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,9 +56,20 @@ const Documentation = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
-  const userName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "you";
-  const userRole = (typeof user?.role === "object" ? user?.role?.name : user?.role) || user?.description || "User";
-  const userScope = user?.location && user.location !== "All" ? `${user.location}` : user?.title && user.title !== "All" ? `${user.title}` : "all districts";
+  const userName =
+    [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
+    user?.email ||
+    "you";
+  const userRole =
+    (typeof user?.role === "object" ? user?.role?.name : user?.role) ||
+    user?.description ||
+    "User";
+  const userScope =
+    user?.location && user.location !== "All"
+      ? `${user.location}`
+      : user?.title && user.title !== "All"
+        ? `${user.title}`
+        : "all districts";
 
   // ── Live platform data ───────────────────────────────────
   const householdsQuery = useQuery({
@@ -54,64 +88,114 @@ const Documentation = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const isLoadingStats = householdsQuery.isLoading || vcasQuery.isLoading || mothersQuery.isLoading;
+  const isLoadingStats =
+    householdsQuery.isLoading || vcasQuery.isLoading || mothersQuery.isLoading;
 
-  const totalRecords = (householdsQuery.data ?? 0) + (vcasQuery.data ?? 0) + (mothersQuery.data ?? 0);
+  const totalRecords =
+    (householdsQuery.data ?? 0) +
+    (vcasQuery.data ?? 0) +
+    (mothersQuery.data ?? 0);
 
-  const docSections: DocSection[] = useMemo(() => [
-    {
-      title: "Getting Started",
-      icon: Book,
-      description: `You're signed in as ${userRole} for ${userScope}. Learn the basics of the ECAP+ platform.`,
-      links: ["Platform overview", "Logging in and navigation", "Understanding your dashboard", "Role-based access levels"],
-      liveStat: { label: "Your role", value: userRole },
-    },
-    {
-      title: "User Management",
-      icon: User,
-      description: "Create Directus accounts, assign roles (Administrator, Provincial, District, Facility, Support), and scope users by location.",
-      links: ["Adding new users", "Assigning districts and provinces", "Editing user profiles", "Understanding role permissions"],
-    },
-    {
-      title: "Registers",
-      icon: FileText,
-      description: `Working data: ${formatNumber(householdsQuery.data)} households, ${formatNumber(vcasQuery.data)} VCAs, ${formatNumber(mothersQuery.data)} mothers in the system.`,
-      links: ["Household register", "VCA register", "Mother index register", "HTS and PMTCT registers"],
-      liveStat: { label: "Total records", value: formatNumber(totalRecords) },
-    },
-    {
-      title: "Services",
-      icon: Shield,
-      description: "Track service delivery across household, CA, and caregiver levels — filter by sub-population, drill into records, and export CSVs.",
-      links: ["Household services", "VCA services", "Caregiver services", "Data quality insights"],
-    },
-    {
-      title: "Data Quality",
-      icon: Settings,
-      description: "Review flagged forms, monitor district performance, and use the DQA tools to improve data integrity.",
-      links: ["Flagged records review", "Data quality insight cards", "Exporting service data", "District-level reporting"],
-    },
-    {
-      title: "Troubleshooting",
-      icon: HelpCircle,
-      description: "Common issues, fixes, and how to reach the support team.",
-      links: ["Login and access issues", "Data not loading", "Export problems", "Contacting support"]
-    }
-  ], [householdsQuery.data, vcasQuery.data, mothersQuery.data, totalRecords, userRole, userScope]);
+  const docSections: DocSection[] = useMemo(
+    () => [
+      {
+        title: "Getting Started",
+        icon: Book,
+        description: `You're signed in as ${userRole} for ${userScope}. Learn the basics of the ECAP+ platform.`,
+        links: [
+          "Platform overview",
+          "Logging in and navigation",
+          "Understanding your dashboard",
+          "Role-based access levels",
+        ],
+        liveStat: { label: "Your role", value: userRole },
+      },
+      {
+        title: "User Management",
+        icon: User,
+        description:
+          "Create Directus accounts, assign roles (Administrator, Provincial, District, Facility, Support), and scope users by location.",
+        links: [
+          "Adding new users",
+          "Assigning districts and provinces",
+          "Editing user profiles",
+          "Understanding role permissions",
+        ],
+      },
+      {
+        title: "Registers",
+        icon: FileText,
+        description: `Working data in the system.`,
+        links: [
+          "Household register",
+          "VCA register",
+          "Mother index register",
+          "HTS and PMTCT registers",
+        ],
+        liveStat: { label: "Total records", value: formatNumber(totalRecords) },
+      },
+      {
+        title: "Services",
+        icon: Shield,
+        description:
+          "Track service delivery across household, CA, and caregiver levels — filter by sub-population, drill into records, and export CSVs.",
+        links: [
+          "Household services",
+          "VCA services",
+          "Caregiver services",
+          "Data quality insights",
+        ],
+      },
+      {
+        title: "Data Quality",
+        icon: Settings,
+        description:
+          "Review flagged forms, monitor district performance, and use the DQA tools to improve data integrity.",
+        links: [
+          "Flagged records review",
+          "Data quality insight cards",
+          "Exporting service data",
+          "District-level reporting",
+        ],
+      },
+      {
+        title: "Troubleshooting",
+        icon: HelpCircle,
+        description: "Common issues, fixes, and how to reach the support team.",
+        links: [
+          "Login and access issues",
+          "Data not loading",
+          "Export problems",
+          "Contacting support",
+        ],
+      },
+    ],
+    [
+      householdsQuery.data,
+      vcasQuery.data,
+      mothersQuery.data,
+      totalRecords,
+      userRole,
+      userScope,
+    ],
+  );
 
   const filteredSections = useMemo(() => {
     if (!searchQuery.trim()) return docSections;
     const query = searchQuery.toLowerCase();
     return docSections
-      .map(section => {
+      .map((section) => {
         const matchesTitle = section.title.toLowerCase().includes(query);
         const matchesDesc = section.description.toLowerCase().includes(query);
-        const filteredLinks = section.links.filter(link => link.toLowerCase().includes(query));
+        const filteredLinks = section.links.filter((link) =>
+          link.toLowerCase().includes(query),
+        );
         if (matchesTitle || matchesDesc || filteredLinks.length > 0) {
           return {
             ...section,
-            links: (matchesTitle || matchesDesc) ? section.links : filteredLinks,
-            isPartialMatch: !matchesTitle && !matchesDesc && filteredLinks.length > 0
+            links: matchesTitle || matchesDesc ? section.links : filteredLinks,
+            isPartialMatch:
+              !matchesTitle && !matchesDesc && filteredLinks.length > 0,
           } as DocSection;
         }
         return null;
@@ -120,16 +204,22 @@ const Documentation = () => {
   }, [searchQuery, docSections]);
 
   const highlightMatch = (text: string, query: string) => {
-    if (!query || !text.toLowerCase().includes(query.toLowerCase())) return text;
+    if (!query || !text.toLowerCase().includes(query.toLowerCase()))
+      return text;
     const parts = text.split(new RegExp(`(${query})`, "gi"));
     return (
       <span>
         {parts.map((part, i) =>
           part.toLowerCase() === query.toLowerCase() ? (
-            <span key={i} className="bg-emerald-100 text-emerald-700 font-bold px-0.5 rounded">{part}</span>
+            <span
+              key={i}
+              className="bg-emerald-100 text-emerald-700 font-bold px-0.5 rounded"
+            >
+              {part}
+            </span>
           ) : (
             <span key={i}>{part}</span>
-          )
+          ),
         )}
       </span>
     );
@@ -137,7 +227,7 @@ const Documentation = () => {
 
   return (
     <DashboardLayout subtitle="System Documentation">
-      <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="space-y-10 animate-in fade-in duration-500">
         <div className="mb-4">
           <Button
             variant="ghost"
@@ -161,10 +251,22 @@ const Documentation = () => {
           <div className="relative z-10 flex flex-col gap-4 px-5 py-6 sm:px-7 sm:py-7">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">Knowledge base</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+                  Knowledge base
+                </span>
                 <span className="text-slate-400 text-[11px]">·</span>
-                <span className="text-[11px] text-slate-600">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
-                <Badge variant="outline" className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
+                <span className="text-[11px] text-slate-600">
+                  {new Date().toLocaleDateString("en-GB", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+                <Badge
+                  variant="outline"
+                  className="ml-1 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700"
+                >
                   <Activity className="h-3 w-3" /> {docSections.length} sections
                 </Badge>
               </div>
@@ -172,11 +274,17 @@ const Documentation = () => {
                 <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-sky-700 bg-clip-text text-transparent">
                   How can we help you today?
                 </span>
-                <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
+                <Badge
+                  variant="outline"
+                  className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm"
+                >
                   <Sparkles className="h-3 w-3" /> Guides · FAQs · How-tos
                 </Badge>
               </h1>
-              <p className="mt-1 text-xs text-slate-600">Browse comprehensive help docs for the ECAP+ Program Management Platform.</p>
+              <p className="mt-1 text-xs text-slate-600">
+                Browse comprehensive help docs for the ECAP+ Program Management
+                Platform.
+              </p>
             </div>
             <div className="relative w-full max-w-2xl">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -187,7 +295,10 @@ const Documentation = () => {
                 className="pl-9 pr-20 h-11 bg-white/90 border-slate-200 focus-visible:ring-emerald-500/30 backdrop-blur-md"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-12 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-12 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                >
                   <XCircle className="h-4 w-4" />
                 </button>
               )}
@@ -198,70 +309,15 @@ const Documentation = () => {
           </div>
         </div>
 
-        {/* ── Live platform stats ─────────────────────────────── */}
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Your platform at a glance</h3>
-            <span className="text-[11px] text-slate-400">Live data · {userScope}</span>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {([
-              {
-                icon: Home,
-                label: "Households",
-                value: formatNumber(householdsQuery.data),
-                desc: "Active households tracked",
-                iconBg: "from-emerald-100 to-teal-100 text-emerald-700",
-                glow: "from-emerald-200/70 via-teal-200/40",
-              },
-              {
-                icon: Users,
-                label: "VCAs",
-                value: formatNumber(vcasQuery.data),
-                desc: "Children & adolescents",
-                iconBg: "from-violet-100 to-fuchsia-100 text-violet-700",
-                glow: "from-violet-200/70 via-fuchsia-200/40",
-              },
-              {
-                icon: HeartPulse,
-                label: "Mothers",
-                value: formatNumber(mothersQuery.data),
-                desc: "Mother index records",
-                iconBg: "from-rose-100 to-pink-100 text-rose-700",
-                glow: "from-rose-200/70 via-pink-200/40",
-              },
-              {
-                icon: Database,
-                label: "Total records",
-                value: isLoadingStats ? "…" : formatNumber(totalRecords),
-                desc: "Across all registers",
-                iconBg: "from-sky-100 to-cyan-100 text-sky-700",
-                glow: "from-sky-200/70 via-cyan-200/40",
-              },
-            ] as const).map((card) => {
-              const Icon = card.icon;
-              return (
-                <div key={card.label} className="group relative">
-                  <div className={`absolute -inset-[1px] rounded-2xl bg-gradient-to-br ${card.glow} to-transparent opacity-40 blur-md transition-opacity duration-500 group-hover:opacity-100`} />
-                  <div className="relative h-full rounded-2xl border border-slate-200/70 bg-white/75 p-4 backdrop-blur-xl shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)]">
-                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${card.iconBg} ring-1 ring-white/60 shadow-sm`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="mt-2 text-xl font-extrabold text-slate-900">{card.value}</div>
-                    <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{card.label}</div>
-                    <div className="text-[10px] text-slate-500 leading-relaxed mt-0.5">{card.desc}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {searchQuery && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Search className="h-4 w-4" />
-            Showing results for "<span className="font-semibold text-slate-900">{searchQuery}</span>"
-            <Badge variant="secondary" className="ml-2 bg-slate-100 text-slate-600">
+            Showing results for "
+            <span className="font-semibold text-slate-900">{searchQuery}</span>"
+            <Badge
+              variant="secondary"
+              className="ml-2 bg-slate-100 text-slate-600"
+            >
               {filteredSections.length} categories found
             </Badge>
           </div>
@@ -269,10 +325,18 @@ const Documentation = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
           {filteredSections.map((section, idx) => (
-            <Card key={idx} className="hover:shadow-lg transition-all duration-300 border-slate-100 overflow-hidden group hover:-translate-y-1 relative">
+            <Card
+              key={idx}
+              className="hover:shadow-lg transition-all duration-300 border-slate-100 overflow-hidden group hover:-translate-y-1 relative"
+            >
               {section.isPartialMatch && (
                 <div className="absolute top-0 right-0 p-2">
-                  <Badge variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-600 border-none">Matching articles</Badge>
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] bg-emerald-50 text-emerald-600 border-none"
+                  >
+                    Matching articles
+                  </Badge>
                 </div>
               )}
               <CardHeader className="bg-gradient-to-b from-emerald-50/40 to-transparent pb-4">
@@ -285,12 +349,6 @@ const Documentation = () => {
                       <CardTitle className="text-base font-bold group-hover:text-emerald-600 transition-colors">
                         {highlightMatch(section.title, searchQuery)}
                       </CardTitle>
-                      {section.liveStat && (
-                        <Badge variant="outline" className="shrink-0 gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700 font-semibold whitespace-nowrap">
-                          <Activity className="h-2.5 w-2.5" />
-                          {section.liveStat.value}
-                        </Badge>
-                      )}
                     </div>
                     <CardDescription className="line-clamp-2 mt-1 text-xs leading-relaxed">
                       {highlightMatch(section.description, searchQuery)}
@@ -301,7 +359,11 @@ const Documentation = () => {
               <CardContent>
                 <ul className="space-y-3">
                   {section.links.map((link, lIdx) => (
-                    <li key={lIdx} className="flex items-center gap-3 group/link cursor-pointer" onClick={() => navigate(`/documentation/${toSlug(link)}`)}>
+                    <li
+                      key={lIdx}
+                      className="flex items-center gap-3 group/link cursor-pointer"
+                      onClick={() => navigate(`/documentation/${toSlug(link)}`)}
+                    >
                       <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 group-hover/link:bg-emerald-100 group-hover/link:text-emerald-600 transition-colors">
                         <ChevronRight className="h-4 w-4" />
                       </div>
@@ -321,18 +383,26 @@ const Documentation = () => {
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-50 text-slate-300 mb-4">
               <Search className="h-10 w-10" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900">No matching documentation found</h3>
+            <h3 className="text-xl font-bold text-slate-900">
+              No matching documentation found
+            </h3>
             <p className="text-slate-500 max-w-sm mx-auto">
               Try a different keyword or browse the categories above.
             </p>
-            <button onClick={() => setSearchQuery("")} className="text-emerald-600 font-bold hover:underline">
+            <button
+              onClick={() => setSearchQuery("")}
+              className="text-emerald-600 font-bold hover:underline"
+            >
               Clear search
             </button>
           </div>
         )}
 
         <div className="relative mt-12 group">
-          <div aria-hidden className="pointer-events-none absolute -inset-1 rounded-3xl bg-gradient-to-br from-emerald-400/40 via-teal-400/30 to-sky-400/30 blur-md opacity-70 group-hover:opacity-100 transition-opacity" />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-1 rounded-3xl bg-gradient-to-br from-emerald-400/40 via-teal-400/30 to-sky-400/30 blur-md opacity-70 group-hover:opacity-100 transition-opacity"
+          />
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-600 p-8 text-white shadow-[0_30px_80px_-30px_rgba(15,118,110,0.6)]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
             <div className="pointer-events-none absolute right-0 top-0 w-96 h-96 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl animate-pulse [animation-duration:6s]" />
@@ -348,9 +418,12 @@ const Documentation = () => {
                     <HelpCircle className="h-3 w-3" />
                     Live support
                   </div>
-                  <h2 className="text-3xl font-extrabold tracking-tight">Need more help?</h2>
+                  <h2 className="text-3xl font-extrabold tracking-tight">
+                    Need more help?
+                  </h2>
                   <p className="max-w-xl text-emerald-50/90 text-sm leading-relaxed">
-                    Can't find what you're looking for? Our support team is ready to help.
+                    Can't find what you're looking for? Our support team is
+                    ready to help.
                   </p>
                 </div>
               </div>
