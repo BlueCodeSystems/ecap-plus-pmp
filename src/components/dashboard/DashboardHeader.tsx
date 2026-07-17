@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch } from "./GlobalSearch";
 import FyFilter from "@/components/FyFilter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useState, useMemo, useRef } from "react";
 
 const SOUND_STORAGE_KEY = "ecapplus.notifications.sound";
+const HIDDEN_ROUTES = ["/dashboard", "/districts"];
 
 // Synthesized two-tone beep via the WebAudio API — no asset file needed,
 // works regardless of bundler/public-folder state.
@@ -72,6 +73,9 @@ type DashboardHeaderProps = {
 const DashboardHeader = ({
   subtitle = "Data quality & program operations",
 }: DashboardHeaderProps) => {
+  const { pathname } = useLocation();
+  const hideSearchAndFilter = HIDDEN_ROUTES.includes(pathname);
+
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -230,15 +234,19 @@ const DashboardHeader = ({
 
       <div className="flex flex-1 items-center gap-3 md:pl-6">
         {/* Global Search Component */}
-        <div className="flex-1 max-w-xl">
-          <GlobalSearch />
-        </div>
+        {!hideSearchAndFilter && (
+          <div className="flex-1 max-w-xl">
+            <GlobalSearch />
+          </div>
+        )}
 
         <div className="flex w-full items-center justify-end gap-2 sm:ml-0 sm:w-auto md:ml-auto">
           {/* Global FY filter — affects every list/count query app-wide */}
-          <div className="hidden md:block">
-            <FyFilter />
-          </div>
+          {!hideSearchAndFilter && (
+            <div className="hidden md:block">
+              <FyFilter />
+            </div>
+          )}
 
           {/* Help & Support */}
           <Button
@@ -488,7 +496,9 @@ const DashboardHeader = ({
                 <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 mr-2">
                   <User className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-sm font-semibold">Profile</span>
+                <span className="text-sm font-semibold text-slate-700 group-focus:text-emerald-700">
+                  Profile
+                </span>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="bg-emerald-100/40" />
