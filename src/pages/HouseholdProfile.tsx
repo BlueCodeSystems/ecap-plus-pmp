@@ -1,14 +1,53 @@
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getHouseholdsByDistrict, getHouseholdArchivedRegister, DEFAULT_DISTRICT, getCaregiverServicesByHousehold, getCaregiverReferralsByMonth, getFlaggedRecords, getChildrenByDistrict, getCaregiverCasePlansByDistrict, getCaregiverCasePlansByHousehold, getHouseholdReferralsById, getHouseholdMembers, updateFlagStatus } from "@/lib/api";
+import {
+  getHouseholdsByDistrict,
+  getHouseholdArchivedRegister,
+  DEFAULT_DISTRICT,
+  getCaregiverServicesByHousehold,
+  getCaregiverReferralsByMonth,
+  getFlaggedRecords,
+  getChildrenByDistrict,
+  getCaregiverCasePlansByDistrict,
+  getCaregiverCasePlansByHousehold,
+  getHouseholdReferralsById,
+  getHouseholdMembers,
+  updateFlagStatus,
+} from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, User, MapPin, Calendar, ClipboardCheck, Briefcase, Layers, ShieldCheck, HeartPulse, FileText, Activity, Link2, Home, Flag, AlertTriangle, Archive, Users, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  User,
+  MapPin,
+  Calendar,
+  ClipboardCheck,
+  Briefcase,
+  Layers,
+  ShieldCheck,
+  HeartPulse,
+  FileText,
+  Activity,
+  Link2,
+  Home,
+  Flag,
+  AlertTriangle,
+  Archive,
+  Users,
+  ChevronRight,
+} from "lucide-react";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useMemo, useState, useRef, useEffect } from "react";
 import moment from "moment";
@@ -22,8 +61,21 @@ import { createFlaggedRecord } from "@/lib/api";
 import { notifyUsersOfFlag, notifyUsersOfFlagResolution } from "@/lib/directus";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -40,12 +92,25 @@ const subPopulationFilterLabels: Record<string, string> = {
 const flagSchema = z.object({
   category: z.string().optional(),
   severity: z.string().optional(),
-  comment: z.string().min(10, "Flag observations must be at least 10 characters long."),
+  comment: z
+    .string()
+    .min(10, "Flag observations must be at least 10 characters long."),
 });
 
 const parseMomentDate = (value: any) => {
   if (!value || value === "N/A") return null;
-  const parsed = moment(String(value), [moment.ISO_8601, "YYYY-MM-DD", "DD-MM-YYYY", "DD/MM/YYYY", "MM/DD/YYYY", "YYYY/MM/DD"], true);
+  const parsed = moment(
+    String(value),
+    [
+      moment.ISO_8601,
+      "YYYY-MM-DD",
+      "DD-MM-YYYY",
+      "DD/MM/YYYY",
+      "MM/DD/YYYY",
+      "YYYY/MM/DD",
+    ],
+    true,
+  );
   return parsed.isValid() ? parsed : moment(String(value));
 };
 
@@ -74,24 +139,22 @@ const HouseholdProfile = () => {
   const id = useMemo(() => {
     const stateId = location.state?.id || searchParams.get("id");
     if (stateId) {
-      sessionStorage.setItem('ecap_last_household_id', stateId);
+      sessionStorage.setItem("ecap_last_household_id", stateId);
       return stateId;
     }
-    return sessionStorage.getItem('ecap_last_household_id');
+    return sessionStorage.getItem("ecap_last_household_id");
   }, [location.state?.id, searchParams]);
 
   const { user } = useAuth();
   const isDistrictUser = user?.description === "District User";
   // Admins and Provincial Users have global view access at the profile level
-  const district = isDistrictUser ? (user?.location || "None") : "";
+  const district = isDistrictUser ? user?.location || "None" : "";
 
   const { data: households, isLoading: isLoadingActive } = useQuery({
     queryKey: ["households", "district", district],
     queryFn: () => getHouseholdsByDistrict(district),
     enabled: true,
   });
-
-
 
   const { data: archivedHouseholds, isLoading: isLoadingArchived } = useQuery({
     queryKey: ["households", "archived", "district", district],
@@ -105,13 +168,12 @@ const HouseholdProfile = () => {
     enabled: Boolean(id),
   });
 
-  const { data: householdCasePlans = [], isLoading: isLoadingCasePlans } = useQuery({
-    queryKey: ["caregiver-caseplans", "household", id],
-    queryFn: () => getCaregiverCasePlansByHousehold(id ?? ""),
-    enabled: Boolean(id),
-  });
-
-
+  const { data: householdCasePlans = [], isLoading: isLoadingCasePlans } =
+    useQuery({
+      queryKey: ["caregiver-caseplans", "household", id],
+      queryFn: () => getCaregiverCasePlansByHousehold(id ?? ""),
+      enabled: Boolean(id),
+    });
 
   const { data: vcas } = useQuery({
     queryKey: ["vcas", "district", district],
@@ -124,47 +186,54 @@ const HouseholdProfile = () => {
     queryFn: () => getFlaggedRecords(),
   });
 
-  const { data: householdMembers = [], isLoading: isLoadingMembers } = useQuery({
-    queryKey: ["household-members", id],
-    queryFn: () => getHouseholdMembers(id ?? ""),
-    enabled: Boolean(id),
-  });
+  const { data: householdMembers = [], isLoading: isLoadingMembers } = useQuery(
+    {
+      queryKey: ["household-members", id],
+      queryFn: () => getHouseholdMembers(id ?? ""),
+      enabled: Boolean(id),
+    },
+  );
 
   const queryClient = useQueryClient();
 
   const household = useMemo(() => {
-    const matched = [...(households || []), ...(archivedHouseholds || [])].find((h: any) => {
-      const hId = id?.toLowerCase();
-      return (
-        String(h.uid || "").toLowerCase() === hId ||
-        String(h.unique_id || "").toLowerCase() === hId ||
-        String(h.household_code || "").toLowerCase() === hId ||
-        String(h.household_id || "").toLowerCase() === hId ||
-        String(h.id || "").toLowerCase() === hId
-      );
-    });
+    const matched = [...(households || []), ...(archivedHouseholds || [])].find(
+      (h: any) => {
+        const hId = id?.toLowerCase();
+        return (
+          String(h.uid || "").toLowerCase() === hId ||
+          String(h.unique_id || "").toLowerCase() === hId ||
+          String(h.household_code || "").toLowerCase() === hId ||
+          String(h.household_id || "").toLowerCase() === hId ||
+          String(h.id || "").toLowerCase() === hId
+        );
+      },
+    );
 
     if (matched) return matched;
 
     if (routeState && id) {
-      const stateId = String(routeState.id || routeState.household_id || routeState.unique_id || "").toLowerCase();
+      const stateId = String(
+        routeState.id || routeState.household_id || routeState.unique_id || "",
+      ).toLowerCase();
       if (
         stateId === String(id).toLowerCase() ||
-        String(routeState.household_id || "").toLowerCase() === String(id).toLowerCase()
+        String(routeState.household_id || "").toLowerCase() ===
+          String(id).toLowerCase()
       ) {
         return {
           ...routeState,
           id,
           household_id: routeState.household_id || id,
           unique_id: routeState.unique_id || id,
-          household_code: routeState.household_code || routeState.household_id || id,
+          household_code:
+            routeState.household_code || routeState.household_id || id,
         } as Record<string, unknown>;
       }
     }
 
     return undefined;
   }, [households, archivedHouseholds, id, routeState]);
-
 
   const form = useForm<z.infer<typeof flagSchema>>({
     resolver: zodResolver(flagSchema),
@@ -179,8 +248,14 @@ const HouseholdProfile = () => {
     mutationFn: createFlaggedRecord,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flagged-records"] });
-      const verifier = user ? `${user.first_name} ${user.last_name}` : "Unknown Verifier";
-      notifyUsersOfFlag(id || "N/A", verifier, form.getValues("comment") as string);
+      const verifier = user
+        ? `${user.first_name} ${user.last_name}`
+        : "Unknown Verifier";
+      notifyUsersOfFlag(
+        id || "N/A",
+        verifier,
+        form.getValues("comment") as string,
+      );
 
       toast.success("Flag submitted successfully", {
         description: "The record has been flagged for review.",
@@ -197,19 +272,28 @@ const HouseholdProfile = () => {
   const resolveMutation = useMutation({
     mutationFn: async (flagId: string) => {
       await updateFlagStatus(flagId, "resolved");
-      const resolver = user ? `${user.first_name} ${user.last_name}` : "Unknown Resolver";
+      const resolver = user
+        ? `${user.first_name} ${user.last_name}`
+        : "Unknown Resolver";
       const record = householdFlags.find((f: any) => f.id === flagId);
       if (record) {
-        await notifyUsersOfFlagResolution(String(record.household_id ?? ""), resolver, "Resolved from Household profile.", String(record.vca_id ?? ""));
+        await notifyUsersOfFlagResolution(
+          String(record.household_id ?? ""),
+          resolver,
+          "Resolved from Household profile.",
+          String(record.vca_id ?? ""),
+        );
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flagged-records"] });
-      toast.success("Flag resolved", { description: "Caseworker and admins have been notified." });
+      toast.success("Flag resolved", {
+        description: "Caseworker and admins have been notified.",
+      });
     },
     onError: (err: any) => {
       toast.error("Failed to resolve flag", { description: err.message });
-    }
+    },
   });
 
   const handleResolve = (flagId: string) => {
@@ -217,11 +301,14 @@ const HouseholdProfile = () => {
   };
 
   const onFlagSubmit = (values: z.infer<typeof flagSchema>) => {
-    const verifier = user ? `${user.first_name} ${user.last_name}` : "Unknown Verifier";
+    const verifier = user
+      ? `${user.first_name} ${user.last_name}`
+      : "Unknown Verifier";
     const payload = {
       household_id: id,
       caseworker_phone: household?.caseworker_phone || "N/A",
-      caseworker_name: household?.caseworker_name || household?.cwac_member_name || "N/A",
+      caseworker_name:
+        household?.caseworker_name || household?.cwac_member_name || "N/A",
       caregiver_name: household?.caregiver_name || "N/A",
       facility: household?.facility || household?.health_facility || "N/A",
       comment: values.comment,
@@ -233,13 +320,15 @@ const HouseholdProfile = () => {
     mutation.mutate(payload);
   };
 
-
-
   const householdServices = useMemo(() => {
     if (!allServices || !id) return [];
     const hhId = String(household?.household_id || id).toLowerCase();
     const filtered = allServices.filter((s: any) => {
-      return String(s.household_id || s.householdId || s.hh_id || "").toLowerCase() === hhId;
+      return (
+        String(
+          s.household_id || s.householdId || s.hh_id || "",
+        ).toLowerCase() === hhId
+      );
     });
 
     return filtered.sort((a: any, b: any) => {
@@ -251,15 +340,23 @@ const HouseholdProfile = () => {
 
   const sortedCasePlans = useMemo(() => {
     if (householdCasePlans?.length > 0) {
-      console.log("Caregiver Plans Vulnerabilities Debug:", householdCasePlans.map((p: any) => ({
-        id: p.id,
-        date: p.case_plan_date || p.date_of_caseplan,
-        vulnerabilities: p.vulnerabilities || p.caregiver_vulnerabilities || "not found"
-      })));
+      console.log(
+        "Caregiver Plans Vulnerabilities Debug:",
+        householdCasePlans.map((p: any) => ({
+          id: p.id,
+          date: p.case_plan_date || p.date_of_caseplan,
+          vulnerabilities:
+            p.vulnerabilities || p.caregiver_vulnerabilities || "not found",
+        })),
+      );
     }
     return [...householdCasePlans].sort((a: any, b: any) => {
-      const dateA = safeParseDate(a.case_plan_date || a.date_of_caseplan || a.date);
-      const dateB = safeParseDate(b.case_plan_date || b.date_of_caseplan || b.date);
+      const dateA = safeParseDate(
+        a.case_plan_date || a.date_of_caseplan || a.date,
+      );
+      const dateB = safeParseDate(
+        b.case_plan_date || b.date_of_caseplan || b.date,
+      );
       return dateB - dateA;
     });
   }, [householdCasePlans]);
@@ -268,7 +365,8 @@ const HouseholdProfile = () => {
     if (!flaggedRecords || !id) return [];
     const hhId = String(household?.household_id || id).toLowerCase();
     return (flaggedRecords || []).filter((f: any) => {
-      const matchId = String(f.household_id || f.hh_id || "").toLowerCase() === hhId;
+      const matchId =
+        String(f.household_id || f.hh_id || "").toLowerCase() === hhId;
       return matchId && f.status !== "resolved";
     });
   }, [flaggedRecords, id, household?.household_id]);
@@ -277,20 +375,27 @@ const HouseholdProfile = () => {
     if (!vcas || !id) return [];
     return vcas.filter((v: any) => {
       const hhId = id.toLowerCase();
-      return String(v.household_code || v.household_id || "").toLowerCase() === hhId;
+      return (
+        String(v.household_code || v.household_id || "").toLowerCase() === hhId
+      );
     });
   }, [vcas, id]);
 
-  const { data: householdReferrals = [], isLoading: isLoadingReferrals } = useQuery({
-    queryKey: ["caregiver-referrals", id],
-    queryFn: () => getHouseholdReferralsById(id ?? ""),
-    enabled: Boolean(id),
-  });
+  const { data: householdReferrals = [], isLoading: isLoadingReferrals } =
+    useQuery({
+      queryKey: ["caregiver-referrals", id],
+      queryFn: () => getHouseholdReferralsById(id ?? ""),
+      enabled: Boolean(id),
+    });
 
   const sortedReferrals = useMemo(() => {
     return [...householdReferrals].sort((a: any, b: any) => {
-      const dateA = safeParseDate(a.service_date || a.visit_date || a.date || a.referral_date);
-      const dateB = safeParseDate(b.service_date || b.visit_date || b.date || b.referral_date);
+      const dateA = safeParseDate(
+        a.service_date || a.visit_date || a.date || a.referral_date,
+      );
+      const dateB = safeParseDate(
+        b.service_date || b.visit_date || b.date || b.referral_date,
+      );
       return dateB - dateA;
     });
   }, [householdReferrals]);
@@ -312,21 +417,33 @@ const HouseholdProfile = () => {
           icon={<Home className="h-7 w-7" />}
           title="Household not found"
           description="The household record you're looking for doesn't exist or has been moved."
-          action={{ label: "Back to Register", onClick: () => navigate("/households") }}
+          action={{
+            label: "Back to Register",
+            onClick: () => navigate("/households"),
+          }}
           className="h-[50vh]"
         />
       </DashboardLayout>
     );
   }
 
-  const caregiverName = String(household.caregiver_name || household.name || "N/A");
+  const caregiverName = String(
+    household.caregiver_name || household.name || "N/A",
+  );
   const isArchived = Boolean(household.de_registration_date);
   const primaryStatus = isArchived ? "Archived" : "Active";
 
   // Pick the latest service date dynamically from the sorted services list
-  const lastServiceDate = formatServiceDate(householdServices[0]?.service_date || household.last_service_date);
+  const lastServiceDate = formatServiceDate(
+    householdServices[0]?.service_date || household.last_service_date,
+  );
 
-  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const dateStr = new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <DashboardLayout subtitle={`Household: ${id}`}>
@@ -344,19 +461,32 @@ const HouseholdProfile = () => {
                 <span>Household profile</span>
                 <span className="text-slate-400">·</span>
                 <span className="font-normal text-slate-600">{dateStr}</span>
-                <Badge variant="outline" className={cn(
-                  "gap-1 text-[10px]",
-                  isArchived
-                    ? "border-amber-200 bg-amber-50/80 text-amber-700"
-                    : "border-emerald-200 bg-emerald-50/80 text-emerald-700"
-                )}>
-                  {isArchived ? <Archive className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "gap-1 text-[10px]",
+                    isArchived
+                      ? "border-amber-200 bg-amber-50/80 text-amber-700"
+                      : "border-emerald-200 bg-emerald-50/80 text-emerald-700",
+                  )}
+                >
+                  {isArchived ? (
+                    <Archive className="h-3 w-3" />
+                  ) : (
+                    <Activity className="h-3 w-3" />
+                  )}
                   {primaryStatus}
                 </Badge>
-                <Badge variant="outline" className="gap-1 border-slate-200 bg-white/80 text-[10px] font-mono text-slate-500">
+                <Badge
+                  variant="outline"
+                  className="gap-1 border-slate-200 bg-white/80 text-[10px] font-mono text-slate-500"
+                >
                   #{id || "N/A"}
                 </Badge>
-                <Badge variant="outline" className="gap-1 border-violet-200 bg-violet-50/80 text-[10px] text-violet-700">
+                <Badge
+                  variant="outline"
+                  className="gap-1 border-violet-200 bg-violet-50/80 text-[10px] text-violet-700"
+                >
                   <Users className="h-3 w-3" /> {householdVcas.length} VCAs
                 </Badge>
               </div>
@@ -368,7 +498,8 @@ const HouseholdProfile = () => {
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-emerald-600" />
-                  {String(household.district || "N/A")} &middot; {String(household.facility || "N/A")}
+                  {String(household.district || "N/A")} &middot;{" "}
+                  {String(household.facility || "N/A")}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <Activity className="h-3.5 w-3.5 text-emerald-600" />
@@ -383,7 +514,11 @@ const HouseholdProfile = () => {
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => navigate("/profile/household-details", { state: { id, household_id: id, ...(household || {}) } })}
+                onClick={() =>
+                  navigate("/profile/household-details", {
+                    state: { id, household_id: id, ...(household || {}) },
+                  })
+                }
                 className="group inline-flex items-center gap-2 rounded-lg border border-pink-200 bg-pink-50/80 px-3 py-1.5 text-xs font-semibold text-pink-700 backdrop-blur-md transition-all hover:border-pink-300 hover:bg-pink-100"
               >
                 View Household Profile
@@ -403,41 +538,54 @@ const HouseholdProfile = () => {
 
         {/* ── Quick stat cards ──────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {([
-            {
-              icon: MapPin,
-              label: "Ward",
-              value: String(household.ward || "N/A"),
-              iconBg: "from-emerald-100 to-teal-100 text-emerald-700",
-              glow: "from-emerald-200/70 via-teal-200/40",
-            },
-            {
-              icon: HeartPulse,
-              label: "Primary facility",
-              value: String(household.facility || "N/A"),
-              iconBg: "from-rose-100 to-pink-100 text-rose-700",
-              glow: "from-rose-200/70 via-pink-200/40",
-            },
-            {
-              icon: Calendar,
-              label: "Last service date",
-              value: String(lastServiceDate),
-              iconBg: "from-sky-100 to-cyan-100 text-sky-700",
-              glow: "from-sky-200/70 via-cyan-200/40",
-            },
-          ] as const).map((card) => {
+          {(
+            [
+              {
+                icon: MapPin,
+                label: "Ward",
+                value: String(household.ward || "N/A"),
+                iconBg: "from-emerald-100 to-teal-100 text-emerald-700",
+                glow: "from-emerald-200/70 via-teal-200/40",
+              },
+              {
+                icon: HeartPulse,
+                label: "Facility",
+                value: String(household.facility || "N/A"),
+                iconBg: "from-rose-100 to-pink-100 text-rose-700",
+                glow: "from-rose-200/70 via-pink-200/40",
+              },
+              {
+                icon: Calendar,
+                label: "Last service date",
+                value: String(lastServiceDate),
+                iconBg: "from-sky-100 to-cyan-100 text-sky-700",
+                glow: "from-sky-200/70 via-cyan-200/40",
+              },
+            ] as const
+          ).map((card) => {
             const Icon = card.icon;
             return (
               <div key={card.label} className="group relative">
-                <div className={`absolute -inset-[1px] rounded-2xl bg-gradient-to-br ${card.glow} to-transparent opacity-40 blur-md transition-opacity duration-500 group-hover:opacity-100`} />
+                <div
+                  className={`absolute -inset-[1px] rounded-2xl bg-gradient-to-br ${card.glow} to-transparent opacity-40 blur-md transition-opacity duration-500 group-hover:opacity-100`}
+                />
                 <div className="relative h-full rounded-2xl border border-slate-200/70 bg-white/75 p-5 backdrop-blur-xl shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-slate-300">
                   <div className="flex items-center justify-between">
-                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${card.iconBg} ring-1 ring-white/60 shadow-sm`}>
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${card.iconBg} ring-1 ring-white/60 shadow-sm`}
+                    >
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>
-                  <div className="mt-3 text-base font-extrabold text-slate-900 truncate" title={card.value}>{card.value}</div>
-                  <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{card.label}</div>
+                  <div
+                    className="mt-3 text-base font-extrabold text-slate-900 truncate"
+                    title={card.value}
+                  >
+                    {card.value}
+                  </div>
+                  <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {card.label}
+                  </div>
                 </div>
               </div>
             );
@@ -449,22 +597,40 @@ const HouseholdProfile = () => {
           <div className="mb-6 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
             <div className="-mx-1 overflow-x-auto px-1 max-w-full">
               <TabsList className="inline-flex h-9 items-center gap-1 rounded-xl bg-slate-100/80 p-1 backdrop-blur-sm border border-slate-200/50 whitespace-nowrap">
-                <TabsTrigger value="overview" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                <TabsTrigger
+                  value="overview"
+                  className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
+                >
                   Summary
                 </TabsTrigger>
-                <TabsTrigger value="family" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                <TabsTrigger
+                  value="family"
+                  className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
+                >
                   Family
                 </TabsTrigger>
-                <TabsTrigger value="history" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                <TabsTrigger
+                  value="history"
+                  className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
+                >
                   Caseplans
                 </TabsTrigger>
-                <TabsTrigger value="services" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                <TabsTrigger
+                  value="services"
+                  className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
+                >
                   Services
                 </TabsTrigger>
-                <TabsTrigger value="audit" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                <TabsTrigger
+                  value="audit"
+                  className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
+                >
                   Referrals
                 </TabsTrigger>
-                <TabsTrigger value="flags" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
+                <TabsTrigger
+                  value="flags"
+                  className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
+                >
                   Flag form
                 </TabsTrigger>
               </TabsList>
@@ -479,21 +645,83 @@ const HouseholdProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <User className="h-5 w-5 text-slate-600" /> Caregiver personal information
+                    <User className="h-5 w-5 text-slate-600" /> Caregiver
+                    personal information
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  <InfoItem label="Caregiver name" value="Caregiver Name – Confidential" icon={<User className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Caregiver sex" value={String(household.caregiver_sex || household.sex || household.gender || "N/A")} />
-                  <InfoItem label="Date of birth" value={formatBirthDate(household.caregiver_birthdate || household.caregiver_birth_date || household.dob)} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="HIV status" value={String(household.caregiver_hiv_status || household.hiv_status || "N/A")} icon={<Activity className="h-3.5 w-3.5" />} />
-                  <InfoItem label="ART Number" value={String(household.caregiver_art_number || household.art_number || "N/A")} />
-                  <InfoItem label="On HIV Treatment?" value={String(household.is_on_hiv_treatment || household.active_on_treatment || "N/A")} />
-                  <InfoItem label="Date Started ART" value={String(household.date_started_art || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Date HIV Known" value={String(household.date_hiv_known || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Marital status" value={String(household.marital_status || "N/A")} />
-                  <InfoItem label="Education" value={String(household.education || "N/A")} />
-                  <InfoItem label="Relation" value={String(household.relation || household.relationship || "N/A")} />
+                  <InfoItem
+                    label="Caregiver name"
+                    value="Caregiver Name – Confidential"
+                    icon={<User className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Caregiver sex"
+                    value={String(
+                      household.caregiver_sex ||
+                        household.sex ||
+                        household.gender ||
+                        "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Date of birth"
+                    value={formatBirthDate(
+                      household.caregiver_birthdate ||
+                        household.caregiver_birth_date ||
+                        household.dob,
+                    )}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="HIV status"
+                    value={String(
+                      household.caregiver_hiv_status ||
+                        household.hiv_status ||
+                        "N/A",
+                    )}
+                    icon={<Activity className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="ART Number"
+                    value={String(
+                      household.caregiver_art_number ||
+                        household.art_number ||
+                        "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="On HIV Treatment?"
+                    value={String(
+                      household.is_on_hiv_treatment ||
+                        household.active_on_treatment ||
+                        "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Date Started ART"
+                    value={String(household.date_started_art || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Date HIV Known"
+                    value={String(household.date_hiv_known || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Marital status"
+                    value={String(household.marital_status || "N/A")}
+                  />
+                  <InfoItem
+                    label="Education"
+                    value={String(household.education || "N/A")}
+                  />
+                  <InfoItem
+                    label="Relation"
+                    value={String(
+                      household.relation || household.relationship || "N/A",
+                    )}
+                  />
                   <InfoItem label="Phone number" value="Phone – Confidential" />
                 </CardContent>
               </Card>
@@ -502,55 +730,220 @@ const HouseholdProfile = () => {
               <Card className="border-slate-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                    <Home className="h-5 w-5 text-slate-600" /> Household information
+                    <Home className="h-5 w-5 text-slate-600" /> Household
+                    information
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="sm:col-span-2 lg:col-span-1">
-                    <InfoItem label="Home Address" value={String(household.homeaddress || household.home_address || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
+                    <InfoItem
+                      label="Home Address"
+                      value={String(
+                        household.homeaddress ||
+                          household.home_address ||
+                          "N/A",
+                      )}
+                      icon={<MapPin className="h-3.5 w-3.5" />}
+                    />
                   </div>
-                  <InfoItem label="Family Source of Income" value={String(household.fam_source_income || "N/A")} />
-                  <InfoItem label="Monthly Expenses" value={String(household.monthlyexpenses || "N/A")} />
-                  <InfoItem label="Number of Beds" value={String(household.beds || "N/A")} />
-                  <InfoItem label="Malaria ITNs" value={String(household.malaria_itns || "N/A")} />
-                  <InfoItem label="Number of Pregnant Women" value={String(household.number_of_pregnant_women || household.pregnant_woment || "N/A")} />
-                  <InfoItem label="Biological Children" value={String(household.biological_children || "N/A")} />
-                  <InfoItem label="Approved Family?" value={String(household.approved_family || "N/A")} />
-                  <InfoItem label="Acceptance" value={String(household.acceptance || "N/A")} />
-                  <InfoItem label="Screening Location" value={String(household.screening_location || household.screening_location_home || "N/A")} />
-                  <InfoItem label="Screening Date" value={String(household.screening_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Enrolled Date" value={String(household.enrolled_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Date Offered Enrollment" value={String(household.date_offered_enrollment || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Date Referred" value={String(household.date_referred || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Last Service Date" value={String(household.last_service_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Client Screened" value={String(household.client_screened || household.screened || "N/A")} />
-                  <InfoItem label="Client Result" value={String(household.client_result || "N/A")} />
-                  <InfoItem label="HEI" value={String(household.hei || "N/A")} />
-                  <InfoItem label="CALHIV" value={String(household.calhiv || "N/A")} />
-                  <InfoItem label="Child MMD" value={String(household.child_mmd || "N/A")} />
-                  <InfoItem label="VL Results on File?" value={String(household.viral_load_results_on_file || "N/A")} />
-                  <InfoItem label="TPT Client Eligibility" value={String(household.tpt_client_eligibility || "N/A")} />
-                  <InfoItem label="TPT Client Initiated" value={String(household.tpt_client_initiated || "N/A")} />
-                  <InfoItem label="Takes Drugs to Prevent Other Diseases?" value={String(household.takes_drugs_to_prevent_other_diseases || "N/A")} />
-                  <InfoItem label="Is Child's Caregiver an FSW?" value={String(household.is_the_child_caregiver_an_fsw || "N/A")} />
-                  <InfoItem label="Is Biological Mother of Child Living with HIV?" value={String(household.is_biological_mother_of_child_living_with_hiv || "N/A")} />
-                  <InfoItem label="Child Experienced Sexual Violence?" value={String(household.child_ever_experienced_sexual_violence || "N/A")} />
-                  <InfoItem label="Violence in Last 6 Months?" value={String(household.violence_six_months || "N/A")} />
-                  <InfoItem label="Children with Violence (6 Months)?" value={String(household.children_violence_six_months || "N/A")} />
-                  <InfoItem label="VCA Gender" value={String(household.vca_gender || "N/A")} />
-                  <InfoItem label="Adolescent Birthdate" value={String(household.adolescent_birthdate || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="Emergency Contact" value={String(household.emergency_name || "N/A")} />
-                  <InfoItem label="School" value={String(household.school || "N/A")} />
-                  <InfoItem label="Service" value={String(household.service || "N/A")} />
-                  <InfoItem label="Quarter" value={String(household.quarter || "N/A")} />
-                  <InfoItem label="Index Check Box" value={String(household.index_check_box || "N/A")} />
-                  <InfoItem label="Consent Check Box" value={String(household.consent_check_box || "N/A")} />
-                  <InfoItem label="ART Check Box" value={String(household.art_check_box || "N/A")} />
-                  <InfoItem label="VL Check Box" value={String(household.vl_check_box || "N/A")} />
-                  <InfoItem label="De-Registration Date" value={String(household.de_registration_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                  <InfoItem label="De-Registration Reason" value={String(household.de_registration_reason || "N/A")} />
-                  <InfoItem label="Exited / Graduation Reason" value={String(household.exited_graduation_reason || "N/A")} />
-                  <InfoItem label="Active on Treatment?" value={String(household.active_on_treatment || "N/A")} />
+                  <InfoItem
+                    label="Family Source of Income"
+                    value={String(household.fam_source_income || "N/A")}
+                  />
+                  <InfoItem
+                    label="Monthly Expenses"
+                    value={String(household.monthlyexpenses || "N/A")}
+                  />
+                  <InfoItem
+                    label="Number of Beds"
+                    value={String(household.beds || "N/A")}
+                  />
+                  <InfoItem
+                    label="Malaria ITNs"
+                    value={String(household.malaria_itns || "N/A")}
+                  />
+                  <InfoItem
+                    label="Number of Pregnant Women"
+                    value={String(
+                      household.number_of_pregnant_women ||
+                        household.pregnant_woment ||
+                        "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Biological Children"
+                    value={String(household.biological_children || "N/A")}
+                  />
+                  <InfoItem
+                    label="Approved Family?"
+                    value={String(household.approved_family || "N/A")}
+                  />
+                  <InfoItem
+                    label="Acceptance"
+                    value={String(household.acceptance || "N/A")}
+                  />
+                  <InfoItem
+                    label="Screening Location"
+                    value={String(
+                      household.screening_location ||
+                        household.screening_location_home ||
+                        "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Screening Date"
+                    value={String(household.screening_date || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Enrolled Date"
+                    value={String(household.enrolled_date || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Date Offered Enrollment"
+                    value={String(household.date_offered_enrollment || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Date Referred"
+                    value={String(household.date_referred || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Last Service Date"
+                    value={String(household.last_service_date || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Client Screened"
+                    value={String(
+                      household.client_screened || household.screened || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Client Result"
+                    value={String(household.client_result || "N/A")}
+                  />
+                  <InfoItem
+                    label="HEI"
+                    value={String(household.hei || "N/A")}
+                  />
+                  <InfoItem
+                    label="CALHIV"
+                    value={String(household.calhiv || "N/A")}
+                  />
+                  <InfoItem
+                    label="Child MMD"
+                    value={String(household.child_mmd || "N/A")}
+                  />
+                  <InfoItem
+                    label="VL Results on File?"
+                    value={String(
+                      household.viral_load_results_on_file || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="TPT Client Eligibility"
+                    value={String(household.tpt_client_eligibility || "N/A")}
+                  />
+                  <InfoItem
+                    label="TPT Client Initiated"
+                    value={String(household.tpt_client_initiated || "N/A")}
+                  />
+                  <InfoItem
+                    label="Takes Drugs to Prevent Other Diseases?"
+                    value={String(
+                      household.takes_drugs_to_prevent_other_diseases || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Is Child's Caregiver an FSW?"
+                    value={String(
+                      household.is_the_child_caregiver_an_fsw || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Is Biological Mother of Child Living with HIV?"
+                    value={String(
+                      household.is_biological_mother_of_child_living_with_hiv ||
+                        "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Child Experienced Sexual Violence?"
+                    value={String(
+                      household.child_ever_experienced_sexual_violence || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Violence in Last 6 Months?"
+                    value={String(household.violence_six_months || "N/A")}
+                  />
+                  <InfoItem
+                    label="Children with Violence (6 Months)?"
+                    value={String(
+                      household.children_violence_six_months || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="VCA Gender"
+                    value={String(household.vca_gender || "N/A")}
+                  />
+                  <InfoItem
+                    label="Adolescent Birthdate"
+                    value={String(household.adolescent_birthdate || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Emergency Contact"
+                    value={String(household.emergency_name || "N/A")}
+                  />
+                  <InfoItem
+                    label="School"
+                    value={String(household.school || "N/A")}
+                  />
+                  <InfoItem
+                    label="Service"
+                    value={String(household.service || "N/A")}
+                  />
+                  <InfoItem
+                    label="Quarter"
+                    value={String(household.quarter || "N/A")}
+                  />
+                  <InfoItem
+                    label="Index Check Box"
+                    value={String(household.index_check_box || "N/A")}
+                  />
+                  <InfoItem
+                    label="Consent Check Box"
+                    value={String(household.consent_check_box || "N/A")}
+                  />
+                  <InfoItem
+                    label="ART Check Box"
+                    value={String(household.art_check_box || "N/A")}
+                  />
+                  <InfoItem
+                    label="VL Check Box"
+                    value={String(household.vl_check_box || "N/A")}
+                  />
+                  <InfoItem
+                    label="De-Registration Date"
+                    value={String(household.de_registration_date || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="De-Registration Reason"
+                    value={String(household.de_registration_reason || "N/A")}
+                  />
+                  <InfoItem
+                    label="Exited / Graduation Reason"
+                    value={String(household.exited_graduation_reason || "N/A")}
+                  />
+                  <InfoItem
+                    label="Active on Treatment?"
+                    value={String(household.active_on_treatment || "N/A")}
+                  />
                 </CardContent>
               </Card>
 
@@ -559,43 +952,96 @@ const HouseholdProfile = () => {
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <MapPin className="h-5 w-5 text-slate-600" /> Location & facility
+                      <MapPin className="h-5 w-5 text-slate-600" /> Location &
+                      facility
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4 sm:grid-cols-2">
-                    <InfoItem label="Province" value={String(household.province || "N/A")} />
-                    <InfoItem label="District" value={String(household.district || "N/A")} />
-                    <InfoItem label="Ward" value={String(household.ward || "N/A")} />
-                    <InfoItem label="Health facility" value={String(household.facility || "N/A")} icon={<HeartPulse className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Community entry" value={String(household.entry_type || "N/A")} />
-                    <InfoItem label="Partner" value={String(household.partner || "PCZ")} />
+                    <InfoItem
+                      label="Province"
+                      value={String(household.province || "N/A")}
+                    />
+                    <InfoItem
+                      label="District"
+                      value={String(household.district || "N/A")}
+                    />
+                    <InfoItem
+                      label="Ward"
+                      value={String(household.ward || "N/A")}
+                    />
+                    <InfoItem
+                      label="Health facility"
+                      value={String(household.facility || "N/A")}
+                      icon={<HeartPulse className="h-3.5 w-3.5" />}
+                    />
+                    <InfoItem
+                      label="Community entry"
+                      value={String(household.entry_type || "N/A")}
+                    />
+                    <InfoItem
+                      label="Partner"
+                      value={String(household.partner || "PCZ")}
+                    />
                   </CardContent>
                 </Card>
 
                 <Card className="border-slate-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Briefcase className="h-5 w-5 text-slate-600" /> Caseworker Details
+                      <Briefcase className="h-5 w-5 text-slate-600" />{" "}
+                      Caseworker Details
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4 sm:grid-cols-2">
-                    <InfoItem label="Caseworker name" value={String(household.caseworker_name || "N/A")} icon={<User className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Caseworker phone" value={String(household.caseworker_phone || "N/A")} />
-                    <InfoItem label="Date enrolled" value={String(household.date_enrolled || household.enrollment_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Date screened" value={String(household.screening_date || household.date_screened || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Provider id" value={String(household.provider_id || "N/A")} />
-                    <InfoItem label="Case status" value={String(household.case_status || household.status || "Active")} />
+                    <InfoItem
+                      label="Caseworker name"
+                      value={String(household.caseworker_name || "N/A")}
+                      icon={<User className="h-3.5 w-3.5" />}
+                    />
+                    <InfoItem
+                      label="Caseworker phone"
+                      value={String(household.caseworker_phone || "N/A")}
+                    />
+                    <InfoItem
+                      label="Date enrolled"
+                      value={String(
+                        household.date_enrolled ||
+                          household.enrollment_date ||
+                          "N/A",
+                      )}
+                      icon={<Calendar className="h-3.5 w-3.5" />}
+                    />
+                    <InfoItem
+                      label="Date screened"
+                      value={String(
+                        household.screening_date ||
+                          household.date_screened ||
+                          "N/A",
+                      )}
+                      icon={<Calendar className="h-3.5 w-3.5" />}
+                    />
+                    <InfoItem
+                      label="Provider id"
+                      value={String(household.provider_id || "N/A")}
+                    />
+                    <InfoItem
+                      label="Case status"
+                      value={String(
+                        household.case_status || household.status || "Active",
+                      )}
+                    />
                   </CardContent>
                 </Card>
               </div>
-
             </div>
           </TabsContent>
 
           <TabsContent value="family" className="mt-0 w-full overflow-hidden">
             <Card className="overflow-hidden border-slate-200">
               <CardHeader className="bg-slate-50/50">
-                <CardTitle className="text-xl font-bold">Family members</CardTitle>
+                <CardTitle className="text-xl font-bold">
+                  Family members
+                </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {isLoadingMembers ? (
@@ -619,10 +1065,12 @@ const HouseholdProfile = () => {
                         {householdMembers.map((m: any, idx: number) => (
                           <TableRow key={idx}>
                             <TableCell className="pl-6 align-top">
-                              <span className="text-sm font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">{String(m.uid || m.vca_id || "N/A")}</span>
+                              <span className="text-sm font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                                {String(m.uid || m.vca_id || "N/A")}
+                              </span>
                             </TableCell>
                             <TableCell className="text-sm">
-                              {String(m.birthdate || "N/A")}
+                              {formatBirthDate(m.birthdate || "N/A")}
                             </TableCell>
                             <TableCell className="text-sm border-slate-200">
                               {String(m.vca_gender || m.gender || "N/A")}
@@ -631,14 +1079,25 @@ const HouseholdProfile = () => {
                               {String(m.disability || "None")}
                             </TableCell>
                             <TableCell className="text-sm">
-                              <Badge variant="outline" className="text-[10px] font-bold tracking-wider text-slate-500">
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-bold tracking-wider text-slate-500"
+                              >
                                 {String(m.relation || m.relationship || "N/A")}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right pr-6">
                               <button
                                 type="button"
-                                onClick={() => navigate(`/profile/vca-details`, { state: { id: String(m.uid || m.vca_id || m.unique_id) } })}
+                                onClick={() =>
+                                  navigate(`/profile/vca-details`, {
+                                    state: {
+                                      id: String(
+                                        m.uid || m.vca_id || m.unique_id,
+                                      ),
+                                    },
+                                  })
+                                }
                                 className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-emerald-700/20 transition-all hover:from-emerald-700 hover:to-teal-700"
                               >
                                 View profile
@@ -651,16 +1110,25 @@ const HouseholdProfile = () => {
                     </Table>
                   </div>
                 ) : (
-                  <EmptyState icon={<User className="h-7 w-7" />} title="No Family Members Found" description="No family members have been registered for this household." />
+                  <EmptyState
+                    icon={<User className="h-7 w-7" />}
+                    title="No Family Members Found"
+                    description="No family members have been registered for this household."
+                  />
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="history" className="mt-0 w-full overflow-hidden min-w-0">
+          <TabsContent
+            value="history"
+            className="mt-0 w-full overflow-hidden min-w-0"
+          >
             <Card className="border-slate-200 min-w-0 overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-xl font-bold">Caregiver caseplans</CardTitle>
+                <CardTitle className="text-xl font-bold">
+                  Caregiver caseplans
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoadingCasePlans ? (
@@ -675,7 +1143,9 @@ const HouseholdProfile = () => {
                           <TableRow>
                             <TableHead className="w-[120px]">Date</TableHead>
                             <TableHead className="w-[120px]">Status</TableHead>
-                            <TableHead className="w-[150px]">Created At</TableHead>
+                            <TableHead className="w-[150px]">
+                              Created At
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -687,7 +1157,11 @@ const HouseholdProfile = () => {
                     </div>
                   </div>
                 ) : (
-                  <EmptyState icon={<ClipboardCheck className="h-7 w-7" />} title="No Caseplans Recorded" description="No case plans have been created for this household yet." />
+                  <EmptyState
+                    icon={<ClipboardCheck className="h-7 w-7" />}
+                    title="No Caseplans Recorded"
+                    description="No case plans have been created for this household yet."
+                  />
                 )}
               </CardContent>
             </Card>
@@ -697,49 +1171,95 @@ const HouseholdProfile = () => {
             <Card className="overflow-hidden border-slate-200">
               <div className="bg-white p-6 flex flex-col gap-3 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900">Caregiver services</h3>
-                  <p className="mt-1 text-xs font-medium text-slate-500">Services are ordered from most recent to oldest.</p>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    Caregiver services
+                  </h3>
+                  <p className="mt-1 text-xs font-medium text-slate-500">
+                    Services are ordered from most recent to oldest.
+                  </p>
                 </div>
-                <Badge variant="outline" className="w-fit border-emerald-100 bg-emerald-50 text-emerald-700 font-black text-[10px]">
+                <Badge
+                  variant="outline"
+                  className="w-fit border-emerald-100 bg-emerald-50 text-emerald-700 font-black text-[10px]"
+                >
                   {householdServices.length} records
                 </Badge>
               </div>
-              <HouseholdServicesDetailTable data={householdServices} isLoading={isLoadingServices} />
+              <HouseholdServicesDetailTable
+                data={householdServices}
+                isLoading={isLoadingServices}
+              />
             </Card>
           </TabsContent>
 
           <TabsContent value="audit" className="mt-0 w-full overflow-hidden">
             <Card className="overflow-hidden border-slate-200">
               <div className="bg-white p-6 flex items-center justify-between border-b border-slate-100">
-                <h3 className="text-xl font-bold text-slate-900">Household referrals</h3>
-                <Button variant="outline" size="sm" className="text-xs font-bold" onClick={() => {/* logic moved if needed, currently just button */ }}>Export</Button>
+                <h3 className="text-xl font-bold text-slate-900">
+                  Household referrals
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs font-bold"
+                  onClick={() => {
+                    /* logic moved if needed, currently just button */
+                  }}
+                >
+                  Export
+                </Button>
               </div>
               <ScrollArea className="h-[500px]">
-                <ActivityTable data={sortedReferrals} isLoading={isLoadingReferrals} type="referral" emptyMessage="No referral tracking found" />
+                <ActivityTable
+                  data={sortedReferrals}
+                  isLoading={isLoadingReferrals}
+                  type="referral"
+                  emptyMessage="No referral tracking found"
+                />
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>
             </Card>
           </TabsContent>
 
-          <TabsContent value="flags" className="mt-0 w-full overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-500">
+          <TabsContent
+            value="flags"
+            className="mt-0 w-full overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-500"
+          >
             <div className="space-y-6">
               <Card className="overflow-hidden border-slate-200 border-none shadow-none bg-transparent">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-black text-slate-900">Data quality flags</h3>
+                  <h3 className="text-xl font-black text-slate-900">
+                    Data quality flags
+                  </h3>
                 </div>
 
                 {householdFlags.length > 0 && (
                   <div className="mb-6 space-y-3">
-                    <p className="text-[10px] font-black tracking-widest text-orange-500 uppercase">Active attention required</p>
+                    <p className="text-[10px] font-black tracking-widest text-orange-500 uppercase">
+                      Active attention required
+                    </p>
                     {householdFlags.map((flag: any) => (
-                      <div key={flag.id} className="p-4 rounded-2xl bg-orange-50 border border-orange-100 flex items-start justify-between gap-4">
+                      <div
+                        key={flag.id}
+                        className="p-4 rounded-2xl bg-orange-50 border border-orange-100 flex items-start justify-between gap-4"
+                      >
                         <div className="flex items-start gap-3">
                           <div className="p-2 bg-white rounded-xl shadow-sm border border-orange-100 flex-shrink-0">
                             <AlertTriangle className="h-4 w-4 text-orange-600" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-slate-900">{toTitleCase(flag.comment || "Suspicious data entry")}</p>
-                            <p className="text-[10px] text-slate-500 mt-1">Flagged by {flag.verifier} • {format(new Date(flag.date_created), "MMM d, yyyy")}</p>
+                            <p className="text-xs font-bold text-slate-900">
+                              {toTitleCase(
+                                flag.comment || "Suspicious data entry",
+                              )}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-1">
+                              Flagged by {flag.verifier} •{" "}
+                              {format(
+                                new Date(flag.date_created),
+                                "MMM d, yyyy",
+                              )}
+                            </p>
                           </div>
                         </div>
                         <Button
@@ -763,7 +1283,9 @@ const HouseholdProfile = () => {
                         <Flag className="h-4 w-4 text-orange-600" />
                       </div>
                       <div>
-                        <h4 className="font-black text-slate-900">Record new flag</h4>
+                        <h4 className="font-black text-slate-900">
+                          Record new flag
+                        </h4>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"></p>
                       </div>
                     </div>
@@ -771,26 +1293,44 @@ const HouseholdProfile = () => {
 
                   <CardContent className="p-6">
                     <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onFlagSubmit)} className="space-y-6">
+                      <form
+                        onSubmit={form.handleSubmit(onFlagSubmit)}
+                        className="space-y-6"
+                      >
                         <div className="grid md:grid-cols-2 gap-6">
                           <FormField
                             control={form.control}
                             name="category"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Flag category</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                                  Flag category
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
                                   <FormControl>
                                     <SelectTrigger className="bg-white border-slate-200 rounded-xl h-11 text-sm font-medium">
                                       <SelectValue placeholder="Choose category...(optional)" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                                    <SelectItem value="Missing Data">Missing data</SelectItem>
-                                    <SelectItem value="Invalid Data">Invalid data</SelectItem>
-                                    <SelectItem value="Duplicate Record">Duplicate record</SelectItem>
-                                    <SelectItem value="Incorrect Service">Incorrect service logging</SelectItem>
-                                    <SelectItem value="Case Plan Mismatch">Case plan mismatch</SelectItem>
+                                    <SelectItem value="Missing Data">
+                                      Missing data
+                                    </SelectItem>
+                                    <SelectItem value="Invalid Data">
+                                      Invalid data
+                                    </SelectItem>
+                                    <SelectItem value="Duplicate Record">
+                                      Duplicate record
+                                    </SelectItem>
+                                    <SelectItem value="Incorrect Service">
+                                      Incorrect service logging
+                                    </SelectItem>
+                                    <SelectItem value="Case Plan Mismatch">
+                                      Case plan mismatch
+                                    </SelectItem>
                                     <SelectItem value="Other">Other</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -804,18 +1344,31 @@ const HouseholdProfile = () => {
                             name="severity"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Priority severity</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                                  Priority severity
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
                                   <FormControl>
                                     <SelectTrigger className="bg-white border-slate-200 rounded-xl h-11 text-sm font-medium">
                                       <SelectValue placeholder="Select severity... (optional)" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                                    <SelectItem value="Low">Low severity</SelectItem>
-                                    <SelectItem value="Medium">Medium severity</SelectItem>
-                                    <SelectItem value="High">High severity</SelectItem>
-                                    <SelectItem value="Critical">Critical issue</SelectItem>
+                                    <SelectItem value="Low">
+                                      Low severity
+                                    </SelectItem>
+                                    <SelectItem value="Medium">
+                                      Medium severity
+                                    </SelectItem>
+                                    <SelectItem value="High">
+                                      High severity
+                                    </SelectItem>
+                                    <SelectItem value="Critical">
+                                      Critical issue
+                                    </SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -829,7 +1382,9 @@ const HouseholdProfile = () => {
                           name="comment"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Flag observations & action details</FormLabel>
+                              <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                                Flag observations & action details
+                              </FormLabel>
                               <FormControl>
                                 <Textarea
                                   placeholder="Provide detailed observations about the data quality issue, any suspected causes, and recommended immediate actions..."
@@ -845,12 +1400,16 @@ const HouseholdProfile = () => {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
                           <div className="flex items-center gap-2 text-slate-400">
                             <AlertCircle className="h-3 w-3" />
-                            <p className="text-[10px] font-medium">Submitted flags will be reviewed by district monitors within 24 hours.</p>
+                            <p className="text-[10px] font-medium">
+                              Submitted flags will be reviewed by district
+                              monitors within 24 hours.
+                            </p>
                           </div>
                           <Button
                             type="submit"
                             disabled={mutation.isPending}
-                            className="bg-slate-900 border-none hover:bg-slate-800 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 whitespace-nowrap">
+                            className="bg-slate-900 border-none hover:bg-slate-800 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 whitespace-nowrap"
+                          >
                             {mutation.isPending ? (
                               <>
                                 <LoadingDots className="h-4" />
@@ -872,8 +1431,13 @@ const HouseholdProfile = () => {
 
               <Card className="overflow-hidden border-slate-200 shadow-sm">
                 <div className="p-6 flex items-center justify-between border-b bg-rose-50/50 border-rose-100">
-                  <h3 className="text-lg font-bold text-rose-900">Flagging history</h3>
-                  <Badge variant="outline" className="bg-white border-rose-200 text-rose-700 font-black text-[10px]">
+                  <h3 className="text-lg font-bold text-rose-900">
+                    Flagging history
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className="bg-white border-rose-200 text-rose-700 font-black text-[10px]"
+                  >
                     {householdFlags.length} records
                   </Badge>
                 </div>
@@ -883,34 +1447,70 @@ const HouseholdProfile = () => {
                       <Table>
                         <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
                           <TableRow>
-                            <TableHead className="pl-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">Category</TableHead>
-                            <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Date flagged</TableHead>
-                            <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Observations</TableHead>
-                            <TableHead className="text-right pr-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">Status</TableHead>
+                            <TableHead className="pl-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">
+                              Category
+                            </TableHead>
+                            <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">
+                              Date flagged
+                            </TableHead>
+                            <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">
+                              Observations
+                            </TableHead>
+                            <TableHead className="text-right pr-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">
+                              Status
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {householdFlags.map((item: any, idx: number) => (
-                            <TableRow key={idx} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
+                            <TableRow
+                              key={idx}
+                              className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent"
+                            >
                               <TableCell className="pl-6">
                                 <div className="flex flex-col">
-                                  <span className="font-bold text-slate-900 text-sm">{String(item.category || item.form_type || "General")}</span>
-                                  <span className={cn(
-                                    "text-[9px] font-black uppercase tracking-tighter",
-                                    item.severity === "Critical" ? "text-red-600" : "text-slate-400"
-                                  )}>
+                                  <span className="font-bold text-slate-900 text-sm">
+                                    {String(
+                                      item.category ||
+                                        item.form_type ||
+                                        "General",
+                                    )}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      "text-[9px] font-black uppercase tracking-tighter",
+                                      item.severity === "Critical"
+                                        ? "text-red-600"
+                                        : "text-slate-400",
+                                    )}
+                                  >
                                     {item.severity || "Normal"} priority
                                   </span>
                                 </div>
                               </TableCell>
                               <TableCell className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors">
-                                {item.date_created || item.created_at ? format(new Date(item.date_created || item.created_at), "dd MMM yyyy") : "N/A"}
+                                {item.date_created || item.created_at
+                                  ? format(
+                                      new Date(
+                                        item.date_created || item.created_at,
+                                      ),
+                                      "dd MMM yyyy",
+                                    )
+                                  : "N/A"}
                               </TableCell>
                               <TableCell className="text-xs text-slate-600 max-w-md italic leading-relaxed">
-                                {String(item.comment || item.description || item.reason || "No description provided")}
+                                {String(
+                                  item.comment ||
+                                    item.description ||
+                                    item.reason ||
+                                    "No description provided",
+                                )}
                               </TableCell>
                               <TableCell className="text-right pr-6">
-                                <Badge variant="outline" className="text-[9px] font-black text-rose-600 border-rose-100 bg-rose-50 px-2 rounded-md uppercase tracking-tighter">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] font-black text-rose-600 border-rose-100 bg-rose-50 px-2 rounded-md uppercase tracking-tighter"
+                                >
                                   Flagged
                                 </Badge>
                               </TableCell>
@@ -920,7 +1520,11 @@ const HouseholdProfile = () => {
                       </Table>
                     </div>
                   ) : (
-                    <EmptyState icon={<Flag className="h-7 w-7" />} title="No flagged records" description="This household has no documented data quality issues." />
+                    <EmptyState
+                      icon={<Flag className="h-7 w-7" />}
+                      title="No flagged records"
+                      description="This household has no documented data quality issues."
+                    />
                   )}
                 </CardContent>
               </Card>
@@ -936,14 +1540,27 @@ const cleanArrayString = (str: string | null | undefined) => {
   if (!str) return "-";
   try {
     // legacy logic: .replace(/[\[\]"]/g, '')
-    return String(str).replace(/[\[\]"]/g, '').replace(/,/g, ', ');
+    return String(str)
+      .replace(/[\[\]"]/g, "")
+      .replace(/,/g, ", ");
   } catch (e) {
     return String(str);
   }
 };
 
-const HouseholdServicesDetailTable = ({ data, isLoading }: { data: any[]; isLoading: boolean }) => {
-  if (isLoading) return <div className="p-20 text-center"><LoadingDots /></div>;
+const HouseholdServicesDetailTable = ({
+  data,
+  isLoading,
+}: {
+  data: any[];
+  isLoading: boolean;
+}) => {
+  if (isLoading)
+    return (
+      <div className="p-20 text-center">
+        <LoadingDots />
+      </div>
+    );
   if (data.length === 0) {
     return (
       <div className="p-20 text-center text-slate-400 font-bold text-xs tracking-widest">
@@ -957,35 +1574,92 @@ const HouseholdServicesDetailTable = ({ data, isLoading }: { data: any[]; isLoad
       <Table className="min-w-[1800px] table-fixed">
         <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
           <TableRow>
-            <TableHead className="w-36 border-r border-slate-100 text-[10px] font-black text-slate-900">Service Date</TableHead>
-            <TableHead className="w-32 border-r border-slate-100 text-[10px] font-black text-slate-900">HIV status</TableHead>
-            <TableHead className="w-32 border-r border-slate-100 text-[10px] font-black text-slate-900">Viral Load</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Health Services</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">HIV Services</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Other Health</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Safe</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Other Safe</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Schooled</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Other Schooled</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Stable</TableHead>
-            <TableHead className="text-[10px] font-black text-slate-900">Other Stable</TableHead>
+            <TableHead className="w-36 border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Service Date
+            </TableHead>
+            <TableHead className="w-32 border-r border-slate-100 text-[10px] font-black text-slate-900">
+              HIV status
+            </TableHead>
+            <TableHead className="w-32 border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Viral Load
+            </TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Health Services
+            </TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">
+              HIV Services
+            </TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Other Health
+            </TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Safe
+            </TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Other Safe
+            </TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Schooled
+            </TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Other Schooled
+            </TableHead>
+            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">
+              Stable
+            </TableHead>
+            <TableHead className="text-[10px] font-black text-slate-900">
+              Other Stable
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((svc: any, i: number) => (
-            <TableRow key={svc.id || svc.unique_id || `${svc.service_date || svc.visit_date || "service"}-${i}`} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
-              <TableCell className="py-4 font-bold text-slate-900 border-r border-slate-100">{formatServiceDate(svc.service_date || svc.visit_date || svc.date)}</TableCell>
-              <TableCell className="py-4 text-slate-700 border-r border-slate-100">{svc.is_hiv_positive || "N/A"}</TableCell>
-              <TableCell className="py-4 text-slate-700 border-r border-slate-100">{svc.vl_last_result || "N/A"}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.health_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.hiv_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_health_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.safe_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_safe_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.schooled_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_schooled_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.stable_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed">{cleanArrayString(svc.other_stable_services)}</TableCell>
+            <TableRow
+              key={
+                svc.id ||
+                svc.unique_id ||
+                `${svc.service_date || svc.visit_date || "service"}-${i}`
+              }
+              className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent"
+            >
+              <TableCell className="py-4 font-bold text-slate-900 border-r border-slate-100">
+                {formatServiceDate(
+                  svc.service_date || svc.visit_date || svc.date,
+                )}
+              </TableCell>
+              <TableCell className="py-4 text-slate-700 border-r border-slate-100">
+                {svc.is_hiv_positive || "N/A"}
+              </TableCell>
+              <TableCell className="py-4 text-slate-700 border-r border-slate-100">
+                {svc.vl_last_result || "N/A"}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.health_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.hiv_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.other_health_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.safe_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.other_safe_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.schooled_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.other_schooled_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.stable_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed">
+                {cleanArrayString(svc.other_stable_services)}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -994,7 +1668,13 @@ const HouseholdServicesDetailTable = ({ data, isLoading }: { data: any[]; isLoad
   );
 };
 
-const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?: any[] }) => {
+const CasePlanRow = ({
+  plan,
+  servicesSource = [],
+}: {
+  plan: any;
+  servicesSource?: any[];
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bottomScrollRef = useRef<HTMLDivElement>(null);
@@ -1002,8 +1682,10 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
   const [tableWidth, setTableWidth] = useState(0);
 
   // Try to find services linked to this case plan
-  let linkedServices = servicesSource.filter(s => {
-    const serviceLinkId = String(s.case_plan_id || s.vcaid || s.caseplan_id || "");
+  let linkedServices = servicesSource.filter((s) => {
+    const serviceLinkId = String(
+      s.case_plan_id || s.vcaid || s.caseplan_id || "",
+    );
     const planId = String(plan.case_plan_id || plan.unique_id || plan.id || "");
     return serviceLinkId && planId && serviceLinkId === planId;
   });
@@ -1036,21 +1718,25 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
         if (isSyncing) return;
         isSyncing = true;
         bottom.scrollLeft = top.scrollLeft;
-        requestAnimationFrame(() => { isSyncing = false; });
+        requestAnimationFrame(() => {
+          isSyncing = false;
+        });
       };
 
       const handleBottomScroll = () => {
         if (isSyncing) return;
         isSyncing = true;
         top.scrollLeft = bottom.scrollLeft;
-        requestAnimationFrame(() => { isSyncing = false; });
+        requestAnimationFrame(() => {
+          isSyncing = false;
+        });
       };
 
-      top.addEventListener('scroll', handleTopScroll, { passive: true });
-      bottom.addEventListener('scroll', handleBottomScroll, { passive: true });
+      top.addEventListener("scroll", handleTopScroll, { passive: true });
+      bottom.addEventListener("scroll", handleBottomScroll, { passive: true });
 
       return () => {
-        top.removeEventListener('scroll', handleTopScroll);
+        top.removeEventListener("scroll", handleTopScroll);
         bottom.removeEventListener("scroll", handleBottomScroll);
       };
     }, 200);
@@ -1070,7 +1756,10 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
             "N/A"}
         </TableCell>
         <TableCell>
-          <Badge variant="secondary" className="text-[10px] font-bold tracking-wider">
+          <Badge
+            variant="secondary"
+            className="text-[10px] font-bold tracking-wider"
+          >
             {plan.case_plan_status ||
               plan.status ||
               plan.case_plan?.status ||
@@ -1079,18 +1768,32 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
           </Badge>
         </TableCell>
         <TableCell className="text-xs text-slate-500">
-          {plan.date_created || plan.created_at || plan.case_plan?.created_at ?
-            new Date(plan.date_created || plan.created_at || plan.case_plan?.created_at).toLocaleDateString()
+          {plan.date_created || plan.created_at || plan.case_plan?.created_at
+            ? new Date(
+                plan.date_created ||
+                  plan.created_at ||
+                  plan.case_plan?.created_at,
+              ).toLocaleDateString()
             : "N/A"}
         </TableCell>
       </TableRow>
       {isOpen && (
         <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-0">
-          <TableCell colSpan={4} className="p-2 md:p-4 pt-0 overflow-hidden" style={{ maxWidth: '1px', width: '100%' }}>
+          <TableCell
+            colSpan={4}
+            className="p-2 md:p-4 pt-0 overflow-hidden"
+            style={{ maxWidth: "1px", width: "100%" }}
+          >
             <div className="rounded-xl border border-slate-200 bg-white shadow-md overflow-hidden flex flex-col w-full min-w-0">
               <div className="bg-slate-100 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 flex justify-between items-center">
-                <h4 className="text-sm md:text-lg font-black tracking-wider text-slate-700">Vulnerabilities</h4>
-                {isFallback && <span className="text-sm text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 shadow-sm">Showing all household services </span>}
+                <h4 className="text-sm md:text-lg font-black tracking-wider text-slate-700">
+                  Vulnerabilities
+                </h4>
+                {isFallback && (
+                  <span className="text-sm text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200 shadow-sm">
+                    Showing all household services{" "}
+                  </span>
+                )}
               </div>
 
               {linkedServices.length > 0 ? (
@@ -1100,42 +1803,99 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
                     ref={topScrollRef}
                     className="w-full overflow-x-auto overflow-y-hidden h-6 bg-slate-50 border-b border-slate-200 scrollbar-thin shadow-inner z-10"
                   >
-                    <div style={{ width: tableWidth || '1800px' }} className="h-px" />
+                    <div
+                      style={{ width: tableWidth || "1800px" }}
+                      className="h-px"
+                    />
                   </div>
 
-                  <div ref={bottomScrollRef} className="w-full overflow-x-auto no-scrollbar">
+                  <div
+                    ref={bottomScrollRef}
+                    className="w-full overflow-x-auto no-scrollbar"
+                  >
                     <Table className="min-w-[1800px] table-fixed">
                       <TableHeader>
                         <TableRow className="hover:bg-transparent bg-slate-50/50">
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 w-32 md:w-40 border-r border-slate-100">Service Date</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100 w-32">HIV status</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100 w-32">Viral Load</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">Health Services</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">HIV Services</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">Other Health</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">Safe</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">Other Safe</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">Schooled</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">Other Schooled</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">Stable</TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900">Other Stable</TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 w-32 md:w-40 border-r border-slate-100">
+                            Service Date
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100 w-32">
+                            HIV status
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100 w-32">
+                            Viral Load
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Health Services
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            HIV Services
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Other Health
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Safe
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Other Safe
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Schooled
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Other Schooled
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
+                            Stable
+                          </TableHead>
+                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900">
+                            Other Stable
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {linkedServices.map((svc: any, i: number) => (
-                          <TableRow key={i} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
-                          <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">{formatServiceDate(svc.service_date)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 text-slate-700 border-r border-slate-100">{svc.is_hiv_positive || "N/A"}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 text-slate-700 border-r border-slate-100">{svc.vl_last_result || "N/A"}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.health_services)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.hiv_services)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_health_services)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.safe_services)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_safe_services)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.schooled_services)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_schooled_services)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.stable_services)}</TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed">{cleanArrayString(svc.other_stable_services)}</TableCell>
+                          <TableRow
+                            key={i}
+                            className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent"
+                          >
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">
+                              {formatServiceDate(svc.service_date)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 text-slate-700 border-r border-slate-100">
+                              {svc.is_hiv_positive || "N/A"}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 text-slate-700 border-r border-slate-100">
+                              {svc.vl_last_result || "N/A"}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.health_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.hiv_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.other_health_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.safe_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.other_safe_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.schooled_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.other_schooled_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
+                              {cleanArrayString(svc.stable_services)}
+                            </TableCell>
+                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed">
+                              {cleanArrayString(svc.other_stable_services)}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1155,9 +1915,29 @@ const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any, servicesSource?
   );
 };
 
-const ActivityTable = ({ data, isLoading, type, emptyMessage }: { data: any[], isLoading: boolean, type: 'service' | 'case-plan' | 'referral', emptyMessage: string }) => {
-  if (isLoading) return <div className="p-20 text-center"><LoadingDots /></div>;
-  if (data.length === 0) return <div className="p-20 text-center text-slate-400 font-bold text-xs tracking-widest">{emptyMessage}</div>;
+const ActivityTable = ({
+  data,
+  isLoading,
+  type,
+  emptyMessage,
+}: {
+  data: any[];
+  isLoading: boolean;
+  type: "service" | "case-plan" | "referral";
+  emptyMessage: string;
+}) => {
+  if (isLoading)
+    return (
+      <div className="p-20 text-center">
+        <LoadingDots />
+      </div>
+    );
+  if (data.length === 0)
+    return (
+      <div className="p-20 text-center text-slate-400 font-bold text-xs tracking-widest">
+        {emptyMessage}
+      </div>
+    );
 
   return (
     <div className="w-full overflow-x-auto">
@@ -1173,13 +1953,31 @@ const ActivityTable = ({ data, isLoading, type, emptyMessage }: { data: any[], i
           {data.map((item, idx) => (
             <TableRow key={idx}>
               <TableCell className="pl-6 font-bold text-slate-900">
-                {String(item.service || item.service_name || item.form_name || item.referral || item.referral_type || item.referral_name || "N/A")}
+                {String(
+                  item.service ||
+                    item.service_name ||
+                    item.form_name ||
+                    item.referral ||
+                    item.referral_type ||
+                    item.referral_name ||
+                    "N/A",
+                )}
               </TableCell>
               <TableCell className="text-sm">
-                {formatServiceDate(item.service_date || item.visit_date || item.date || item.referral_date || item.date_created || item.created_at)}
+                {formatServiceDate(
+                  item.service_date ||
+                    item.visit_date ||
+                    item.date ||
+                    item.referral_date ||
+                    item.date_created ||
+                    item.created_at,
+                )}
               </TableCell>
               <TableCell className="pr-6">
-                <Badge variant="outline" className="text-[10px] font-bold text-emerald-600">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-bold text-emerald-600"
+                >
                   {String(item.status || item.state || "N/A")}
                 </Badge>
               </TableCell>
@@ -1191,10 +1989,19 @@ const ActivityTable = ({ data, isLoading, type, emptyMessage }: { data: any[], i
   );
 };
 
-
-const InfoItem = ({ label, value, icon }: { label: string, value: string, icon?: React.ReactNode }) => (
+const InfoItem = ({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+}) => (
   <div className="space-y-1 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
-    <p className="text-[10px] font-bold tracking-wider text-slate-400">{label}</p>
+    <p className="text-[10px] font-bold tracking-wider text-slate-400">
+      {label}
+    </p>
     <div className="flex items-center gap-2">
       {icon && <span className="text-slate-400">{icon}</span>}
       <p className="text-sm font-semibold text-slate-800">{value}</p>
