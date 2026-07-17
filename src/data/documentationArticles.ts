@@ -1,5 +1,8 @@
 export const toSlug = (text: string): string =>
-  text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
 export interface Article {
   title: string;
@@ -82,7 +85,7 @@ export const articles: Article[] = [
     title: "HTS and PMTCT registers",
     slug: toSlug("HTS and PMTCT registers"),
     category: "Registers",
-    content: `**HTS Register** — Tracks HIV testing services including test results, referrals, and ART linkage.\n\n**PMTCT Register** — Prevention of Mother-to-Child Transmission tracking (coming soon).\n\nBoth registers follow the same UI pattern: searchable, filterable tables with district access control and CSV export.`,
+    content: `**HTS Register** — Tracks HIV testing services including test results, referrals, and ART linkage.\n\n**PMTCT Register** — Prevention of Mother-to-Child Transmission tracking.\n\nBoth registers follow the same UI pattern: searchable, filterable tables with district access control and CSV export.`,
   },
   // Services
   {
