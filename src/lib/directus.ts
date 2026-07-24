@@ -18,10 +18,7 @@ const safeJson = async (response: Response) => {
   }
 };
 
-const directusRequest = async (
-  path: string,
-  options: RequestInit = {},
-) => {
+const directusRequest = async (path: string, options: RequestInit = {}) => {
   const token = getStoredToken();
   if (!token) {
     throw new Error("Not authenticated.");
@@ -79,21 +76,21 @@ export type DirectusRole = {
   name: string;
 };
 
-
 export const listUsers = async (status?: string) => {
   const params = new URLSearchParams({
-    fields: "id,email,first_name,last_name,role.id,role.name,status,description,title,location,facility,avatar,last_access,password_change_required",
+    fields:
+      "id,email,first_name,last_name,role.id,role.name,status,description,title,location,facility,avatar,last_access,password_change_required",
     limit: "-1", // Fetch all users for chat list
   });
   if (DIRECTUS_USER_ROLE) {
-    // If we filter by role ID, we might miss Support users if they have a different role ID. 
+    // If we filter by role ID, we might miss Support users if they have a different role ID.
     // Usually DIRECTUS_USER_ROLE is the "ECAP+ User" role.
-    // If we want ALL users (including support), we might need to remove this filter 
+    // If we want ALL users (including support), we might need to remove this filter
     // or ensure we are fetching multiple roles.
     // For now, let's assume we want to fetch all users to handle the cross-role chat logic
-    // But strict security might prevent listing all. 
+    // But strict security might prevent listing all.
     // Let's rely on the user's permissions.
-    // params.set("filter[role][_eq]", DIRECTUS_USER_ROLE); 
+    // params.set("filter[role][_eq]", DIRECTUS_USER_ROLE);
   }
   if (status) {
     params.set("filter[status][_eq]", status);
@@ -115,15 +112,15 @@ export type ChatMessage = Notification & {
   sender_user?: DirectusUser; // We will populate this manually if needed
 };
 
-
 // Chat Messages using Directus Notifications
 export const getChatMessages = async (userId: string) => {
   if (!userId) return [];
 
   const params = new URLSearchParams({
-    "sort": "timestamp",
-    "limit": "500",
-    "fields": "id,status,timestamp,sender,recipient,subject,message,collection,item",
+    sort: "timestamp",
+    limit: "500",
+    fields:
+      "id,status,timestamp,sender,recipient,subject,message,collection,item",
     "filter[recipient][_eq]": userId,
     "filter[sender][_nnull]": "true",
     "filter[collection][_in]": "support_chat,support_chat_outbox",
@@ -133,7 +130,13 @@ export const getChatMessages = async (userId: string) => {
   return data?.data ?? [];
 };
 
-export const sendChatMessage = async (recipientId: string, message: string, priority: string = "Normal", fileId?: string, senderId?: string) => {
+export const sendChatMessage = async (
+  recipientId: string,
+  message: string,
+  priority: string = "Normal",
+  fileId?: string,
+  senderId?: string,
+) => {
   let currentSenderId = senderId;
 
   // Get current user ID if not provided
@@ -197,7 +200,10 @@ export const uploadFile = async (file: File) => {
 };
 
 // Update User Avatar
-export const updateUserAvatar = async (userId: string, fileId: string | null) => {
+export const updateUserAvatar = async (
+  userId: string,
+  fileId: string | null,
+) => {
   const data = await directusRequest(`/users/${userId}`, {
     method: "PATCH",
     body: JSON.stringify({ avatar: fileId }),
@@ -213,7 +219,6 @@ export const getFileUrl = (fileId: string | null | undefined) => {
   const url = `${baseUrl}/assets/${fileId}`;
   return token ? `${url}?access_token=${token}` : url;
 };
-
 
 export const listRoles = async () => {
   const data = await directusRequest("/roles?fields=id,name&limit=100");
@@ -248,7 +253,11 @@ export const createUser = async (payload: {
   return data?.data;
 };
 
-export const inviteUser = async (email: string, roleId: string, inviteUrl: string) => {
+export const inviteUser = async (
+  email: string,
+  roleId: string,
+  inviteUrl: string,
+) => {
   const data = await directusRequest("/users/invite", {
     method: "POST",
     body: JSON.stringify({ email, role: roleId, invite_url: inviteUrl }),
@@ -268,7 +277,9 @@ export const requestPasswordReset = async (email: string, resetUrl: string) => {
 
   if (!response.ok) {
     const data = await safeJson(response);
-    throw new Error(data?.errors?.[0]?.message ?? "Password reset request failed");
+    throw new Error(
+      data?.errors?.[0]?.message ?? "Password reset request failed",
+    );
   }
 
   return true;
@@ -308,7 +319,6 @@ export const updateCurrentUserPassword = async (password: string) => {
   return data?.data;
 };
 
-
 // Sentinel error so the UI can show a friendly message when a hard delete
 // is blocked by linked records (notifications, flagged forms, etc).
 export class UserHasLinkedRecordsError extends Error {
@@ -346,20 +356,28 @@ const scrubUserReferences = async (
       const data = await directusRequest(
         `/items/${collection}?filter[${field}][_eq]=${encodeURIComponent(userId)}&fields=id&limit=200`,
       );
-      const items: Array<{ id: string }> = Array.isArray(data?.data) ? data.data : [];
+      const items: Array<{ id: string }> = Array.isArray(data?.data)
+        ? data.data
+        : [];
       for (const it of items) {
         try {
-          await directusRequest(`/items/${collection}/${it.id}`, { method: "DELETE" });
+          await directusRequest(`/items/${collection}/${it.id}`, {
+            method: "DELETE",
+          });
         } catch {
           try {
             await directusRequest(`/items/${collection}/${it.id}`, {
               method: "PATCH",
               body: JSON.stringify({ [field]: null }),
             });
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         }
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 };
 
@@ -373,9 +391,13 @@ const purgeUserNotifications = async (userId: string) => {
       for (const n of items) {
         try {
           await directusRequest(`/notifications/${n.id}`, { method: "DELETE" });
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 };
 
@@ -392,12 +414,22 @@ export const deleteUser = async (id: string) => {
   // FK blocked — clean up custom table references then retry.
   await purgeUserNotifications(id);
   await scrubUserReferences(id, "flagged_forms_ecapplus_pmp", [
-    "user_created", "created_by", "flagged_by", "caseworker",
+    "user_created",
+    "created_by",
+    "flagged_by",
+    "caseworker",
   ]);
   await scrubUserReferences(id, "flagged_forms_ecapii", [
-    "user_created", "created_by", "flagged_by", "caseworker",
+    "user_created",
+    "created_by",
+    "flagged_by",
+    "caseworker",
   ]);
-  await scrubUserReferences(id, "calendar_events", ["user_id", "user_created", "created_by"]);
+  await scrubUserReferences(id, "calendar_events", [
+    "user_id",
+    "user_created",
+    "created_by",
+  ]);
 
   try {
     await directusRequest(`/users/${id}`, { method: "DELETE" });
@@ -410,7 +442,9 @@ export const deleteUser = async (id: string) => {
         method: "PATCH",
         body: JSON.stringify({ status: "suspended" }),
       });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     throw new UserHasLinkedRecordsError(msg);
   }
 };
@@ -435,9 +469,9 @@ export const getNotifications = async (userId?: string) => {
   const params = new URLSearchParams({
     "filter[status][_eq]": "inbox",
     "filter[recipient][_eq]": userId, // SECURITY: Strictly filter by recipient
-    "sort": "-timestamp",
-    "limit": "100",
-    "fields": "id,subject,message,timestamp,collection,sender,recipient,item",
+    sort: "-timestamp",
+    limit: "100",
+    fields: "id,subject,message,timestamp,collection,sender,recipient,item",
   });
 
   const data = await directusRequest(`/notifications?${params.toString()}`);
@@ -445,10 +479,13 @@ export const getNotifications = async (userId?: string) => {
 };
 
 export const markNotificationRead = async (id: string) => {
-  const data = await directusRequest(`/notifications/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ status: "archived" }),
-  });
+  const data = await directusRequest(
+    `/notifications/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status: "archived" }),
+    },
+  );
   return data?.data;
 };
 
@@ -467,8 +504,6 @@ export const createNotification = async (payload: {
   return data?.data;
 };
 
-
-
 /**
  * Sends an email via the Directus /mail endpoint.
  */
@@ -484,7 +519,6 @@ export const sendMail = async (payload: {
   });
   return data;
 };
-
 
 /**
  * Batch-archive every inbox notification for a user with a single Directus
@@ -529,7 +563,7 @@ export const triggerWeeklyFlow = async () => {
       sent: "Queued",
       emailsSent: "Queued",
       matched: "Server-side",
-      subject: "Weekly Extracts"
+      subject: "Weekly Extracts",
     };
   } catch (error) {
     console.error("Error triggering weekly flow:", error);
@@ -546,8 +580,8 @@ export const notifyAllUsers = async (subject: string, message: string) => {
         subject,
         message,
         collection: "weekly_extracts",
-      })
-    )
+      }),
+    ),
   );
 
   // Send emails to all active users (best effort, requires /mail permissions)
@@ -563,11 +597,15 @@ export const notifyAllUsers = async (subject: string, message: string) => {
         console.warn(`Failed to send email to ${u.email}:`, e.message);
         throw e;
       }
-    })
+    }),
   );
 
-  const sent = notificationResults.filter((r) => r.status === "fulfilled").length;
-  const emailsSent = emailResults.filter((r) => r.status === "fulfilled").length;
+  const sent = notificationResults.filter(
+    (r) => r.status === "fulfilled",
+  ).length;
+  const emailsSent = emailResults.filter(
+    (r) => r.status === "fulfilled",
+  ).length;
 
   return { sent, emailsSent, total: users.length };
 };
@@ -575,7 +613,14 @@ export const notifyAllUsers = async (subject: string, message: string) => {
 // Roles that should be notified when a record is flagged / a flag is
 // resolved. Anything else (caseworkers, viewers) gets filtered out so we
 // stop blasting a notification to every active user in the system.
-const FLAG_NOTIFY_ROLE_KEYWORDS = ["admin", "administrator", "supervisor", "qa", "data quality", "manager"];
+const FLAG_NOTIFY_ROLE_KEYWORDS = [
+  "admin",
+  "administrator",
+  "supervisor",
+  "qa",
+  "data quality",
+  "manager",
+];
 
 const isFlagNotifyRecipient = (u: DirectusUser) => {
   const roleName =
@@ -587,10 +632,18 @@ const isFlagNotifyRecipient = (u: DirectusUser) => {
   return FLAG_NOTIFY_ROLE_KEYWORDS.some((k) => lower.includes(k));
 };
 
-export const notifyUsersOfFlag = async (hhId: string, verifier: string, comment: string, vcaId?: string) => {
+export const notifyUsersOfFlag = async (
+  hhId: string,
+  verifier: string,
+  comment: string,
+  vcaId?: string,
+) => {
   const users = (await listUsers("active")) as DirectusUser[];
   const recipients = users.filter(isFlagNotifyRecipient);
-  const entityId = vcaId && vcaId !== "Not Available" ? `VCA ${vcaId} (HH ${hhId})` : `Household ${hhId}`;
+  const entityId =
+    vcaId && vcaId !== "Not Available"
+      ? `VCA ${vcaId} (HH ${hhId})`
+      : `Household ${hhId}`;
   const subject = `Record Flagged: ${entityId}`;
   const message = `A record for ${entityId} has been flagged by ${verifier}. \n\nComment: ${comment}`;
 
@@ -601,15 +654,23 @@ export const notifyUsersOfFlag = async (hhId: string, verifier: string, comment:
         subject,
         message,
         collection: "flagged_forms_ecapplus_pmp",
-      })
-    )
+      }),
+    ),
   );
 };
 
-export const notifyUsersOfFlagResolution = async (hhId: string, resolver: string, comment: string, vcaId?: string) => {
+export const notifyUsersOfFlagResolution = async (
+  hhId: string,
+  resolver: string,
+  comment: string,
+  vcaId?: string,
+) => {
   const users = (await listUsers("active")) as DirectusUser[];
   const recipients = users.filter(isFlagNotifyRecipient);
-  const entityId = vcaId && vcaId !== "Not Available" ? `VCA ${vcaId} (HH ${hhId})` : `Household ${hhId}`;
+  const entityId =
+    vcaId && vcaId !== "Not Available"
+      ? `VCA ${vcaId} (HH ${hhId})`
+      : `Household ${hhId}`;
   const subject = `Flag Resolved: ${entityId}`;
   const message = `The flag for ${entityId} has been resolved by ${resolver}. \n\nResolution/Comment: ${comment}`;
 
@@ -620,8 +681,8 @@ export const notifyUsersOfFlagResolution = async (hhId: string, resolver: string
         subject,
         message,
         collection: "flagged_forms_ecapplus_pmp",
-      })
-    )
+      }),
+    ),
   );
 };
 
@@ -639,10 +700,12 @@ export type CalendarEvent = {
 export const getCalendarEvents = async (userId: string) => {
   const params = new URLSearchParams({
     "filter[user_id][_eq]": userId,
-    "fields": "id,title,description,start_time,end_time,category,user_id,status",
-    "sort": "start_time",
+    fields: "id,title,description,start_time,end_time,category,user_id,status",
+    sort: "start_time",
   });
-  const data = await directusRequest(`/items/calendar_events?${params.toString()}`);
+  const data = await directusRequest(
+    `/items/calendar_events?${params.toString()}`,
+  );
   return data?.data ?? [];
 };
 
@@ -654,7 +717,10 @@ export const createCalendarEvent = async (payload: Partial<CalendarEvent>) => {
   return data?.data;
 };
 
-export const updateCalendarEvent = async (id: string, payload: Partial<CalendarEvent>) => {
+export const updateCalendarEvent = async (
+  id: string,
+  payload: Partial<CalendarEvent>,
+) => {
   const data = await directusRequest(`/items/calendar_events/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
@@ -666,4 +732,116 @@ export const deleteCalendarEvent = async (id: string) => {
   await directusRequest(`/items/calendar_events/${id}`, {
     method: "DELETE",
   });
+};
+
+export type DirectusActivityEntry = {
+  id: number;
+  action: string;
+  collection: string;
+  timestamp: string;
+  user?: {
+    id: string;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    // Schema truth (directus_users): title = province, location = district,
+    // district/facility are dedicated text fields that can hold CSV lists.
+    district?: string;
+    facility?: string;
+    location?: string;
+    title?: string;
+    description?: string;
+  } | null;
+};
+
+// Collections whose activity must not appear on the PMP User Activity tab.
+const ACTIVITY_EXCLUDED_COLLECTIONS = [
+  "case_management",
+  "finance",
+  "stores",
+  "human_resource",
+  "procurement",
+];
+
+export const listUserActivity = async (
+  limit = 500,
+): Promise<DirectusActivityEntry[]> => {
+  const roleId = import.meta.env.VITE_DIRECTUS_USER_ROLE;
+  if (!roleId || roleId.includes("<")) {
+    throw new Error("VITE_DIRECTUS_USER_ROLE is not configured");
+  }
+  const params = new URLSearchParams({
+    fields:
+      "id,action,collection,timestamp,user.id,user.first_name,user.last_name,user.email,user.district,user.facility,user.location,user.title,user.description",
+    sort: "-timestamp",
+    limit: String(limit),
+  });
+  params.set("filter[user][role][_eq]", roleId);
+  params.set(
+    "filter[collection][_nin]",
+    ACTIVITY_EXCLUDED_COLLECTIONS.join(","),
+  );
+  const data = await directusRequest(`/activity?${params.toString()}`);
+  return data?.data ?? [];
+};
+
+export type PmpUser = {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  // title = province level, location = legacy district, district/facility can
+  // hold CSV lists, description = user level ("Facility User", ...).
+  title?: string;
+  location?: string;
+  district?: string;
+  facility?: string;
+  description?: string;
+  last_access?: string | null;
+  status?: string;
+};
+
+export const listPmpUsers = async (): Promise<PmpUser[]> => {
+  const roleId = import.meta.env.VITE_DIRECTUS_USER_ROLE;
+  if (!roleId || roleId.includes("<")) {
+    throw new Error("VITE_DIRECTUS_USER_ROLE is not configured");
+  }
+  const params = new URLSearchParams({
+    fields:
+      "id,first_name,last_name,email,title,location,district,facility,description,last_access,status",
+    sort: "first_name",
+    limit: "500",
+  });
+  params.set("filter[role][_eq]", roleId);
+  const data = await directusRequest(`/users?${params.toString()}`);
+  return data?.data ?? [];
+};
+
+// Deliver an announcement to each recipient's notification bell.
+export const broadcastAnnouncement = async (
+  recipientIds: string[],
+  subject: string,
+  message: string,
+) => {
+  const results = await Promise.allSettled(
+    recipientIds.map((recipient) =>
+      createNotification({ recipient, subject, message }),
+    ),
+  );
+  const sent = results.filter((r) => r.status === "fulfilled").length;
+  return { sent, failed: results.length - sent };
+};
+
+// Facility users are not referenced by id on flagged forms — the link is the
+// flag's facility name. Fetch just enough to count flags per facility.
+export type FlaggedFormFacilityRef = { id: string; facility?: string | null };
+
+export const listFlaggedFormFacilities = async (): Promise<
+  FlaggedFormFacilityRef[]
+> => {
+  const params = new URLSearchParams({ fields: "id,facility", limit: "1000" });
+  const data = await directusRequest(
+    `/items/flagged_forms_ecapii?${params.toString()}`,
+  );
+  return data?.data ?? [];
 };
