@@ -138,7 +138,7 @@ const Documentation = () => {
         title: "Services",
         icon: Shield,
         description:
-          "Track service delivery across household, CA, and caregiver levels — filter by sub-population, drill into records, and export CSVs.",
+          "Track service delivery across household, VCA, and caregiver levels — filter by sub-population, drill into records, and export CSVs.",
         links: [
           "Household services",
           "VCA services",
