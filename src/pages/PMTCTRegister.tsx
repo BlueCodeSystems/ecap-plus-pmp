@@ -116,7 +116,8 @@ const PMTCTRegister = () => {
     initialDistrict || (isAdmin ? "All Districts" : ""),
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("overview");
+  // 1. Change default active tab
+  const [activeTab, setActiveTab] = useState("register");
   const deferredSearch = useDeferredValue(searchQuery);
 
   useEffect(() => {
@@ -410,18 +411,18 @@ const PMTCTRegister = () => {
           <div className="flex justify-center mb-6">
             <TabsList className="bg-slate-100/50 p-1 rounded-xl h-11 w-full max-w-md border border-slate-200">
               <TabsTrigger
-                value="overview"
-                className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider"
-              >
-                <TrendingUp className="h-3.5 w-3.5 mr-2" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger
                 value="register"
                 className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider"
               >
                 <Users className="h-3.5 w-3.5 mr-2" />
                 Register
+              </TabsTrigger>
+              <TabsTrigger
+                value="overview"
+                className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider"
+              >
+                <TrendingUp className="h-3.5 w-3.5 mr-2" />
+                Charts
               </TabsTrigger>
             </TabsList>
           </div>
