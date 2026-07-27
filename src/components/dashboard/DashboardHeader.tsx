@@ -32,7 +32,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useState, useMemo, useRef } from "react";
 
 const SOUND_STORAGE_KEY = "ecapplus.notifications.sound";
-const HIDDEN_ROUTES = ["/dashboard", "/districts"];
+const HIDDEN_ROUTES = [
+  "/dashboard",
+  "/districts",
+  "/calendar",
+  "/charts",
+  "/weekly-extracts",
+  "/support",
+  "/documentation",
+];
 
 // Synthesized two-tone beep via the WebAudio API — no asset file needed,
 // works regardless of bundler/public-folder state.

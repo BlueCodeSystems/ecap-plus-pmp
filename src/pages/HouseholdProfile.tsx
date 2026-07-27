@@ -427,6 +427,19 @@ const HouseholdProfile = () => {
     );
   }
 
+  // Add this helper near your other utility functions
+  const normalizeRelationship = (value: any): string => {
+    if (!value) return "N/A";
+
+    const normalized = String(value).toLowerCase().trim();
+
+    if (normalized === "guardian" || normalized === "gardian")
+      return "Guardian";
+    if (normalized === "parent") return "Parent";
+
+    return "N/A";
+  };
+
   const caregiverName = String(
     household.caregiver_name || household.name || "N/A",
   );
@@ -994,38 +1007,20 @@ const HouseholdProfile = () => {
                   </CardHeader>
                   <CardContent className="grid gap-4 sm:grid-cols-2">
                     <InfoItem
-                      label="Caseworker name"
+                      label="Caseworker Name"
                       value={String(household.caseworker_name || "N/A")}
                       icon={<User className="h-3.5 w-3.5" />}
                     />
                     <InfoItem
-                      label="Caseworker phone"
+                      label="Caseworker Phone"
                       value={String(household.caseworker_phone || "N/A")}
                     />
                     <InfoItem
-                      label="Date enrolled"
-                      value={String(
-                        household.date_enrolled ||
-                          household.enrollment_date ||
-                          "N/A",
-                      )}
-                      icon={<Calendar className="h-3.5 w-3.5" />}
-                    />
-                    <InfoItem
-                      label="Date screened"
-                      value={String(
-                        household.screening_date ||
-                          household.date_screened ||
-                          "N/A",
-                      )}
-                      icon={<Calendar className="h-3.5 w-3.5" />}
-                    />
-                    <InfoItem
-                      label="Provider id"
+                      label="Caseworker Username"
                       value={String(household.provider_id || "N/A")}
                     />
                     <InfoItem
-                      label="Case status"
+                      label="Case Status"
                       value={String(
                         household.case_status || household.status || "Active",
                       )}
@@ -1083,7 +1078,9 @@ const HouseholdProfile = () => {
                                 variant="outline"
                                 className="text-[10px] font-bold tracking-wider text-slate-500"
                               >
-                                {String(m.relation || m.relationship || "N/A")}
+                                {normalizeRelationship(
+                                  m.relation || m.relationship,
+                                )}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right pr-6">
