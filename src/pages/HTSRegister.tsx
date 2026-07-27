@@ -480,27 +480,26 @@ const HTSRegister = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <div className="mb-6 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
-          <div className="-mx-1 overflow-x-auto px-1 max-w-full">
-            <TabsList className="inline-flex h-9 items-center gap-1 rounded-xl bg-slate-100/80 p-1 backdrop-blur-sm border border-slate-200/50 whitespace-nowrap">
-              <TabsTrigger
-                value="overview"
-                className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
-              >
-                Overview
-              </TabsTrigger>
-              <TabsTrigger
-                value="register"
-                className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm"
-              >
-                Register
-              </TabsTrigger>
-            </TabsList>
-          </div>
+      <Tabs defaultValue="register" className="w-full">
+        <div className="flex justify-center mb-6">
+          <TabsList className="bg-slate-100/50 p-1 rounded-xl h-11 w-full max-w-md border border-slate-200">
+            <TabsTrigger
+              value="register"
+              className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider"
+            >
+              <Users className="h-3.5 w-3.5 mr-2" />
+              Register
+            </TabsTrigger>
+            <TabsTrigger
+              value="charts"
+              className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider"
+            >
+              <TrendingUp className="h-3.5 w-3.5 mr-2" />
+              Charts
+            </TabsTrigger>
+          </TabsList>
         </div>
-
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="charts" className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
             <div className="p-4 rounded-xl border bg-white shadow-sm border-slate-100">
               <div className="flex items-center gap-3 mb-2">
@@ -563,158 +562,161 @@ const HTSRegister = () => {
               </div>
             </div>
           </div>
+          <div className="grid gap-6 lg:grid-cols-2 mb-6">
+            <GlowCard className="bg-white">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base font-bold text-slate-900">
+                    Facility Linkage Gap
+                  </CardTitle>
+                  <p className="text-[10px] font-bold text-slate-400 tracking-wider">
+                    Comparing positives vs ART initiation
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportFacility}
+                  disabled={facilityData.length === 0}
+                  className="h-8 px-3 text-xs font-bold border-slate-200 ml-auto"
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV
+                </Button>
+              </CardHeader>
+              <CardContent className="h-[250px] p-0 pb-4">
+                {facilityData.length === 0 ? (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold text-slate-400">
+                    No facility linkage data found for the current filters.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={facilityData}
+                      margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="#f1f5f9"
+                      />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 9, fontWeight: 700, fill: "#94a3b8" }}
+                        interval={0}
+                        angle={-15}
+                        textAnchor="end"
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          fill: "#94a3b8",
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "none",
+                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                        }}
+                        labelStyle={{
+                          fontWeight: 800,
+                          color: "#0f172a",
+                          marginBottom: "4px",
+                        }}
+                      />
+                      <Bar
+                        dataKey="positive"
+                        name="Positives"
+                        fill="#f43f5e"
+                        radius={[4, 4, 0, 0]}
+                        barSize={20}
+                      />
+                      <Bar
+                        dataKey="linked"
+                        name="Linked"
+                        fill="#10b981"
+                        radius={[4, 4, 0, 0]}
+                        barSize={20}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </GlowCard>
+
+            <GlowCard className="bg-white">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base font-bold text-slate-900">
+                    Positive Yield by Caseworker
+                  </CardTitle>
+                  <p className="text-[10px] font-bold text-slate-400 tracking-wider">
+                    Top 10 performing staff by raw count
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCaseworker}
+                  disabled={caseworkerData.length === 0}
+                  className="h-8 px-3 text-xs font-bold border-slate-200 ml-auto"
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV
+                </Button>
+              </CardHeader>
+              <CardContent className="h-[250px] p-0 pb-4">
+                {caseworkerData.length === 0 ? (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold text-slate-400">
+                    No caseworker yield data found for the current filters.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={caseworkerData}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        horizontal={false}
+                        stroke="#f1f5f9"
+                      />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 9, fontWeight: 700, fill: "#475569" }}
+                        width={80}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "#f8fafc" }}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "none",
+                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                        }}
+                      />
+                      <Bar
+                        dataKey="positive"
+                        name="Positives Found"
+                        fill="#6366f1"
+                        radius={[0, 4, 4, 0]}
+                        barSize={15}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </GlowCard>
+          </div>
         </TabsContent>
-
-        <div className="grid gap-6 lg:grid-cols-2 mb-6">
-          <GlowCard className="bg-white">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Facility Linkage Gap
-                </CardTitle>
-                <p className="text-[10px] font-bold text-slate-400 tracking-wider">
-                  Comparing positives vs ART initiation
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportFacility}
-                disabled={facilityData.length === 0}
-                className="h-8 px-3 text-xs font-bold border-slate-200 ml-auto"
-              >
-                <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV
-              </Button>
-            </CardHeader>
-            <CardContent className="h-[250px] p-0 pb-4">
-              {facilityData.length === 0 ? (
-                <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold text-slate-400">
-                  No facility linkage data found for the current filters.
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={facilityData}
-                    margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke="#f1f5f9"
-                    />
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fontWeight: 700, fill: "#94a3b8" }}
-                      interval={0}
-                      angle={-15}
-                      textAnchor="end"
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 10, fontWeight: 600, fill: "#94a3b8" }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "12px",
-                        border: "none",
-                        boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                      }}
-                      labelStyle={{
-                        fontWeight: 800,
-                        color: "#0f172a",
-                        marginBottom: "4px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="positive"
-                      name="Positives"
-                      fill="#f43f5e"
-                      radius={[4, 4, 0, 0]}
-                      barSize={20}
-                    />
-                    <Bar
-                      dataKey="linked"
-                      name="Linked"
-                      fill="#10b981"
-                      radius={[4, 4, 0, 0]}
-                      barSize={20}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </GlowCard>
-
-          <GlowCard className="bg-white">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Positive Yield by Caseworker
-                </CardTitle>
-                <p className="text-[10px] font-bold text-slate-400 tracking-wider">
-                  Top 10 performing staff by raw count
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportCaseworker}
-                disabled={caseworkerData.length === 0}
-                className="h-8 px-3 text-xs font-bold border-slate-200 ml-auto"
-              >
-                <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV
-              </Button>
-            </CardHeader>
-            <CardContent className="h-[250px] p-0 pb-4">
-              {caseworkerData.length === 0 ? (
-                <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold text-slate-400">
-                  No caseworker yield data found for the current filters.
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={caseworkerData}
-                    layout="vertical"
-                    margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      horizontal={false}
-                      stroke="#f1f5f9"
-                    />
-                    <XAxis type="number" hide />
-                    <YAxis
-                      dataKey="name"
-                      type="category"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fontWeight: 700, fill: "#475569" }}
-                      width={80}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "#f8fafc" }}
-                      contentStyle={{
-                        borderRadius: "12px",
-                        border: "none",
-                        boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                      }}
-                    />
-                    <Bar
-                      dataKey="positive"
-                      name="Positives Found"
-                      fill="#6366f1"
-                      radius={[0, 4, 4, 0]}
-                      barSize={15}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </GlowCard>
-        </div>
 
         <TabsContent value="register" className="space-y-6">
           <div className="rounded-3xl border border-slate-200 bg-white/70 backdrop-blur-xl shadow-sm p-4 md:p-6">
