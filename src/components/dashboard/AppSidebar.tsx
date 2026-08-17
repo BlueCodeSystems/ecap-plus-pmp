@@ -94,7 +94,7 @@ const sections = [
   {
     label: "Data pipeline",
     items: [
-      { title: "Data Pipeline", url: "/weekly-extracts", icon: DatabaseZap },
+      { title: "Data Pipeline", url: "/data-pipeline", icon: DatabaseZap },
     ],
   },
   {
