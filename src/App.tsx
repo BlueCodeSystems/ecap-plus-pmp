@@ -88,14 +88,13 @@ const AddUser = lazyWithRetry(() => import("./pages/AddUser"));
 const EditUser = lazyWithRetry(() => import("./pages/EditUser"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const FlaggedRecordForm = lazyWithRetry(
   () => import("./pages/FlaggedRecordForm"),
 );
-const DataPipelinePage = lazyWithRetry(
-  () => import("./pages/DataPipelinePage"),
-);
+const WeeklyExtracts = lazyWithRetry(() => import("./pages/WeeklyExtracts"));
 const SupportCenter = lazyWithRetry(() => import("./pages/SupportCenter"));
 const Calendar = lazyWithRetry(() => import("./pages/Calendar"));
 const Documentation = lazyWithRetry(() => import("./pages/Documentation"));
@@ -237,6 +236,7 @@ const App = () => (
                       element={<ForgotPassword />}
                     />
                     <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/accept-invite" element={<AcceptInvite />} />
                     <Route
                       path="/change-password"
                       element={
@@ -511,10 +511,10 @@ const App = () => (
                       }
                     />
                     <Route
-                      path="/data-pipeline"
+                      path="/weekly-extracts"
                       element={
                         <ProtectedRoute>
-                          <DataPipelinePage />
+                          <WeeklyExtracts />
                         </ProtectedRoute>
                       }
                     />
