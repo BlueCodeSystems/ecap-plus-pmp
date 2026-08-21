@@ -19,6 +19,7 @@ import {
   Gauge,
   Sparkles,
   ChevronRight,
+  Share2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -82,6 +83,7 @@ const sections = [
         url: "/caregiver-services",
         icon: HeartPulse,
       },
+      { title: "Referrals", url: "/referrals", icon: Share2 },
       { title: "Performance", url: "/performance", icon: Gauge },
       {
         title: "Caseworker Journeys",
