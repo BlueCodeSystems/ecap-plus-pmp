@@ -60,7 +60,7 @@ const QUICK_ACTIONS = [
     icon: Workflow,
     label: "Data pipeline",
     desc: "Pipeline runs, downloads, and tablet sync status.",
-    to: "/weekly-extracts",
+    to: "/data-pipeline",
     iconBg: "from-amber-100 to-orange-100 text-amber-700",
     glow: "from-amber-200/70 via-orange-200/40",
   },
