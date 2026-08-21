@@ -448,6 +448,54 @@ export const getCaregiverServicesByHousehold = async (hhId: string) => {
   return getListValue(data);
 };
 
+export const getCaregiverReferralsByDistrict = async (district?: string) => {
+  try {
+    const districtId = district;
+    if (!districtId || district === "All Districts") {
+      return getListValue(
+        await dqaGet(`/household/district/caregiver-referrals`),
+      );
+    }
+    return getListValue(
+      await dqaGet(
+        `/household/district/caregiver-referrals/${encodeURIComponent(districtId)}`,
+      ),
+    );
+  } catch (e) {
+    // If dedicated endpoint fails, fallback to filtering services on client
+    const services = await getCaregiverServicesByDistrict(district);
+    return services.filter((r) => {
+      const service = String(
+        r.service || r.form_name || r.type || "",
+      ).toLowerCase();
+      return service.includes("referral");
+    });
+  }
+};
+
+export const getVcaReferralsByDistrict = async (district?: string) => {
+  try {
+    const districtId = district;
+    if (!districtId || district === "All Districts") {
+      return getListValue(await dqaGet(`/child/district/vcareferrals`));
+    }
+    return getListValue(
+      await dqaGet(
+        `/child/district/vcareferrals/${encodeURIComponent(districtId)}`,
+      ),
+    );
+  } catch (e) {
+    // If dedicated endpoint fails, fallback to filtering services on client
+    const services = await getVcaServicesByDistrict(district);
+    return services.filter((r) => {
+      const service = String(
+        r.service || r.form_name || r.type || "",
+      ).toLowerCase();
+      return service.includes("referral");
+    });
+  }
+};
+
 export const getVcaServicesByDistrict = async (district: string) => {
   const normalizedDistrict = district || "ALL";
   return getListFromApiWithCache(
