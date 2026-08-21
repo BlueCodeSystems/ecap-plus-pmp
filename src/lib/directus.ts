@@ -285,6 +285,28 @@ export const requestPasswordReset = async (email: string, resetUrl: string) => {
   return true;
 };
 
+const publicBackendRequest = async (
+  path: string,
+  options: RequestInit = {},
+) => {
+  const baseUrl = requireDirectusUrl().replace(/\/$/, "");
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers ?? {}),
+    },
+  });
+};
+
+export const acceptUserInvite = async (token: string, password: string) => {
+  await publicBackendRequest("/directus/users/invite/accept", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+};
+
 export const updateUser = async (
   id: string,
   payload: Partial<{

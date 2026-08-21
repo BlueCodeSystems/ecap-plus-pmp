@@ -38,7 +38,6 @@ const CaregiverServices = lazyWithRetry(
 );
 const HTSRegister = lazyWithRetry(() => import("./pages/HTSRegister"));
 const PMTCTRegister = lazyWithRetry(() => import("./pages/PMTCTRegister"));
-const Referrals = lazyWithRetry(() => import("./pages/Referrals"));
 const MotherIndexRegister = lazyWithRetry(
   () => import("./pages/MotherIndexRegister"),
 );
@@ -89,6 +88,7 @@ const AddUser = lazyWithRetry(() => import("./pages/AddUser"));
 const EditUser = lazyWithRetry(() => import("./pages/EditUser"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const FlaggedRecordForm = lazyWithRetry(
@@ -236,6 +236,7 @@ const App = () => (
                       element={<ForgotPassword />}
                     />
                     <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/accept-invite" element={<AcceptInvite />} />
                     <Route
                       path="/change-password"
                       element={
@@ -562,14 +563,6 @@ const App = () => (
                       element={
                         <ProtectedRoute>
                           <Performance />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/referrals"
-                      element={
-                        <ProtectedRoute>
-                          <Referrals />
                         </ProtectedRoute>
                       }
                     />

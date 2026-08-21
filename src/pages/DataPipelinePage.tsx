@@ -604,7 +604,7 @@ const DataPipelinePage = () => {
             </div>
             <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
               <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-700 bg-clip-text text-transparent">
-                Data pipeline
+                Data Pipeline
               </span>
               <Badge
                 variant="outline"
