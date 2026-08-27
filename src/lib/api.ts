@@ -507,6 +507,15 @@ export const getCaregiverCasePlansByHousehold = async (hhId: string) => {
   return getListValue(data);
 };
 
+export const getCaregiverCasePlanDomainsByHousehold = async (hhId: string) => {
+  // ec_caregiver_case_plan_domain — detailed vulnerabilities linked to a
+  // caregiver's case plans (ec_caregiver_case_plan). Keyed by household_id.
+  const data = await dqaGet(
+    `/household/caregiver-caseplan-domains/${encodeURIComponent(hhId)}`,
+  );
+  return getListValue(data);
+};
+
 export const getHouseholdReferralsById = async (household_id: string) => {
   const data = await dqaGet(
     `/household/caregiver-referrals/${encodeURIComponent(household_id)}`,
@@ -533,7 +542,16 @@ export const getVcaCasePlansById = async (vcaId: string) => {
   );
   return getListValue(data);
 };
-// ... existing code ...
+
+export const getVcaCasePlanDomainsById = async (vcaId: string) => {
+  // ec_vca_case_plan_domain — the detailed vulnerabilities/domains linked
+  // to a VCA's case plans (ec_vca_case_plan). Keyed by the VCA's own
+  // unique_id, unlike ec_caregiver_case_plan_domain (household-level).
+  const data = await dqaGet(
+    `/child/vca-caseplan-domains/${encodeURIComponent(vcaId)}`,
+  );
+  return getListValue(data);
+};
 
 export const getFlaggedRecords = async () => {
   const token = getStoredToken();
