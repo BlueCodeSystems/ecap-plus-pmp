@@ -30,7 +30,10 @@ const VcaServices = lazyWithRetry(() => import("./pages/VcaServices"));
 const CaregiverServices = lazyWithRetry(() => import("./pages/CaregiverServices"));
 const HTSRegister = lazyWithRetry(() => import("./pages/HTSRegister"));
 const PMTCTRegister = lazyWithRetry(() => import("./pages/PMTCTRegister"));
-const MotherIndexRegister = lazyWithRetry(() => import("./pages/MotherIndexRegister"));
+const Referrals = lazyWithRetry(() => import("./pages/Referrals"));
+const MotherIndexRegister = lazyWithRetry(
+  () => import("./pages/MotherIndexRegister"),
+);
 const Users = lazyWithRetry(() => import("./pages/Users"));
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
 const HouseholdProfile = lazyWithRetry(() => import("./pages/HouseholdProfile"));
@@ -274,206 +277,206 @@ const App = () => (
                       }
                     />
 
-                    <Route
-                      path="/vca-services"
-                      element={
-                        <ProtectedRoute>
-                          <VcaServices />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/registers/vca-risk"
-                      element={
-                        <ProtectedRoute>
-                          <VcaRiskRegister />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/household-services"
-                      element={
-                        <ProtectedRoute>
-                          <HouseholdServices />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/registers/household-risk"
-                      element={
-                        <ProtectedRoute>
-                          <HouseholdRiskRegister />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/caregiver-services"
-                      element={
-                        <ProtectedRoute>
-                          <CaregiverServices />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/registers/caregiver-risk"
-                      element={
-                        <ProtectedRoute>
-                          <CaregiverRiskRegister />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/caseworker-details"
-                      element={
-                        <ProtectedRoute>
-                          <CaseworkerProfile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/services/household-services"
-                      element={
-                        <ProtectedRoute>
-                          <HouseholdServicesPage />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/flags"
-                      element={
-                        <ProtectedRoute>
-                          <Flags />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/households/archived"
-                      element={
-                        <ProtectedRoute>
-                          <HouseholdArchivedRegister />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/vcas/archived"
-                      element={
-                        <ProtectedRoute>
-                          <VcaArchivedRegister />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/charts"
-                      element={
-                        <ProtectedRoute>
-                          <Charts />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/users"
-                      element={
-                        <ProtectedRoute>
-                          <Users />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/users/new"
-                      element={
-                        <ProtectedRoute>
-                          <AddUser />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/users/:id/edit"
-                      element={
-                        <ProtectedRoute>
-                          <EditUser />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile"
-                      element={
-                        <ProtectedRoute>
-                          <Profile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/household-details"
-                      element={
-                        <ProtectedRoute>
-                          <HouseholdProfile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/vca-details"
-                      element={
-                        <ProtectedRoute>
-                          <VcaProfile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/hts-details"
-                      element={
-                        <ProtectedRoute>
-                          <HTSProfile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/pmtct-details"
-                      element={
-                        <ProtectedRoute>
-                          <PMTCTProfile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/mother-index-details"
-                      element={
-                        <ProtectedRoute>
-                          <MotherIndexDetails />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/vca-service-details"
-                      element={
-                        <ProtectedRoute>
-                          <VcaServiceProfile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/household-service-details"
-                      element={
-                        <ProtectedRoute>
-                          <HouseholdServiceProfile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/profile/caregiver-service-details"
-                      element={
-                        <ProtectedRoute>
-                          <CaregiverServiceProfile />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/flagged-record-form"
-                      element={
-                        <ProtectedRoute>
-                          <FlaggedRecordForm />
-                        </ProtectedRoute>
-                      }
-                    />
+                <Route
+                  path="/vca-services"
+                  element={
+                    <ProtectedRoute>
+                      <VcaServices />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/registers/vca-risk"
+                  element={
+                    <ProtectedRoute>
+                      <VcaRiskRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/household-services"
+                  element={
+                    <ProtectedRoute>
+                      <HouseholdServices />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/registers/household-risk"
+                  element={
+                    <ProtectedRoute>
+                      <HouseholdRiskRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/caregiver-services"
+                  element={
+                    <ProtectedRoute>
+                      <CaregiverServices />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/registers/caregiver-risk"
+                  element={
+                    <ProtectedRoute>
+                      <CaregiverRiskRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/caseworker-details"
+                  element={
+                    <ProtectedRoute>
+                      <CaseworkerProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/services/household-services"
+                  element={
+                    <ProtectedRoute>
+                      <HouseholdServicesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/flags"
+                  element={
+                    <ProtectedRoute>
+                      <Flags />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/households/archived"
+                  element={
+                    <ProtectedRoute>
+                      <HouseholdArchivedRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/vcas/archived"
+                  element={
+                    <ProtectedRoute>
+                      <VcaArchivedRegister />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/charts"
+                  element={
+                    <ProtectedRoute>
+                      <Charts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/users"
+                  element={
+                    <ProtectedRoute>
+                      <Users />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/users/new"
+                  element={
+                    <ProtectedRoute>
+                      <AddUser />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/users/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      <EditUser />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/household-details"
+                  element={
+                    <ProtectedRoute>
+                      <HouseholdProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/vca-details"
+                  element={
+                    <ProtectedRoute>
+                      <VcaProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/hts-details"
+                  element={
+                    <ProtectedRoute>
+                      <HTSProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/pmtct-details"
+                  element={
+                    <ProtectedRoute>
+                      <PMTCTProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/mother-index-details"
+                  element={
+                    <ProtectedRoute>
+                      <MotherIndexDetails />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/vca-service-details"
+                  element={
+                    <ProtectedRoute>
+                      <VcaServiceProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/household-service-details"
+                  element={
+                    <ProtectedRoute>
+                      <HouseholdServiceProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/caregiver-service-details"
+                  element={
+                    <ProtectedRoute>
+                      <CaregiverServiceProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/flagged-record-form"
+                  element={
+                    <ProtectedRoute>
+                      <FlaggedRecordForm />
+                    </ProtectedRoute>
+                  }
+                />
                     <Route
                       path="/data-pipeline"
                       element={
@@ -482,56 +485,64 @@ const App = () => (
                         </ProtectedRoute>
                       }
                     />
+                <Route
+                  path="/support"
+                  element={
+                    <ProtectedRoute>
+                      <SupportCenter />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/calendar"
+                  element={
+                    <ProtectedRoute>
+                      <Calendar />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/documentation"
+                  element={
+                    <ProtectedRoute>
+                      <Documentation />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/documentation/:slug"
+                  element={
+                    <ProtectedRoute>
+                      <DocumentationArticle />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/caseworker-journeys"
+                  element={
+                    <ProtectedRoute>
+                      <CaseworkerJourneys />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/performance"
+                  element={
+                    <ProtectedRoute>
+                      <Performance />
+                    </ProtectedRoute>
+                  }
+                />
                     <Route
-                      path="/support"
+                      path="/referrals"
                       element={
                         <ProtectedRoute>
-                          <SupportCenter />
+                          <Referrals />
                         </ProtectedRoute>
                       }
                     />
-                    <Route
-                      path="/calendar"
-                      element={
-                        <ProtectedRoute>
-                          <Calendar />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/documentation"
-                      element={
-                        <ProtectedRoute>
-                          <Documentation />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/documentation/:slug"
-                      element={
-                        <ProtectedRoute>
-                          <DocumentationArticle />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/caseworker-journeys"
-                      element={
-                        <ProtectedRoute>
-                          <CaseworkerJourneys />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/performance"
-                      element={
-                        <ProtectedRoute>
-                          <Performance />
-                        </ProtectedRoute>
-                      }
-                    />
-                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                    <Route path="*" element={<NotFound />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
               </ChunkErrorBoundary>
