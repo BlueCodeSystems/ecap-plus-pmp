@@ -22,67 +22,38 @@ import Dashboard from "./pages/Dashboard";
 // Previously these were all eager (~1.5MB initial bundle). Lazy-loading them
 // shrinks the initial download; each becomes its own chunk fetched on first
 // navigation (a few KB gzipped — effectively instant).
-const HouseholdRegister = lazyWithRetry(
-  () => import("./pages/HouseholdRegister"),
-);
+const HouseholdRegister = lazyWithRetry(() => import("./pages/HouseholdRegister"));
 const VcaRegister = lazyWithRetry(() => import("./pages/VcaRegister"));
-const HouseholdServices = lazyWithRetry(
-  () => import("./pages/HouseholdServices"),
-);
-const HouseholdServicesPage = lazyWithRetry(
-  () => import("./pages/HouseholdServicesPage"),
-);
+const HouseholdServices = lazyWithRetry(() => import("./pages/HouseholdServices"));
+const HouseholdServicesPage = lazyWithRetry(() => import("./pages/HouseholdServicesPage"));
 const VcaServices = lazyWithRetry(() => import("./pages/VcaServices"));
-const CaregiverServices = lazyWithRetry(
-  () => import("./pages/CaregiverServices"),
-);
+const CaregiverServices = lazyWithRetry(() => import("./pages/CaregiverServices"));
 const HTSRegister = lazyWithRetry(() => import("./pages/HTSRegister"));
 const PMTCTRegister = lazyWithRetry(() => import("./pages/PMTCTRegister"));
-const MotherIndexRegister = lazyWithRetry(
-  () => import("./pages/MotherIndexRegister"),
-);
+const MotherIndexRegister = lazyWithRetry(() => import("./pages/MotherIndexRegister"));
 const Users = lazyWithRetry(() => import("./pages/Users"));
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
-const HouseholdProfile = lazyWithRetry(
-  () => import("./pages/HouseholdProfile"),
-);
+const HouseholdProfile = lazyWithRetry(() => import("./pages/HouseholdProfile"));
 const VcaProfile = lazyWithRetry(() => import("./pages/VcaProfile"));
 const HTSProfile = lazyWithRetry(() => import("./pages/HTSProfile"));
 const PMTCTProfile = lazyWithRetry(() => import("./pages/PMTCTProfile"));
-const MotherIndexDetails = lazyWithRetry(
-  () => import("./pages/MotherIndexDetails"),
-);
-const VcaServiceProfile = lazyWithRetry(
-  () => import("./pages/VcaServiceProfile"),
-);
-const HouseholdServiceProfile = lazyWithRetry(
-  () => import("./pages/HouseholdServiceProfile"),
-);
-const CaregiverServiceProfile = lazyWithRetry(
-  () => import("./pages/CaregiverServiceProfile"),
-);
-const CaregiverRiskRegister = lazyWithRetry(
-  () => import("./pages/CaregiverRiskRegister"),
-);
+const MotherIndexDetails = lazyWithRetry(() => import("./pages/MotherIndexDetails"));
+const VcaServiceProfile = lazyWithRetry(() => import("./pages/VcaServiceProfile"));
+const HouseholdServiceProfile = lazyWithRetry(() => import("./pages/HouseholdServiceProfile"));
+const CaregiverServiceProfile = lazyWithRetry(() => import("./pages/CaregiverServiceProfile"));
+const CaregiverRiskRegister = lazyWithRetry(() => import("./pages/CaregiverRiskRegister"));
 const VcaRiskRegister = lazyWithRetry(() => import("./pages/VcaRiskRegister"));
-const HouseholdRiskRegister = lazyWithRetry(
-  () => import("./pages/HouseholdRiskRegister"),
-);
+const HouseholdRiskRegister = lazyWithRetry(() => import("./pages/HouseholdRiskRegister"));
 const HTSRiskRegister = lazyWithRetry(() => import("./pages/HTSRiskRegister"));
-const CaseworkerProfile = lazyWithRetry(
-  () => import("./pages/CaseworkerProfile"),
-);
+const CaseworkerProfile = lazyWithRetry(() => import("./pages/CaseworkerProfile"));
 const Performance = lazyWithRetry(() => import("./pages/Performance"));
+
 
 // --- SECONDARY / HEAVY PAGES (Lazy Loaded to keep initial bundle size optimized) ---
 const Districts = lazyWithRetry(() => import("./pages/Districts"));
 const Flags = lazyWithRetry(() => import("./pages/Flags"));
-const HouseholdArchivedRegister = lazyWithRetry(
-  () => import("./pages/HouseholdArchivedRegister"),
-);
-const VcaArchivedRegister = lazyWithRetry(
-  () => import("./pages/VcaArchivedRegister"),
-);
+const HouseholdArchivedRegister = lazyWithRetry(() => import("./pages/HouseholdArchivedRegister"));
+const VcaArchivedRegister = lazyWithRetry(() => import("./pages/VcaArchivedRegister"));
 const Charts = lazyWithRetry(() => import("./pages/Charts"));
 const AddUser = lazyWithRetry(() => import("./pages/AddUser"));
 const EditUser = lazyWithRetry(() => import("./pages/EditUser"));
@@ -94,16 +65,14 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const FlaggedRecordForm = lazyWithRetry(
   () => import("./pages/FlaggedRecordForm"),
 );
-const WeeklyExtracts = lazyWithRetry(() => import("./pages/WeeklyExtracts"));
+const DataPipelinePage = lazyWithRetry(
+  () => import("./pages/DataPipelinePage"),
+);
 const SupportCenter = lazyWithRetry(() => import("./pages/SupportCenter"));
 const Calendar = lazyWithRetry(() => import("./pages/Calendar"));
 const Documentation = lazyWithRetry(() => import("./pages/Documentation"));
-const DocumentationArticle = lazyWithRetry(
-  () => import("./pages/DocumentationArticle"),
-);
-const CaseworkerJourneys = lazyWithRetry(
-  () => import("./pages/CaseworkerJourneys"),
-);
+const DocumentationArticle = lazyWithRetry(() => import("./pages/DocumentationArticle"));
+const CaseworkerJourneys = lazyWithRetry(() => import("./pages/CaseworkerJourneys"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -165,10 +134,7 @@ const PageLoader = () => null;
 // reload, the error reaches here and we show an explicit message instead of a
 // blank screen. We do NOT auto-reload here — that would defeat the guard and
 // loop forever.
-class ChunkErrorBoundary extends Component<
-  { children: React.ReactNode },
-  { hasError: boolean }
-> {
+class ChunkErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
 
   static getDerivedStateFromError(error: unknown) {
@@ -184,9 +150,7 @@ class ChunkErrorBoundary extends Component<
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
           <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-            <h1 className="text-lg font-bold text-slate-900">
-              Reload required
-            </h1>
+            <h1 className="text-lg font-bold text-slate-900">Reload required</h1>
             <p className="mt-2 text-sm text-slate-600">
               A new version of the app is available. Please reload to continue.
             </p>
@@ -511,10 +475,10 @@ const App = () => (
                       }
                     />
                     <Route
-                      path="/weekly-extracts"
+                      path="/data-pipeline"
                       element={
                         <ProtectedRoute>
-                          <WeeklyExtracts />
+                          <DataPipelinePage />
                         </ProtectedRoute>
                       }
                     />
