@@ -448,6 +448,54 @@ export const getCaregiverServicesByHousehold = async (hhId: string) => {
   return getListValue(data);
 };
 
+export const getCaregiverReferralsByDistrict = async (district?: string) => {
+  try {
+    const districtId = district;
+    if (!districtId || district === "All Districts") {
+      return getListValue(
+        await dqaGet(`/household/district/caregiver-referrals`),
+      );
+    }
+    return getListValue(
+      await dqaGet(
+        `/household/district/caregiver-referrals/${encodeURIComponent(districtId)}`,
+      ),
+    );
+  } catch (e) {
+    // If dedicated endpoint fails, fallback to filtering services on client
+    const services = await getCaregiverServicesByDistrict(district);
+    return services.filter((r) => {
+      const service = String(
+        r.service || r.form_name || r.type || "",
+      ).toLowerCase();
+      return service.includes("referral");
+    });
+  }
+};
+
+export const getVcaReferralsByDistrict = async (district?: string) => {
+  try {
+    const districtId = district;
+    if (!districtId || district === "All Districts") {
+      return getListValue(await dqaGet(`/child/district/vcareferrals`));
+    }
+    return getListValue(
+      await dqaGet(
+        `/child/district/vcareferrals/${encodeURIComponent(districtId)}`,
+      ),
+    );
+  } catch (e) {
+    // If dedicated endpoint fails, fallback to filtering services on client
+    const services = await getVcaServicesByDistrict(district);
+    return services.filter((r) => {
+      const service = String(
+        r.service || r.form_name || r.type || "",
+      ).toLowerCase();
+      return service.includes("referral");
+    });
+  }
+};
+
 export const getVcaServicesByDistrict = async (district: string) => {
   const normalizedDistrict = district || "ALL";
   return getListFromApiWithCache(
@@ -507,6 +555,15 @@ export const getCaregiverCasePlansByHousehold = async (hhId: string) => {
   return getListValue(data);
 };
 
+export const getCaregiverCasePlanDomainsByHousehold = async (hhId: string) => {
+  // ec_caregiver_case_plan_domain — detailed vulnerabilities linked to a
+  // caregiver's case plans (ec_caregiver_case_plan). Keyed by household_id.
+  const data = await dqaGet(
+    `/household/caregiver-caseplan-domains/${encodeURIComponent(hhId)}`,
+  );
+  return getListValue(data);
+};
+
 export const getHouseholdReferralsById = async (household_id: string) => {
   const data = await dqaGet(
     `/household/caregiver-referrals/${encodeURIComponent(household_id)}`,
@@ -533,7 +590,16 @@ export const getVcaCasePlansById = async (vcaId: string) => {
   );
   return getListValue(data);
 };
-// ... existing code ...
+
+export const getVcaCasePlanDomainsById = async (vcaId: string) => {
+  // ec_vca_case_plan_domain — the detailed vulnerabilities/domains linked
+  // to a VCA's case plans (ec_vca_case_plan). Keyed by the VCA's own
+  // unique_id, unlike ec_caregiver_case_plan_domain (household-level).
+  const data = await dqaGet(
+    `/child/vca-caseplan-domains/${encodeURIComponent(vcaId)}`,
+  );
+  return getListValue(data);
+};
 
 export const getFlaggedRecords = async () => {
   const token = getStoredToken();

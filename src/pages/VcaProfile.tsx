@@ -7,12 +7,13 @@ import {
   getVcaServicesByDistrict,
   getVcaReferralsById,
   getVcaCasePlansById,
+  getVcaCasePlanDomainsById,
   getFlaggedRecords,
   getVcaServicesByChildId,
   createFlaggedRecord,
-  updateFlagStatus
+  updateFlagStatus,
 } from "@/lib/api";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { Fragment, useMemo, useState } from "react";
 import moment from "moment";
 import { useAuth } from "@/context/AuthContext";
 import { useForm } from "react-hook-form";
@@ -31,6 +32,7 @@ import {
   MapPin,
   Calendar,
   ClipboardCheck,
+  ClipboardList,
   Baby,
   HeartPulse,
   FileText,
@@ -40,18 +42,23 @@ import {
   Flag,
   AlertTriangle,
   CheckCircle2,
-
   AlertCircle,
-  PlusCircle,
   Sparkles,
-  Archive
+  Archive,
 } from "lucide-react";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn, toTitleCase } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmptyState from "@/components/EmptyState";
 import {
   Form,
@@ -73,19 +80,19 @@ import { Textarea } from "@/components/ui/textarea";
 // PBFW removed; the three derived PBFW sub-populations are computed per-VCA
 // at render time (see below). Other generic subpop labels remain.
 const subPopulationFilterLabels: Record<string, string> = {
-  calhiv: 'C/ALHIV',
-  hei: 'HEI',
-  cwlhiv: 'C/WLHIV',
-  agyw: 'AGYW',
-  csv: 'C/SV',
-  cfsw: 'CFSW',
-  abym: 'ABYM',
-  caahh: 'CAAHH',
-  caichh: 'CAICHH',
-  caich: 'CAICH',
-  calwd: 'CALWD',
-  caifhh: 'CAIFHH',
-  muc: 'MUC',
+  calhiv: "C/ALHIV",
+  hei: "HEI",
+  cwlhiv: "C/WLHIV",
+  agyw: "AGYW",
+  csv: "C/SV",
+  cfsw: "CFSW",
+  abym: "ABYM",
+  caahh: "CAAHH",
+  caichh: "CAICHH",
+  caich: "CAICH",
+  calwd: "CALWD",
+  caifhh: "CAIFHH",
+  muc: "MUC",
 };
 
 const calculateAge = (birthdate: any): number => {
@@ -94,18 +101,30 @@ const calculateAge = (birthdate: any): number => {
   const formats = [
     /^(\d{1,2})-(\d{1,2})-(\d{4})$/,
     /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
   ];
   let parsedDate: Date | null = null;
   for (const format of formats) {
     const parts = dateStr.match(format);
     if (parts) {
       if (format === formats[0]) {
-        parsedDate = new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1]));
+        parsedDate = new Date(
+          parseInt(parts[3]),
+          parseInt(parts[2]) - 1,
+          parseInt(parts[1]),
+        );
       } else if (format === formats[1]) {
-        parsedDate = new Date(parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
+        parsedDate = new Date(
+          parseInt(parts[1]),
+          parseInt(parts[2]) - 1,
+          parseInt(parts[3]),
+        );
       } else {
-        parsedDate = new Date(parseInt(parts[3]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        parsedDate = new Date(
+          parseInt(parts[3]),
+          parseInt(parts[1]) - 1,
+          parseInt(parts[2]),
+        );
       }
       break;
     }
@@ -123,7 +142,18 @@ const calculateAge = (birthdate: any): number => {
 
 const parseMomentDate = (value: any) => {
   if (!value || value === "N/A") return null;
-  const parsed = moment(String(value), [moment.ISO_8601, "YYYY-MM-DD", "DD-MM-YYYY", "DD/MM/YYYY", "MM/DD/YYYY", "YYYY/MM/DD"], true);
+  const parsed = moment(
+    String(value),
+    [
+      moment.ISO_8601,
+      "YYYY-MM-DD",
+      "DD-MM-YYYY",
+      "DD/MM/YYYY",
+      "MM/DD/YYYY",
+      "YYYY/MM/DD",
+    ],
+    true,
+  );
   return parsed.isValid() ? parsed : moment(String(value));
 };
 
@@ -145,10 +175,10 @@ const formatBirthDate = (value: any) => {
 const flagSchema = z.object({
   category: z.string().optional(),
   severity: z.string().optional(),
-  comment: z.string().min(10, { message: "Observation details must be at least 10 characters" }),
+  comment: z
+    .string()
+    .min(10, { message: "Observation details must be at least 10 characters" }),
 });
-
-const SUB_POPULATION_LABELS = subPopulationFilterLabels;
 
 const VcaProfile = () => {
   const navigate = useNavigate();
@@ -159,16 +189,16 @@ const VcaProfile = () => {
   const id = useMemo(() => {
     const stateId = location.state?.id;
     if (stateId) {
-      sessionStorage.setItem('ecap_last_vca_id', stateId);
+      sessionStorage.setItem("ecap_last_vca_id", stateId);
       return stateId;
     }
-    return sessionStorage.getItem('ecap_last_vca_id');
+    return sessionStorage.getItem("ecap_last_vca_id");
   }, [location.state?.id]);
 
   const { user } = useAuth();
   const isDistrictUser = user?.description === "District User";
   // Admins and Provincial Users have global view access at the profile level
-  const district = isDistrictUser ? (user?.location || "None") : "";
+  const district = isDistrictUser ? user?.location || "None" : "";
 
   const { data: vcas, isLoading: isLoadingActive } = useQuery({
     queryKey: ["vcas", "district", district],
@@ -200,6 +230,30 @@ const VcaProfile = () => {
     enabled: Boolean(id),
   });
 
+  // Vulnerabilities/domains for this VCA's case plans (ec_vca_case_plan_domain),
+  // keyed by the VCA's own unique_id. Fetched lazily when "View
+  // Vulnerabilities" is first clicked on a case plan row; the table expands
+  // inline under that row (clicking again collapses it).
+  const [expandedVulnPlanDate, setExpandedVulnPlanDate] = useState<
+    string | null
+  >(null);
+  const { data: vcaVulnerabilities = [], isLoading: isLoadingVulnerabilities } =
+    useQuery({
+      queryKey: ["vca-caseplan-domains", id],
+      queryFn: () => getVcaCasePlanDomainsById(id ?? ""),
+      enabled: Boolean(id) && expandedVulnPlanDate !== null,
+    });
+  const expandedVulnerabilities = useMemo(() => {
+    if (expandedVulnPlanDate === null) return [];
+    const matched = vcaVulnerabilities.filter(
+      (v: any) => String(v.case_plan_date ?? "") === expandedVulnPlanDate,
+    );
+    // A case plan whose date doesn't match any domain row (date drift in the
+    // source data) still gets the VCA's full domain list rather than a
+    // silently empty table.
+    return matched.length > 0 ? matched : vcaVulnerabilities;
+  }, [vcaVulnerabilities, expandedVulnPlanDate]);
+
   const { data: allFlags = [], isLoading: isLoadingFlags } = useQuery({
     queryKey: ["flagged-records"],
     queryFn: getFlaggedRecords,
@@ -209,15 +263,20 @@ const VcaProfile = () => {
     if (!allFlags || !id) return [];
     return allFlags.filter((f: any) => {
       const vId = id.toLowerCase();
-      const matchId = String(f.vca_id || f.child_id || "").toLowerCase() === vId;
+      const matchId =
+        String(f.vca_id || f.child_id || "").toLowerCase() === vId;
       return matchId && f.status !== "resolved";
     });
   }, [allFlags, id]);
 
   const sortedCasePlans = useMemo(() => {
     return [...vcaCasePlans].sort((a: any, b: any) => {
-      const dateA = safeParseDate(a.case_plan_date || a.date_of_caseplan || a.date);
-      const dateB = safeParseDate(b.case_plan_date || b.date_of_caseplan || b.date);
+      const dateA = safeParseDate(
+        a.case_plan_date || a.date_of_caseplan || a.date,
+      );
+      const dateB = safeParseDate(
+        b.case_plan_date || b.date_of_caseplan || b.date,
+      );
       return dateB - dateA;
     });
   }, [vcaCasePlans]);
@@ -231,11 +290,6 @@ const VcaProfile = () => {
     });
   }, [vcaServices]);
 
-  const { data: flaggedRecords } = useQuery({
-    queryKey: ["flagged-records"],
-    queryFn: () => getFlaggedRecords(),
-  });
-
   const vca = useMemo(() => {
     return [...(vcas || []), ...(archivedVcas || [])].find((v: any) => {
       const vId = id?.toLowerCase();
@@ -248,25 +302,17 @@ const VcaProfile = () => {
     });
   }, [vcas, archivedVcas, id]);
 
-  /* Removed old vcaServices useMemo since we now fetch directly
-  const vcaServices = useMemo(() => {
-    if (!allServices || !id) return [];
-    return allServices.filter((s: any) => {
-      //...
-    });
-  }, [allServices, id]);
-  */
-
-
-
   const sortedReferrals = useMemo(() => {
     return [...vcaReferrals].sort((a: any, b: any) => {
-      const dateA = safeParseDate(a.service_date || a.visit_date || a.date || a.referral_date);
-      const dateB = safeParseDate(b.service_date || b.visit_date || b.date || b.referral_date);
+      const dateA = safeParseDate(
+        a.service_date || a.visit_date || a.date || a.referral_date,
+      );
+      const dateB = safeParseDate(
+        b.service_date || b.visit_date || b.date || b.referral_date,
+      );
       return dateB - dateA;
     });
   }, [vcaReferrals]);
-
 
   const form = useForm<z.infer<typeof flagSchema>>({
     resolver: zodResolver(flagSchema),
@@ -280,19 +326,28 @@ const VcaProfile = () => {
   const resolveMutation = useMutation({
     mutationFn: async (flagId: string) => {
       await updateFlagStatus(flagId, "resolved");
-      const resolver = user ? `${user.first_name} ${user.last_name}` : "Unknown Resolver";
+      const resolver = user
+        ? `${user.first_name} ${user.last_name}`
+        : "Unknown Resolver";
       const record = vcaFlags.find((f: any) => f.id === flagId);
       if (record) {
-        await notifyUsersOfFlagResolution(String(record.household_id ?? ""), resolver, "Resolved from VCA profile.", String(record.vca_id ?? ""));
+        await notifyUsersOfFlagResolution(
+          String(record.household_id ?? ""),
+          resolver,
+          "Resolved from VCA profile.",
+          String(record.vca_id ?? ""),
+        );
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flagged-records"] });
-      toast.success("Flag resolved", { description: "Caseworker and admins have been notified." });
+      toast.success("Flag resolved", {
+        description: "Caseworker and admins have been notified.",
+      });
     },
     onError: (err: any) => {
       toast.error("Failed to resolve flag", { description: err.message });
-    }
+    },
   });
 
   const handleResolve = (flagId: string) => {
@@ -303,8 +358,15 @@ const VcaProfile = () => {
     mutationFn: createFlaggedRecord,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flagged-records"] });
-      const verifier = user ? `${user.first_name} ${user.last_name}` : "Unknown Verifier";
-      notifyUsersOfFlag(((vca as any).household_id || "N/A"), verifier, form.getValues("comment") as string, id || "N/A");
+      const verifier = user
+        ? `${user.first_name} ${user.last_name}`
+        : "Unknown Verifier";
+      notifyUsersOfFlag(
+        (vca as any).household_id || "N/A",
+        verifier,
+        form.getValues("comment") as string,
+        id || "N/A",
+      );
 
       toast.success("Flag submitted successfully", {
         description: "The record has been flagged for review.",
@@ -319,7 +381,9 @@ const VcaProfile = () => {
   });
 
   const onFlagSubmit = (values: z.infer<typeof flagSchema>) => {
-    const verifier = user ? `${user.first_name} ${user.last_name}` : "Unknown Verifier";
+    const verifier = user
+      ? `${user.first_name} ${user.last_name}`
+      : "Unknown Verifier";
     const payload = {
       household_id: vca.household_id || "N/A",
       vca_id: id,
@@ -353,384 +417,1029 @@ const VcaProfile = () => {
           icon={<User className="h-7 w-7" />}
           title="Vca not found"
           description="The VCA record you're looking for doesn't exist or has been moved."
-          action={{ label: "Back to Register", onClick: () => navigate("/vcas") }}
+          action={{
+            label: "Back to Register",
+            onClick: () => navigate("/vcas"),
+          }}
           className="h-[50vh]"
         />
       </DashboardLayout>
     );
   }
 
-  const fullName = `${vca.firstname || vca.name || ""} ${vca.lastname || ""}`.trim() || "N/A";
   const age = calculateAge(vca.birthdate);
   const isArchived = Boolean(vca.de_registration_date || vca.reason);
   const gender = String(vca.vca_gender || vca.gender || "").toLowerCase();
-  const isMale = gender === "male" || gender === "m";
 
   // Pick the latest service date dynamically from the sorted services list
-  const lastServiceDate = formatServiceDate(sortedVcaServices[0]?.service_date || vca.last_service_date);
-
-  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const lastServiceDate = formatServiceDate(
+    sortedVcaServices[0]?.service_date || vca.last_service_date,
+  );
 
   return (
     <DashboardLayout subtitle={`Vca: ${id}`}>
-      <div className="space-y-6 pb-20">
-        {/* ── Hero ──────────────────────────────────────────────── */}
+      <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+        {/* ── Hero (aurora frosted-glass) ──────────────────────────── */}
         <div className="relative overflow-hidden rounded-3xl border border-emerald-200/60 bg-white/70 backdrop-blur-xl shadow-[0_30px_80px_-50px_rgba(15,118,110,0.55)]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(16,185,129,0.18),transparent_55%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(139,92,246,0.15),transparent_45%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_90%_30%,rgba(14,165,233,0.15),transparent_45%)]" />
           <div className="pointer-events-none absolute -top-40 -left-32 h-[24rem] w-[24rem] rounded-full bg-emerald-300/40 blur-[110px] animate-pulse [animation-duration:6s]" />
-          <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-violet-300/30 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
+          <div className="pointer-events-none absolute -bottom-32 right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-teal-300/35 blur-[120px] animate-pulse [animation-duration:8s] [animation-delay:-3s]" />
 
-          <div className="relative z-10 flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">VCA profile</span>
-                <span className="text-slate-400 text-[11px]">·</span>
-                <span className="text-[11px] text-slate-600">{dateStr}</span>
-                <Badge variant="outline" className={cn(
-                  "ml-1 gap-1 text-[10px]",
-                  isArchived
-                    ? "border-amber-200 bg-amber-50/80 text-amber-700"
-                    : "border-emerald-200 bg-emerald-50/80 text-emerald-700"
-                )}>
-                  {isArchived ? <Archive className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
-                  {isArchived ? "Deregistered" : "Active"}
-                </Badge>
-                {vca.virally_suppressed === "YES" && (
-                  <Badge variant="outline" className="gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700">
-                    <ShieldCheck className="h-3 w-3" /> Suppressed
+          <div className="relative z-10 flex flex-col gap-6 px-6 py-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center min-w-0">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-cyan-100 text-sky-700 ring-1 ring-white/60 shadow-md">
+                <User className="h-7 w-7" />
+              </div>
+              <div className="min-w-0 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700">
+                    VCA profile
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "gap-1 text-[10px]",
+                      isArchived
+                        ? "border-amber-200 bg-amber-50/80 text-amber-700"
+                        : "border-emerald-200 bg-emerald-50/80 text-emerald-700",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        isArchived
+                          ? "bg-amber-400"
+                          : "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]",
+                      )}
+                    />
+                    {isArchived ? "Deregistered" : "Active"}
                   </Badge>
-                )}
-              </div>
-              <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
-                <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-violet-700 bg-clip-text text-transparent">
-                  VCA – Confidential
-                </span>
-                <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
-                  <Sparkles className="h-3 w-3" /> Caseplans · Referrals · Services
-                </Badge>
-              </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-                <span className="inline-flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-slate-400" />
-                  {String(vca.vca_gender || vca.gender || "N/A")}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                  {age} years
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                  {String(vca.ward || vca.district || "N/A")}
-                </span>
+                  {vca.virally_suppressed === "YES" && (
+                    <Badge
+                      variant="outline"
+                      className="gap-1 border-emerald-200 bg-emerald-50/80 text-[10px] text-emerald-700"
+                    >
+                      <ShieldCheck className="h-3 w-3" /> Suppressed
+                    </Badge>
+                  )}
+                  <Badge
+                    variant="outline"
+                    className="gap-1 border-slate-200 bg-white/70 text-[10px] font-mono text-slate-500"
+                  >
+                    #{id}
+                  </Badge>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                  <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-sky-700 bg-clip-text text-transparent">
+                    VCA Name – Confidential
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm"
+                  >
+                    <Sparkles className="h-3 w-3" /> Caseplans · Referrals ·
+                    Services
+                  </Badge>
+                </h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+                  <div className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-emerald-600" />
+                    {String(vca.vca_gender || vca.gender || "N/A")} · {age}{" "}
+                    years
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                    {String(vca.ward || vca.district || "N/A")}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="group inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 backdrop-blur-md transition-all hover:border-emerald-300 hover:bg-white"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Back
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="group inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 backdrop-blur-md transition-all hover:border-emerald-300 hover:bg-white"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+              Back to register
+            </button>
           </div>
         </div>
 
-        {/* ── Quick stat cards ──────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {(() => {
-            const hhId = vca.household_id || vca.household_code || vca.householdid || vca.hh_id;
-            const cards = [
-              {
-                icon: Link2,
-                label: "Household ID",
-                value: String(hhId || "N/A"),
-                iconBg: "from-emerald-100 to-teal-100 text-emerald-700",
-                glow: "from-emerald-200/70 via-teal-200/40",
-                onClick: hhId ? () => navigate(`/profile/household-details`, { state: { id: String(hhId) } }) : undefined,
-              },
-              {
-                icon: HeartPulse,
-                label: "Facility",
-                value: String(vca.facility || "N/A"),
-                iconBg: "from-rose-100 to-pink-100 text-rose-700",
-                glow: "from-rose-200/70 via-pink-200/40",
-                onClick: undefined as undefined | (() => void),
-              },
-              {
-                icon: ClipboardCheck,
-                label: "Last service date",
-                value: String(lastServiceDate),
-                iconBg: "from-sky-100 to-cyan-100 text-sky-700",
-                glow: "from-sky-200/70 via-cyan-200/40",
-                onClick: undefined as undefined | (() => void),
-              },
-            ];
-            return cards.map((card) => {
-              const Icon = card.icon;
-              const Wrapper = card.onClick ? "button" : "div";
-              return (
-                <Wrapper
-                  key={card.label}
-                  onClick={card.onClick}
-                  className={cn("group relative text-left", card.onClick && "cursor-pointer")}
-                  type={card.onClick ? "button" : undefined}
-                >
-                  <div className={`absolute -inset-[1px] rounded-2xl bg-gradient-to-br ${card.glow} to-transparent opacity-40 blur-md transition-opacity duration-500 group-hover:opacity-100`} />
-                  <div className="relative h-full w-full rounded-2xl border border-slate-200/70 bg-white/75 p-5 backdrop-blur-xl shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-slate-300">
-                    <div className="flex items-center justify-between">
-                      <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${card.iconBg} ring-1 ring-white/60 shadow-sm`}>
-                        <Icon className="h-5 w-5" />
+        <div className="relative rounded-[28px] border border-emerald-100/60 bg-white/85 backdrop-blur-xl p-6 shadow-[0_15px_50px_-30px_rgba(15,118,110,0.45)]">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-[1px] -z-10 rounded-[28px] bg-gradient-to-br from-emerald-200/40 via-teal-200/25 to-transparent opacity-50 blur-md"
+          />
+
+          {/* ── Quick stat cards ──────────────────────────────────── */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {(() => {
+              const hhId =
+                vca.household_id ||
+                vca.household_code ||
+                vca.householdid ||
+                vca.hh_id;
+              const cards = [
+                {
+                  icon: Link2,
+                  label: "Household ID",
+                  value: String(hhId || "N/A"),
+                  iconBg: "from-emerald-100 to-teal-100 text-emerald-700",
+                  glow: "from-emerald-200/70 via-teal-200/40",
+                  onClick: hhId
+                    ? () =>
+                        navigate(`/profile/household-details`, {
+                          state: { id: String(hhId) },
+                        })
+                    : undefined,
+                },
+                {
+                  icon: HeartPulse,
+                  label: "Facility",
+                  value: String(vca.facility || "N/A"),
+                  iconBg: "from-rose-100 to-pink-100 text-rose-700",
+                  glow: "from-rose-200/70 via-pink-200/40",
+                  onClick: undefined as undefined | (() => void),
+                },
+                {
+                  icon: ClipboardCheck,
+                  label: "Last service date",
+                  value: String(lastServiceDate),
+                  iconBg: "from-sky-100 to-cyan-100 text-sky-700",
+                  glow: "from-sky-200/70 via-cyan-200/40",
+                  onClick: undefined as undefined | (() => void),
+                },
+              ];
+              return cards.map((card) => {
+                const Icon = card.icon;
+                const Wrapper = card.onClick ? "button" : "div";
+                return (
+                  <Wrapper
+                    key={card.label}
+                    onClick={card.onClick}
+                    className={cn(
+                      "group relative text-left",
+                      card.onClick && "cursor-pointer",
+                    )}
+                    type={card.onClick ? "button" : undefined}
+                  >
+                    <div
+                      className={cn(
+                        "absolute -inset-[1px] rounded-2xl bg-gradient-to-br to-transparent opacity-40 blur-md transition-opacity duration-500 group-hover:opacity-100",
+                        card.glow,
+                      )}
+                    />
+                    <div className="relative flex h-full items-center gap-4 rounded-2xl border border-slate-200/70 bg-white/75 p-4 backdrop-blur-xl shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)] transition-all duration-300 group-hover:-translate-y-0.5">
+                      <div
+                        className={cn(
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ring-1 ring-white/60 shadow-sm",
+                          card.iconBg,
+                        )}
+                      >
+                        <Icon size={20} />
+                      </div>
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          {card.label}
+                        </p>
+                        <p
+                          className="text-sm font-bold text-slate-900 truncate"
+                          title={card.value}
+                        >
+                          {card.value}
+                        </p>
                       </div>
                     </div>
-                    <div className="mt-3 text-base font-extrabold text-slate-900 truncate" title={card.value}>{card.value}</div>
-                    <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{card.label}</div>
-                  </div>
-                </Wrapper>
-              );
-            });
-          })()}
-        </div>
-
-        {/* ── Tabs ──────────────────────────────────────────────── */}
-        <Tabs defaultValue="overview" className="w-full">
-          <div className="mb-6 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
-            <div className="-mx-1 overflow-x-auto px-1 max-w-full">
-              <TabsList className="inline-flex h-9 items-center gap-1 rounded-xl bg-slate-100/80 p-1 backdrop-blur-sm border border-slate-200/50 whitespace-nowrap">
-                <TabsTrigger value="overview" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                  Summary
-                </TabsTrigger>
-                <TabsTrigger value="history" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                  Caseplans
-                </TabsTrigger>
-                <TabsTrigger value="services" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                  Services
-                </TabsTrigger>
-                <TabsTrigger value="audit" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                  Referrals
-                </TabsTrigger>
-                <TabsTrigger value="flags" className="h-7 px-4 rounded-lg text-xs font-bold uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm">
-                  Flag form
-                </TabsTrigger>
-              </TabsList>
-            </div>
+                  </Wrapper>
+                );
+              });
+            })()}
           </div>
 
-          <TabsContent value="overview">
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <Card className="h-full border-slate-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg font-bold">
-                      <Baby className="h-5 w-5 text-slate-600" /> Profile demographics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-6 sm:grid-cols-2">
-                    {/* Personal info (legal name, address, phone, NRC) intentionally
-                        omitted per data-minimisation policy. Only structural attributes remain. */}
-                    {/* Field keys mirror the ecap_plus `children` table columns —
-                        labels that previously read "N/A" did so because the lookup
-                        keys didn't exist on the API response (e.g. relation_to_head
-                        when the column is `relation`). */}
-                    <InfoItem label="Date of birth" value={formatBirthDate(vca.birthdate)} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Gender" value={String(vca.vca_gender || vca.gender || "N/A")} />
-                    <InfoItem label="Age" value={String(vca.age || `${age} Years`)} />
-                    <InfoItem label="Age Group" value={String(vca.age_group || "N/A")} />
-                    <InfoItem label="School" value={String(vca.school_name || vca.school || "N/A")} />
-                    <InfoItem label="Caregiver Relationship" value={String(vca.relation || "N/A")} />
-                    <InfoItem label="Household ID" value={String(vca.household_id || "N/A")} />
-                    <InfoItem label="Province" value={String(vca.province || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
-                    <InfoItem label="District" value={String(vca.district || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Ward" value={String(vca.ward || "N/A")} icon={<MapPin className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Facility" value={String(vca.facility || "N/A")} icon={<HeartPulse className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Partner" value={String(vca.partner || "N/A")} />
-                    <InfoItem label="Case Status" value={String(vca.case_status || "N/A")} />
-                    <InfoItem label="Member Type" value={String(vca.member_type || "N/A")} />
-                    <InfoItem label="Date Enrolled" value={String(vca.date_enrolled || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Date Referred" value={String(vca.date_referred || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Date Screened" value={String(vca.date_screened || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Last Service Date" value={String(vca.last_service_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Screening Location" value={String(vca.screening_location || "N/A")} />
-                    <InfoItem label="Caseworker Name" value={String(vca.caseworker_name || "N/A")} />
-                    <InfoItem label="Caseworker Phone" value={String(vca.caseworker_phone || "N/A")} />
-                    <InfoItem label="HIV Status" value={String(vca.is_hiv_positive || "N/A")} icon={<HeartPulse className="h-3.5 w-3.5" />} />
-                    <InfoItem label="On HIV Treatment?" value={String(vca.receiving_art || "N/A")} />
-                    <InfoItem label="ART Number" value={String(vca.art_number || "N/A")} />
-                    <InfoItem label="Date HIV Known" value={String(vca.hiv_test_date || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Date Started ART" value={String(vca.date_started_art || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="MMD Level" value={String(vca.level_mmd || vca.child_mmd || "N/A")} />
-                    <InfoItem label="Last VL Date" value={String(vca.date_last_vl || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Next VL Date" value={String(vca.date_next_vl || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="VL Last Result" value={String(vca.vl_last_result || "N/A")} />
-                    <InfoItem label="VL Next Result" value={String(vca.vl_next_result || "N/A")} />
-                    <InfoItem label="Virally Suppressed?" value={String(vca.vl_suppressed || vca.virally_suppressed || "N/A")} />
-                    <InfoItem label="Child Tested for HIV?" value={String(vca.child_been_tested_for_hiv || "N/A")} />
-                    <InfoItem label="Tested Last Year?" value={String(vca.been_tested_last_year || "N/A")} />
-                    <InfoItem label="Received Results (Last HIV Test)?" value={String(vca.received_results_last_hiv_test || "N/A")} />
-                    <InfoItem label="TB Screening" value={String(vca.tb_screening || "N/A")} />
-                    <InfoItem label="Takes TB Preventive Therapy?" value={String(vca.takes_tb_preventive_therapy || "N/A")} />
-                    <InfoItem label="Takes Drugs to Prevent Other Diseases?" value={String(vca.takes_drugs_to_prevent_other_diseases || "N/A")} />
-                    <InfoItem label="Received Birth Certificate?" value={String(vca.received_birth_certificate || "N/A")} />
-                    <InfoItem label="Pregnant / Breastfeeding?" value={String(vca.is_pregnant_breastfeeding || "N/A")} />
-                    <InfoItem label="Under-5 Malnourished?" value={String(vca.under_5_malnourished || "N/A")} />
-                    <InfoItem label="Is Biological Child?" value={String(vca.is_biological_child || vca.is_biological || "N/A")} />
-                    <InfoItem label="Is Index Case?" value={String(vca.is_index || "N/A")} />
-                    <InfoItem label="Caregiver an FSW?" value={String(vca.is_the_child_caregiver_an_fsw || vca.cfsw || "N/A")} />
-                    <InfoItem label="Mother Currently on Treatment?" value={String(vca.is_mother_currently_on_treatment_wlhiv || "N/A")} />
-                    <InfoItem label="Mother Adhering to Treatment?" value={String(vca.is_mother_adhering_to_treatment_wlhiv || "N/A")} />
-                    <InfoItem label="Mother Virally Suppressed?" value={String(vca.is_mother_virally_suppressed_wlhiv || "N/A")} />
-                    <InfoItem label="Mother ART Number (WLHIV)" value={String(vca.mother_art_number_wlhiv || "N/A")} />
-                    <InfoItem label="Child Experienced Sexual Violence?" value={String(vca.child_ever_experienced_sexual_violence || "N/A")} />
-                    <InfoItem label="Survivor of Other Form of Violence?" value={String(vca.survivors_of_other_form_of_violence || "N/A")} />
-                    <InfoItem label="Living with Disability?" value={String(vca.child_adolescent_living_with_disability || "N/A")} />
-                    <InfoItem label="Aged-Headed Household?" value={String(vca.child_adolescent_in_aged_headed_household || "N/A")} />
-                    <InfoItem label="Child-Headed Household?" value={String(vca.child_adolescent_in_child_headed_household || "N/A")} />
-                    <InfoItem label="Chronically-Ill-Headed Household?" value={String(vca.child_adolescent_in_chronically_ill_headed_household || "N/A")} />
-                    <InfoItem label="Female-Headed Household?" value={String(vca.child_adolescent_in_female_headed_household || "N/A")} />
-                    <InfoItem label="Service" value={String(vca.service || "N/A")} />
-                    <InfoItem label="Quarter" value={String(vca.quarter || "N/A")} />
-                    <InfoItem label="Updated Status" value={String(vca.updated_status || "N/A")} />
-                    <InfoItem label="Date Edited" value={String(vca.date_edited || vca.dateedited || "N/A")} icon={<Calendar className="h-3.5 w-3.5" />} />
-                    <InfoItem label="Time on ART" value={String(vca.time_art || "N/A")} />
-                    <InfoItem label="Time since Last VL" value={String(vca.time_vl || "N/A")} />
-                    <InfoItem label="Time since Last Result" value={String(vca.time_result || "N/A")} />
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="space-y-6">
-                <Card className="border-slate-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                      <ClipboardCheck className="h-5 w-5 text-slate-600" /> Sub populations
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-wrap gap-2">
-                    {(() => {
-                      const isTrue = (v: any) => v === "1" || v === "true" || v === 1 || v === true || String(v).toLowerCase() === "yes";
-                      const pbfwFlag   = isTrue((vca as any).pbfw) || isTrue((vca as any).agyw);
-                      const hivPos     = isTrue((vca as any).is_hiv_positive) || isTrue((vca as any).calhiv);
-                      const motherPbfw = isTrue((vca as any).is_biological_mother_of_child_living_with_hiv)
-                        || isTrue((vca as any).mother_pbfw)
-                        || isTrue((vca as any).caregiver_pbfw);
-
-                      const generic = Object.entries(vca)
-                        .filter(([key, value]) => isTrue(value) && subPopulationFilterLabels[key])
-                        .map(([key]) => subPopulationFilterLabels[key]);
-
-                      const derived: string[] = [];
-                      if (pbfwFlag && hivPos)  derived.push("HIV+ PBFW");
-                      if (pbfwFlag && !hivPos) derived.push("HIV- PBFW");
-                      if (motherPbfw)          derived.push("Children of PBFW");
-
-                      const all = [...generic, ...derived];
-                      if (all.length === 0) {
-                        return (
-                          <div className="w-full flex flex-col items-center justify-center py-6 text-center text-slate-400">
-                            <ClipboardCheck className="h-8 w-8 opacity-10 mb-2" />
-                            <p className="text-xs font-bold tracking-widest">No sub populations</p>
-                          </div>
-                        );
-                      }
-                      return all.map((label) => (
-                        <Badge
-                          key={label}
-                          variant="outline"
-                          className="bg-emerald-50 text-emerald-700 border-emerald-100 px-3 py-1 font-black text-[10px] tracking-wider"
-                        >
-                          {label}
-                        </Badge>
-                      ));
-                    })()}
-                  </CardContent>
-                </Card>
+          {/* ── Tabs ──────────────────────────────────────────────── */}
+          <Tabs defaultValue="overview" className="mt-8 sm:mt-10">
+            <div className="flex flex-col gap-3 border-b border-emerald-100/60 lg:flex-row lg:items-center lg:justify-between">
+              <div className="-mx-2 overflow-x-auto px-2 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-emerald-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <TabsList className="h-auto bg-transparent p-0 inline-flex gap-3 sm:gap-6 lg:gap-8 whitespace-nowrap">
+                  {[
+                    { id: "overview", label: "SUMMARY" },
+                    { id: "history", label: "CASEPLANS" },
+                    { id: "services", label: "SERVICES" },
+                    { id: "audit", label: "REFERRALS" },
+                    { id: "flags", label: "FLAG RECORD FORM" },
+                  ].map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      className="relative h-10 sm:h-12 shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-1 pb-3 sm:pb-4 pt-0 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-400 transition-all data-[state=active]:border-emerald-600 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none"
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
               </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="history" className="mt-0 w-full overflow-hidden min-w-0">
-            <Card className="border-slate-200 min-w-0 overflow-hidden">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold">Caseplans</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingCasePlans ? (
-                  <div className="flex items-center justify-center py-12">
-                    <LoadingDots />
-                  </div>
-                ) : vcaCasePlans.length > 0 ? (
-                  <div className="w-full overflow-x-auto">
-                    <Table className="table-fixed w-full">
-                      <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[120px]">Date</TableHead>
-                            <TableHead className="w-[120px]">Status</TableHead>
-                            <TableHead className="w-[150px]">Created at</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sortedCasePlans.map((plan: any, idx: number) => (
-                          <CasePlanRow key={idx} plan={plan} />
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <EmptyState icon={<FileText className="h-7 w-7" />} title="No caseplans recorded" description="No case plans have been created for this VCA yet." />
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <div className="mt-8">
+              <TabsContent value="overview" className="mt-0 space-y-6">
+                <InfoCard title="VCA Details" icon={Baby}>
+                  <InfoItem
+                    label="Date of birth"
+                    value={formatBirthDate(vca.birthdate)}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Gender"
+                    value={String(vca.vca_gender || vca.gender || "N/A")}
+                  />
+                  <InfoItem
+                    label="Age"
+                    value={String(vca.age || `${age} Years`)}
+                  />
+                  <InfoItem
+                    label="Age Group"
+                    value={String(vca.age_group || "N/A")}
+                  />
+                </InfoCard>
 
-          <TabsContent value="services" className="mt-0 w-full overflow-hidden">
-            <Card className="overflow-hidden border-slate-200">
-              <div className="bg-white p-6 flex flex-col gap-3 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">VCA services</h3>
-                  <p className="mt-1 text-xs font-medium text-slate-500">Services are ordered from most recent to oldest.</p>
+                <InfoCard title="Other Details" icon={ClipboardList}>
+                  <InfoItem
+                    label="School"
+                    value={String(vca.school_name || vca.school || "N/A")}
+                  />
+                  <InfoItem
+                    label="Caregiver Relationship"
+                    value={String(vca.relation || "N/A")}
+                  />
+                  <InfoItem
+                    label="Household ID"
+                    value={String(vca.household_id || "N/A")}
+                  />
+                  <InfoItem
+                    label="Province"
+                    value={String(vca.province || "N/A")}
+                    icon={<MapPin className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="District"
+                    value={String(vca.district || "N/A")}
+                    icon={<MapPin className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Ward"
+                    value={String(vca.ward || "N/A")}
+                    icon={<MapPin className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Facility"
+                    value={String(vca.facility || "N/A")}
+                    icon={<HeartPulse className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Partner"
+                    value={String(vca.partner || "N/A")}
+                  />
+                  <InfoItem
+                    label="Case Status"
+                    value={String(vca.case_status || "N/A")}
+                  />
+                  <InfoItem
+                    label="Member Type"
+                    value={String(vca.member_type || "N/A")}
+                  />
+                  <InfoItem
+                    label="Date Enrolled"
+                    value={String(vca.date_enrolled || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Date Referred"
+                    value={String(vca.date_referred || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Date Screened"
+                    value={String(vca.date_screened || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Last Service Date"
+                    value={String(vca.last_service_date || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Screening Location"
+                    value={String(vca.screening_location || "N/A")}
+                  />
+                  <InfoItem
+                    label="Caseworker Name"
+                    value={String(vca.caseworker_name || "N/A")}
+                  />
+                  <InfoItem
+                    label="Caseworker Phone"
+                    value={String(vca.caseworker_phone || "N/A")}
+                  />
+                  <InfoItem
+                    label="HIV Status"
+                    value={String(vca.is_hiv_positive || "N/A")}
+                    icon={<HeartPulse className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="On HIV Treatment?"
+                    value={String(vca.receiving_art || "N/A")}
+                  />
+                  <InfoItem
+                    label="ART Number"
+                    value={String(vca.art_number || "N/A")}
+                  />
+                  <InfoItem
+                    label="Date HIV Known"
+                    value={String(vca.hiv_test_date || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Date Started ART"
+                    value={String(vca.date_started_art || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="MMD Level"
+                    value={String(vca.level_mmd || vca.child_mmd || "N/A")}
+                  />
+                  <InfoItem
+                    label="Last VL Date"
+                    value={String(vca.date_last_vl || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Next VL Date"
+                    value={String(vca.date_next_vl || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="VL Last Result"
+                    value={String(vca.vl_last_result || "N/A")}
+                  />
+                  <InfoItem
+                    label="VL Next Result"
+                    value={String(vca.vl_next_result || "N/A")}
+                  />
+                  <InfoItem
+                    label="Virally Suppressed?"
+                    value={String(
+                      vca.vl_suppressed || vca.virally_suppressed || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Child Tested for HIV?"
+                    value={String(vca.child_been_tested_for_hiv || "N/A")}
+                  />
+                  <InfoItem
+                    label="Tested Last Year?"
+                    value={String(vca.been_tested_last_year || "N/A")}
+                  />
+                  <InfoItem
+                    label="Received Results (Last HIV Test)?"
+                    value={String(vca.received_results_last_hiv_test || "N/A")}
+                  />
+                  <InfoItem
+                    label="TB Screening"
+                    value={String(vca.tb_screening || "N/A")}
+                  />
+                  <InfoItem
+                    label="Takes TB Preventive Therapy?"
+                    value={String(vca.takes_tb_preventive_therapy || "N/A")}
+                  />
+                  <InfoItem
+                    label="Takes Drugs to Prevent Other Diseases?"
+                    value={String(
+                      vca.takes_drugs_to_prevent_other_diseases || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Received Birth Certificate?"
+                    value={String(vca.received_birth_certificate || "N/A")}
+                  />
+                  <InfoItem
+                    label="Pregnant / Breastfeeding?"
+                    value={String(vca.is_pregnant_breastfeeding || "N/A")}
+                  />
+                  <InfoItem
+                    label="Under-5 Malnourished?"
+                    value={String(vca.under_5_malnourished || "N/A")}
+                  />
+                  <InfoItem
+                    label="Is Biological Child?"
+                    value={String(
+                      vca.is_biological_child || vca.is_biological || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Is Index Case?"
+                    value={String(vca.is_index || "N/A")}
+                  />
+                  <InfoItem
+                    label="Caregiver an FSW?"
+                    value={String(
+                      vca.is_the_child_caregiver_an_fsw || vca.cfsw || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Mother Currently on Treatment?"
+                    value={String(
+                      vca.is_mother_currently_on_treatment_wlhiv || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Mother Adhering to Treatment?"
+                    value={String(
+                      vca.is_mother_adhering_to_treatment_wlhiv || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Mother Virally Suppressed?"
+                    value={String(
+                      vca.is_mother_virally_suppressed_wlhiv || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Mother ART Number (WLHIV)"
+                    value={String(vca.mother_art_number_wlhiv || "N/A")}
+                  />
+                  <InfoItem
+                    label="Child Experienced Sexual Violence?"
+                    value={String(
+                      vca.child_ever_experienced_sexual_violence || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Survivor of Other Form of Violence?"
+                    value={String(
+                      vca.survivors_of_other_form_of_violence || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Living with Disability?"
+                    value={String(
+                      vca.child_adolescent_living_with_disability || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Aged-Headed Household?"
+                    value={String(
+                      vca.child_adolescent_in_aged_headed_household || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Child-Headed Household?"
+                    value={String(
+                      vca.child_adolescent_in_child_headed_household || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Chronically-Ill-Headed Household?"
+                    value={String(
+                      vca.child_adolescent_in_chronically_ill_headed_household ||
+                        "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Female-Headed Household?"
+                    value={String(
+                      vca.child_adolescent_in_female_headed_household || "N/A",
+                    )}
+                  />
+                  <InfoItem
+                    label="Service"
+                    value={String(vca.service || "N/A")}
+                  />
+                  <InfoItem
+                    label="Quarter"
+                    value={String(vca.quarter || "N/A")}
+                  />
+                  <InfoItem
+                    label="Updated Status"
+                    value={String(vca.updated_status || "N/A")}
+                  />
+                  <InfoItem
+                    label="Date Edited"
+                    value={String(vca.date_edited || vca.dateedited || "N/A")}
+                    icon={<Calendar className="h-3.5 w-3.5" />}
+                  />
+                  <InfoItem
+                    label="Time on ART"
+                    value={String(vca.time_art || "N/A")}
+                  />
+                  <InfoItem
+                    label="Time since Last VL"
+                    value={String(vca.time_vl || "N/A")}
+                  />
+                  <InfoItem
+                    label="Time since Last Result"
+                    value={String(vca.time_result || "N/A")}
+                  />
+                </InfoCard>
+
+                {(() => {
+                  const isTrue = (v: any) =>
+                    v === "1" ||
+                    v === "true" ||
+                    v === 1 ||
+                    v === true ||
+                    String(v).toLowerCase() === "yes";
+                  const pbfwFlag =
+                    isTrue((vca as any).pbfw) || isTrue((vca as any).agyw);
+                  const hivPos =
+                    isTrue((vca as any).is_hiv_positive) ||
+                    isTrue((vca as any).calhiv);
+                  const motherPbfw =
+                    isTrue(
+                      (vca as any)
+                        .is_biological_mother_of_child_living_with_hiv,
+                    ) ||
+                    isTrue((vca as any).mother_pbfw) ||
+                    isTrue((vca as any).caregiver_pbfw);
+
+                  const generic = Object.entries(vca)
+                    .filter(
+                      ([key, value]) =>
+                        isTrue(value) && subPopulationFilterLabels[key],
+                    )
+                    .map(([key]) => subPopulationFilterLabels[key]);
+
+                  const derived: string[] = [];
+                  if (pbfwFlag && hivPos) derived.push("HIV+ PBFW");
+                  if (pbfwFlag && !hivPos) derived.push("HIV- PBFW");
+                  if (motherPbfw) derived.push("Children of PBFW");
+
+                  const all = [...generic, ...derived];
+                  if (all.length === 0) return null;
+
+                  return (
+                    <InfoCard title="Sub Population Details" icon={ShieldCheck}>
+                      {all.map((label) => (
+                        <InfoItem key={label} label={label} value="True" />
+                      ))}
+                    </InfoCard>
+                  );
+                })()}
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-0 space-y-6">
+                <h2 className="text-lg font-bold text-slate-900">
+                  VCA Caseplans
+                </h2>
+                <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                        <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4 pl-6">
+                          Case Plan Date
+                        </TableHead>
+                        <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+                          Status
+                        </TableHead>
+                        <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+                          Date Created
+                        </TableHead>
+                        <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+                          Date Edited
+                        </TableHead>
+                        <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4 pr-6 text-right">
+                          Action
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoadingCasePlans ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-20 text-center">
+                            <LoadingDots />
+                          </TableCell>
+                        </TableRow>
+                      ) : sortedCasePlans.length > 0 ? (
+                        sortedCasePlans.map((plan: any, idx: number) => {
+                          const planDate = String(
+                            plan.case_plan_date ??
+                              plan.date_of_caseplan ??
+                              plan.date ??
+                              "",
+                          );
+                          const isExpanded = expandedVulnPlanDate === planDate;
+                          const status =
+                            plan.case_plan_status ?? plan.status ?? "N/A";
+                          return (
+                            <Fragment key={idx}>
+                              <TableRow className="border-b border-slate-50 group hover:bg-slate-50/30 transition-colors">
+                                <TableCell className="py-5 pl-6 font-mono font-bold text-slate-900 text-sm">
+                                  {formatServiceDate(planDate)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "border-none font-bold text-[10px] px-2 py-0.5",
+                                      String(status).toLowerCase() ===
+                                        "active" || status === 1
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : String(status).toLowerCase() ===
+                                              "closed" || status === 0
+                                          ? "bg-slate-100 text-slate-600"
+                                          : "bg-sky-50 text-sky-700",
+                                    )}
+                                  >
+                                    {status === 1
+                                      ? "Active"
+                                      : status === 0
+                                        ? "Closed"
+                                        : String(status || "N/A")}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm text-slate-500">
+                                  {formatServiceDate(
+                                    plan.date_created || plan.created_at,
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm text-slate-500">
+                                  {formatServiceDate(
+                                    plan.date_edited || plan.dateedited,
+                                  )}
+                                </TableCell>
+                                <TableCell className="pr-6 text-right">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-3 text-xs hover:text-ink font-bold rounded-xl border-slate-200 hover:bg-slate-50"
+                                    onClick={() =>
+                                      setExpandedVulnPlanDate(
+                                        isExpanded ? null : planDate,
+                                      )
+                                    }
+                                  >
+                                    {isExpanded
+                                      ? "Hide Vulnerabilities"
+                                      : "View Vulnerabilities"}
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                              {isExpanded && (
+                                <TableRow className="bg-slate-50/40 hover:bg-slate-50/40">
+                                  <TableCell colSpan={5} className="p-0">
+                                    <div className="px-6 py-5 border-b border-slate-100">
+                                      <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
+                                        Vulnerabilities recorded against the
+                                        case plan dated{" "}
+                                        {formatServiceDate(planDate)}
+                                      </p>
+                                      {isLoadingVulnerabilities ? (
+                                        <div className="py-8 text-center">
+                                          <LoadingDots />
+                                        </div>
+                                      ) : expandedVulnerabilities.length ===
+                                        0 ? (
+                                        <div className="py-8 text-center text-sm text-slate-500">
+                                          No vulnerabilities recorded for this
+                                          case plan.
+                                        </div>
+                                      ) : (
+                                        <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
+                                          <Table>
+                                            <TableHeader>
+                                              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Domain
+                                                </TableHead>
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Vulnerability
+                                                </TableHead>
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Goal
+                                                </TableHead>
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Services
+                                                </TableHead>
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Service Referred
+                                                </TableHead>
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Institution
+                                                </TableHead>
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Due Date
+                                                </TableHead>
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Status
+                                                </TableHead>
+                                                <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-3">
+                                                  Comment
+                                                </TableHead>
+                                              </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                              {expandedVulnerabilities.map(
+                                                (v: any, i: number) => (
+                                                  <TableRow
+                                                    key={i}
+                                                    className="border-b border-slate-50"
+                                                  >
+                                                    <TableCell className="text-xs font-semibold text-slate-700 capitalize">
+                                                      {cleanArrayString(
+                                                        v.vulnerability_type,
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-700">
+                                                      {cleanArrayString(
+                                                        v.vulnerability,
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-600">
+                                                      {cleanArrayString(v.goal)}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-600">
+                                                      {cleanArrayString(
+                                                        v.services,
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-600">
+                                                      {cleanArrayString(
+                                                        v.service_referred,
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-600">
+                                                      {cleanArrayString(
+                                                        v.institution,
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-600 whitespace-nowrap">
+                                                      {formatServiceDate(
+                                                        v.due_date,
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-600">
+                                                      {cleanArrayString(
+                                                        v.status,
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-600">
+                                                      {cleanArrayString(
+                                                        v.vulnerability_comment,
+                                                      )}
+                                                    </TableCell>
+                                                  </TableRow>
+                                                ),
+                                              )}
+                                            </TableBody>
+                                          </Table>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </Fragment>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-20 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <FileText className="h-8 w-8 text-slate-200" />
+                              <span className="text-sm text-slate-400 font-medium">
+                                No case plans have been created for this VCA
+                                yet.
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
-                <Badge variant="outline" className="w-fit border-emerald-100 bg-emerald-50 text-emerald-700 font-black text-[10px]">
-                  {sortedVcaServices.length} records
-                </Badge>
-              </div>
-              <VcaServicesDetailTable data={sortedVcaServices} isLoading={isLoadingVcaServices} />
-            </Card>
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="audit" className="mt-0 w-full overflow-hidden">
-            <Card className="overflow-hidden border-slate-200">
-              <div className="bg-white p-6 flex items-center justify-between border-b border-slate-100">
-                <h3 className="text-xl font-bold text-slate-900">Referrals</h3>
-                <Button variant="outline" size="sm" className="text-xs font-bold">Export</Button>
-              </div>
-              <ScrollArea className="h-[500px]">
-                <ActivityTable data={sortedReferrals} isLoading={isLoadingReferrals} type="referral" emptyMessage="No referral tracking for this VCA." />
-                <ScrollBar orientation="horizontal" />
-              </ScrollArea>
-            </Card>
-          </TabsContent>
+              <TabsContent value="services" className="mt-0">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-bold text-slate-900">
+                      VCA Services
+                    </h2>
+                    <Badge
+                      variant="secondary"
+                      className="bg-slate-100 text-slate-700"
+                    >
+                      {sortedVcaServices.length} Records
+                    </Badge>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm">
+                    <VcaServicesDetailTable
+                      data={sortedVcaServices}
+                      isLoading={isLoadingVcaServices}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
 
-          <TabsContent value="flags" className="mt-0 w-full overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-500">
-            <div className="space-y-6">
-              <Card className="overflow-hidden border-slate-200 border-none shadow-none bg-transparent">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-black text-slate-900">Data quality flags</h3>
+              <TabsContent value="audit" className="mt-0">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-bold text-slate-900">
+                      Referrals
+                    </h2>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs font-bold rounded-xl border-slate-200"
+                    >
+                      Export
+                    </Button>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm">
+                    <ScrollArea className="h-[500px]">
+                      <ActivityTable
+                        data={sortedReferrals}
+                        isLoading={isLoadingReferrals}
+                        type="referral"
+                        emptyMessage="No referral tracking for this VCA."
+                      />
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="flags" className="mt-0 space-y-6">
+                <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-6 lg:p-8">
+                  <div className="space-y-8">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600 shadow-sm">
+                        <Flag size={20} />
+                      </div>
+                      <div className="space-y-0.5">
+                        <h3 className="text-base font-bold text-slate-900">
+                          Record New Flag
+                        </h3>
+                      </div>
+                    </div>
+
+                    <Form {...form}>
+                      <form
+                        onSubmit={form.handleSubmit(onFlagSubmit)}
+                        className="space-y-6"
+                      >
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
+                                  Flag category
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/30 text-sm font-medium">
+                                      <SelectValue placeholder="Choose category...(optional)" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                                    <SelectItem value="Missing Data">
+                                      Missing data
+                                    </SelectItem>
+                                    <SelectItem value="Invalid Data">
+                                      Invalid data
+                                    </SelectItem>
+                                    <SelectItem value="Duplicate Record">
+                                      Duplicate record
+                                    </SelectItem>
+                                    <SelectItem value="Incorrect Service">
+                                      Incorrect service logging
+                                    </SelectItem>
+                                    <SelectItem value="Case Plan Mismatch">
+                                      Case plan mismatch
+                                    </SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="severity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
+                                  Priority severity
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/30 text-sm font-medium">
+                                      <SelectValue placeholder="Select severity... (optional)" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                                    <SelectItem value="Low">
+                                      Low severity
+                                    </SelectItem>
+                                    <SelectItem value="Medium">
+                                      Medium severity
+                                    </SelectItem>
+                                    <SelectItem value="High">
+                                      High severity
+                                    </SelectItem>
+                                    <SelectItem value="Critical">
+                                      Critical issue
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="comment"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
+                                Flag observations & action details
+                              </FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  placeholder="Provide detailed observations about the data quality issue, any suspected causes, and recommended immediate actions..."
+                                  className="min-h-[120px] rounded-xl border-slate-200 bg-slate-50/30 resize-none text-sm italic font-medium"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-50">
+                          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium italic">
+                            <AlertCircle size={14} />
+                            Submitted flags will be reviewed by district
+                            monitors within 24 hours.
+                          </div>
+                          <Button
+                            type="submit"
+                            disabled={mutation.isPending}
+                            className="w-full sm:w-auto bg-slate-950 hover:bg-slate-800 text-white rounded-xl h-12 px-10 gap-2 font-bold transition-all shadow-lg shadow-slate-200 active:scale-95"
+                          >
+                            {mutation.isPending ? (
+                              <LoadingDots className="h-4" />
+                            ) : (
+                              <CheckCircle2 size={18} />
+                            )}
+                            {mutation.isPending
+                              ? "Submitting..."
+                              : "Submit flag record"}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </div>
                 </div>
 
                 {vcaFlags.length > 0 && (
-                  <div className="mb-6 space-y-3">
-                    <p className="text-[10px] font-black tracking-widest text-orange-500 uppercase">Active attention required</p>
+                  <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-6 space-y-3">
+                    <p className="text-[10px] font-black tracking-widest text-orange-500 uppercase">
+                      Active attention required
+                    </p>
                     {vcaFlags.map((flag: any) => (
-                      <div key={flag.id} className="p-4 rounded-2xl bg-orange-50 border border-orange-100 flex items-start justify-between gap-4">
+                      <div
+                        key={flag.id}
+                        className="p-4 rounded-2xl bg-white border border-orange-100 flex items-start justify-between gap-4 shadow-sm"
+                      >
                         <div className="flex items-start gap-3">
-                          <div className="p-2 bg-white rounded-xl shadow-sm border border-orange-100 flex-shrink-0">
+                          <div className="p-2 bg-orange-50 rounded-xl border border-orange-100 flex-shrink-0">
                             <AlertTriangle className="h-4 w-4 text-orange-600" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-slate-900">{toTitleCase(flag.comment || "Suspicious data entry")}</p>
-                            <p className="text-[10px] text-slate-500 mt-1">Flagged by {flag.verifier} • {format(new Date(flag.date_created), "MMM d, yyyy")}</p>
+                            <p className="text-xs font-bold text-slate-900">
+                              {toTitleCase(
+                                flag.comment || "Suspicious data entry",
+                              )}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-1">
+                              Flagged by {flag.verifier} •{" "}
+                              {format(
+                                new Date(flag.date_created),
+                                "MMM d, yyyy",
+                              )}
+                            </p>
                           </div>
                         </div>
                         <Button
@@ -747,161 +1456,89 @@ const VcaProfile = () => {
                   </div>
                 )}
 
-                <Card className="border-slate-200 shadow-sm overflow-hidden bg-slate-50/50">
-                  <div className="p-6 border-b border-slate-100 bg-white/50">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-orange-100 rounded-lg">
-                        <Flag className="h-4 w-4 text-orange-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-black text-slate-900">Record new flag</h4>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"></p>
-                      </div>
-                    </div>
+                <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm">
+                  <div className="p-6 flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
+                    <h3 className="text-lg font-bold text-slate-900">
+                      Flagging history
+                    </h3>
+                    <Badge
+                      variant="secondary"
+                      className="bg-slate-100 text-slate-700"
+                    >
+                      {vcaFlags.length} records
+                    </Badge>
                   </div>
-
-                  <CardContent className="p-6">
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onFlagSubmit)} className="space-y-6">
-                        <div className="grid md:grid-cols-2 gap-6">
-                          <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Flag category</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger className="bg-white border-slate-200 rounded-xl h-11 text-sm font-medium">
-                                      <SelectValue placeholder="Choose category...(optional)" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                                    <SelectItem value="Missing Data">Missing data</SelectItem>
-                                    <SelectItem value="Invalid Data">Invalid data</SelectItem>
-                                    <SelectItem value="Duplicate Record">Duplicate record</SelectItem>
-                                    <SelectItem value="Incorrect Service">Incorrect service logging</SelectItem>
-                                    <SelectItem value="Case Plan Mismatch">Case plan mismatch</SelectItem>
-                                    <SelectItem value="Other">Other</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name="severity"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Priority severity</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger className="bg-white border-slate-200 rounded-xl h-11 text-sm font-medium">
-                                      <SelectValue placeholder="Select severity... (optional)" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                                    <SelectItem value="Low">Low severity</SelectItem>
-                                    <SelectItem value="Medium">Medium severity</SelectItem>
-                                    <SelectItem value="High">High severity</SelectItem>
-                                    <SelectItem value="Critical">Critical issue</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <FormField
-                          control={form.control}
-                          name="comment"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Flag observations & action details</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Provide detailed observations about the data quality issue, any suspected causes, and recommended immediate actions..."
-                                  className="min-h-[120px] bg-white border-slate-200 rounded-xl focus-visible:ring-emerald-500/20 text-sm italic font-medium"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
-                          <div className="flex items-center gap-2 text-slate-400">
-                            <AlertCircle className="h-3 w-3" />
-                            <p className="text-[10px] font-medium">Submitted flags will be reviewed by district monitors within 24 hours.</p>
-                          </div>
-                          <Button
-                            type="submit"
-                            disabled={mutation.isPending}
-                            className="bg-slate-900 border-none hover:bg-slate-800 text-white font-bold h-11 px-8 rounded-xl shadow-lg shadow-slate-900/10 transition-all active:scale-95 whitespace-nowrap">
-                            {mutation.isPending ? (
-                              <>
-                                <LoadingDots className="h-4" />
-                                Submitting...
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="mr-2 h-4 w-4" />
-                                Submit flag record
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
-              </Card>
-
-              <Card className="overflow-hidden border-slate-200 shadow-sm">
-                <div className="p-6 flex items-center justify-between border-b bg-rose-50/50 border-rose-100">
-                  <h3 className="text-lg font-bold text-rose-900">Flagging history</h3>
-                  <Badge variant="outline" className="bg-white border-rose-200 text-rose-700 font-black text-[10px]">
-                    {vcaFlags.length} records
-                  </Badge>
-                </div>
-                <CardContent className="p-0">
                   {vcaFlags.length > 0 ? (
                     <div className="w-full overflow-x-auto">
                       <Table>
-                        <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
-                          <TableRow>
-                            <TableHead className="pl-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">Category</TableHead>
-                            <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Date flagged</TableHead>
-                            <TableHead className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Observations</TableHead>
-                            <TableHead className="text-right pr-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">Status</TableHead>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                            <TableHead className="pl-6 text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+                              Category
+                            </TableHead>
+                            <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+                              Date flagged
+                            </TableHead>
+                            <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+                              Observations
+                            </TableHead>
+                            <TableHead className="text-right pr-6 text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+                              Status
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {vcaFlags.map((item: any, idx: number) => (
-                            <TableRow key={idx} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
-                              <TableCell className="pl-6">
+                            <TableRow
+                              key={idx}
+                              className="border-b border-slate-50 hover:bg-slate-50/30 transition-colors"
+                            >
+                              <TableCell className="pl-6 py-4">
                                 <div className="flex flex-col">
-                                  <span className="font-bold text-slate-900 text-sm">{String(item.category || item.form_type || "General")}</span>
-                                  <span className={cn(
-                                    "text-[9px] font-black uppercase tracking-tighter",
-                                    item.severity === "Critical" ? "text-red-600" : "text-slate-400"
-                                  )}>
+                                  <span className="font-bold text-slate-900 text-sm">
+                                    {String(
+                                      item.category ||
+                                        item.form_type ||
+                                        "General",
+                                    )}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      "text-[9px] font-black uppercase tracking-tighter",
+                                      item.severity === "Critical"
+                                        ? "text-red-600"
+                                        : "text-slate-400",
+                                    )}
+                                  >
                                     {item.severity || "Normal"} priority
                                   </span>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors">
-                                {String(item.date_created || item.created_at || "N/A") && format(new Date(item.date_created || item.created_at), "dd MMM yyyy") || "N/A"}
+                              <TableCell className="text-xs font-medium text-slate-500">
+                                {(String(
+                                  item.date_created || item.created_at || "N/A",
+                                ) &&
+                                  format(
+                                    new Date(
+                                      item.date_created || item.created_at,
+                                    ),
+                                    "dd MMM yyyy",
+                                  )) ||
+                                  "N/A"}
                               </TableCell>
                               <TableCell className="text-xs text-slate-600 max-w-md italic leading-relaxed">
-                                {String(item.comment || item.description || item.reason || "No description provided")}
+                                {String(
+                                  item.comment ||
+                                    item.description ||
+                                    item.reason ||
+                                    "No description provided",
+                                )}
                               </TableCell>
                               <TableCell className="text-right pr-6">
-                                <Badge variant="outline" className="text-[9px] font-black text-rose-600 border-rose-100 bg-rose-50 px-2 rounded-md uppercase tracking-tighter">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] font-black text-rose-600 border-rose-100 bg-rose-50 px-2 rounded-md uppercase tracking-tighter"
+                                >
                                   Flagged
                                 </Badge>
                               </TableCell>
@@ -911,111 +1548,196 @@ const VcaProfile = () => {
                       </Table>
                     </div>
                   ) : (
-                    <EmptyState icon={<ClipboardCheck className="h-7 w-7" />} title="No flagged records" description="This child has no documented data quality issues." />
+                    <EmptyState
+                      icon={<ClipboardCheck className="h-7 w-7" />}
+                      title="No flagged records"
+                      description="This child has no documented data quality issues."
+                    />
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </TabsContent>
             </div>
-          </TabsContent>
-        </Tabs>
+          </Tabs>
+        </div>
       </div>
     </DashboardLayout>
   );
 };
 
-const ActivityTable = ({ data, isLoading, type, emptyMessage }: { data: any[], isLoading: boolean, type: 'service' | 'case-plan' | 'referral', emptyMessage: string }) => {
-  if (isLoading) return <div className="p-20 text-center"><LoadingDots /></div>;
-  if (data.length === 0) return (
-    <div className="p-20 text-center text-slate-400">
-      <p className="font-bold text-xs tracking-widest">{emptyMessage}</p>
-    </div>
-  );
+const ActivityTable = ({
+  data,
+  isLoading,
+  type,
+  emptyMessage,
+}: {
+  data: any[];
+  isLoading: boolean;
+  type: "service" | "case-plan" | "referral";
+  emptyMessage: string;
+}) => {
+  if (isLoading)
+    return (
+      <div className="py-20 text-center">
+        <LoadingDots />
+      </div>
+    );
+  if (data.length === 0)
+    return (
+      <div className="py-20 text-center border-2 border-dashed border-slate-50 rounded-[28px]">
+        <div className="flex flex-col items-center gap-3">
+          <FileText className="h-8 w-8 text-slate-200" />
+          <span className="text-sm text-slate-400 font-medium">
+            {emptyMessage}
+          </span>
+        </div>
+      </div>
+    );
 
   return (
-    <div className="w-full overflow-x-auto">
-      <Table>
-        <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
-          <TableRow>
-            <TableHead className="pl-6">Record Name</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead className="pr-6">Status</TableHead>
+    <Table>
+      <TableHeader>
+        <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+          <TableHead className="pl-6 text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+            Record Name
+          </TableHead>
+          <TableHead className="text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+            Date
+          </TableHead>
+          <TableHead className="pr-6 text-xs font-bold text-slate-500 uppercase tracking-widest py-4">
+            Status
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.map((item, idx) => (
+          <TableRow
+            key={idx}
+            className="border-b border-slate-50 hover:bg-slate-50/30 transition-colors"
+          >
+            <TableCell className="pl-6 py-4 font-bold text-slate-900 text-sm">
+              {String(
+                item.service ||
+                  item.service_name ||
+                  item.form_name ||
+                  item.referral_type ||
+                  "N/A",
+              )}
+            </TableCell>
+            <TableCell className="text-sm text-slate-600">
+              {formatServiceDate(
+                item.service_date || item.visit_date || item.date,
+              )}
+            </TableCell>
+            <TableCell className="pr-6">
+              <Badge variant="outline" className="text-[10px] font-bold">
+                {String(item.status || item.state || "N/A")}
+              </Badge>
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((item, idx) => (
-            <TableRow key={idx}>
-              <TableCell className="pl-6 font-bold text-slate-900">
-                {String(item.service || item.service_name || item.form_name || item.referral_type || "N/A")}
-              </TableCell>
-              <TableCell className="text-sm">
-                {formatServiceDate(item.service_date || item.visit_date || item.date)}
-              </TableCell>
-              <TableCell className="pr-6">
-                <Badge variant="outline" className="text-[10px] font-bold text-primary">
-                  {String(item.status || item.state || "N/A")}
-                </Badge>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
 
-const InfoItem = ({ label, value, icon }: { label: string, value: string, icon?: React.ReactNode }) => (
-  <div className="space-y-1 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
-    <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">{label}</p>
-    <div className="flex items-center gap-2">
-      {icon && <span className="text-slate-400">{icon}</span>}
-      <p className="text-sm font-semibold text-slate-800">{value}</p>
-    </div>
-  </div>
-);
-
 const cleanArrayString = (str: string | null | undefined) => {
-  if (!str) return "-";
+  if (!str) return "N/A";
   try {
-    return String(str).replace(/[\[\]"]/g, "").replace(/,/g, ", ");
+    return String(str)
+      .replace(/[\[\]"]/g, "")
+      .replace(/,/g, ", ");
   } catch (e) {
     return String(str);
   }
 };
 
-const VcaServicesDetailTable = ({ data, isLoading }: { data: any[]; isLoading: boolean }) => {
-  if (isLoading) return <div className="p-20 text-center"><LoadingDots /></div>;
+const VcaServicesDetailTable = ({
+  data,
+  isLoading,
+}: {
+  data: any[];
+  isLoading: boolean;
+}) => {
+  if (isLoading)
+    return (
+      <div className="py-20 text-center">
+        <LoadingDots />
+      </div>
+    );
   if (data.length === 0) {
     return (
-      <div className="p-20 text-center text-slate-400 font-bold text-xs tracking-widest">
-        No VCA services found.
+      <div className="py-20 text-center border-2 border-dashed border-slate-50 rounded-[28px]">
+        <div className="flex flex-col items-center gap-3">
+          <FileText className="h-8 w-8 text-slate-200" />
+          <span className="text-sm text-slate-400 font-medium">
+            No VCA services found.
+          </span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="overflow-x-auto">
       <Table className="min-w-[1200px] table-fixed">
-        <TableHeader className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40">
-          <TableRow>
-            <TableHead className="w-36 border-r border-slate-100 text-[10px] font-black text-slate-900">Service Date</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Health Services</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">HIV Services</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Other Health</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">Safe</TableHead>
-            <TableHead className="border-r border-slate-100 text-[10px] font-black text-slate-900">School Services</TableHead>
-            <TableHead className="text-[10px] font-black text-slate-900">Stable</TableHead>
+        <TableHeader>
+          <TableRow className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-sky-50/40 hover:bg-gradient-to-r hover:from-emerald-50/80 hover:via-teal-50/60 hover:to-sky-50/40 border-b border-emerald-100/60">
+            <TableHead className="w-36 text-[11px] font-bold text-emerald-800 uppercase tracking-wider py-4 border-r border-emerald-100/60">
+              Service Date
+            </TableHead>
+            <TableHead className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider py-4 border-r border-emerald-100/60">
+              Health Services
+            </TableHead>
+            <TableHead className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider py-4 border-r border-emerald-100/60">
+              HIV Services
+            </TableHead>
+            <TableHead className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider py-4 border-r border-emerald-100/60">
+              Other Health
+            </TableHead>
+            <TableHead className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider py-4 border-r border-emerald-100/60">
+              Safe
+            </TableHead>
+            <TableHead className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider py-4 border-r border-emerald-100/60">
+              School Services
+            </TableHead>
+            <TableHead className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider py-4">
+              Stable
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((svc: any, i: number) => (
-            <TableRow key={svc.id || svc.unique_id || `${svc.service_date || svc.visit_date || "service"}-${i}`} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
-              <TableCell className="py-4 font-bold text-slate-900 border-r border-slate-100">{formatServiceDate(svc.service_date || svc.visit_date || svc.date)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.health_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.hiv_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.other_health_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.safe_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">{cleanArrayString(svc.schooled_services)}</TableCell>
-              <TableCell className="py-4 whitespace-normal text-slate-700 leading-relaxed">{cleanArrayString(svc.stable_services)}</TableCell>
+            <TableRow
+              key={
+                svc.id ||
+                svc.unique_id ||
+                `${svc.service_date || svc.visit_date || "service"}-${i}`
+              }
+              className="border-b border-emerald-50/60 hover:bg-slate-50/30 transition-colors"
+            >
+              <TableCell className="py-4 font-bold text-slate-900 text-sm border-r border-slate-100">
+                {formatServiceDate(
+                  svc.service_date || svc.visit_date || svc.date,
+                )}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-sm text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.health_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-sm text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.hiv_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-sm text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.other_health_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-sm text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.safe_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-sm text-slate-700 leading-relaxed border-r border-slate-100">
+                {cleanArrayString(svc.schooled_services)}
+              </TableCell>
+              <TableCell className="py-4 whitespace-normal text-sm text-slate-700 leading-relaxed">
+                {cleanArrayString(svc.stable_services)}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -1024,180 +1746,62 @@ const VcaServicesDetailTable = ({ data, isLoading }: { data: any[]; isLoading: b
   );
 };
 
-const CasePlanRow = ({ plan, servicesSource = [] }: { plan: any; servicesSource?: any[] }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const topScrollRef = useRef<HTMLDivElement>(null);
-  const bottomScrollRef = useRef<HTMLDivElement>(null);
+/** Set-1-style grouped info section: title + icon header, grid of boxed items. */
+const InfoCard = ({
+  title,
+  icon: Icon,
+  children,
+  className,
+}: {
+  title: string;
+  icon: any;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={cn(
+      "rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-xl p-6 shadow-[0_15px_40px_-25px_rgba(15,23,42,0.35)]",
+      className,
+    )}
+  >
+    <div className="flex items-center gap-3 mb-5">
+      <div className="text-slate-400">
+        <Icon size={18} />
+      </div>
+      <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-800">
+        {title}
+      </h3>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      {children}
+    </div>
+  </div>
+);
 
-  const [tableWidth, setTableWidth] = useState(0);
-
-  let linkedServices = servicesSource.filter((s) => {
-    const serviceLinkId = String(s.case_plan_id || s.vcaid || s.caseplan_id || "");
-    const planId = String(plan.case_plan_id || plan.unique_id || plan.id || "");
-    return serviceLinkId && planId && serviceLinkId === planId;
-  });
-
-  const isFallback = linkedServices.length === 0 && servicesSource.length > 0;
-  if (isFallback) {
-    linkedServices = servicesSource;
-  }
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let isSyncing = false;
-
-    const timer = setTimeout(() => {
-      const top = topScrollRef.current;
-      const bottom = bottomScrollRef.current;
-      if (!top || !bottom) return;
-
-      // Update dummy width to match real table content
-      const realWidth = bottom.scrollWidth;
-      setTableWidth(realWidth);
-
-      bottom.scrollLeft = top.scrollLeft;
-
-      const handleTopScroll = () => {
-        if (isSyncing) return;
-        isSyncing = true;
-        bottom.scrollLeft = top.scrollLeft;
-        requestAnimationFrame(() => { isSyncing = false; });
-      };
-
-      const handleBottomScroll = () => {
-        if (isSyncing) return;
-        isSyncing = true;
-        top.scrollLeft = bottom.scrollLeft;
-        requestAnimationFrame(() => { isSyncing = false; });
-      };
-
-      top.addEventListener("scroll", handleTopScroll, { passive: true });
-      bottom.addEventListener("scroll", handleBottomScroll, { passive: true });
-
-      return () => {
-        top.removeEventListener("scroll", handleTopScroll);
-        bottom.removeEventListener("scroll", handleBottomScroll);
-      };
-    }, 200);
-
-    return () => clearTimeout(timer);
-  }, [isOpen, linkedServices.length]);
-
-  return (
-    <>
-      <TableRow className={cn(isOpen ? "bg-slate-50 border-b-0" : "")}>
-        <TableCell className="text-sm font-medium">
-          {plan.case_plan_date ||
-            plan.date_of_caseplan ||
-            plan.case_plan?.date_of_caseplan ||
-            plan.case_plan?.date ||
-            plan.date ||
-            "N/A"}
-        </TableCell>
-        <TableCell>
-          <Badge variant="secondary" className="text-[10px] font-bold tracking-wider">
-            {plan.case_plan_status ||
-              plan.status ||
-              plan.case_plan?.status ||
-              plan.case_plan?.state ||
-              "Initial"}
-          </Badge>
-        </TableCell>
-        <TableCell className="text-xs text-slate-500">
-          {plan.date_created || plan.created_at || plan.case_plan?.created_at
-            ? new Date(plan.date_created || plan.created_at || plan.case_plan?.created_at).toLocaleDateString()
-            : "N/A"}
-        </TableCell>
-      </TableRow>
-      {isOpen && (
-        <TableRow className="bg-slate-50 hover:bg-slate-50 border-b-0">
-          <TableCell colSpan={4} className="p-2 md:p-4 pt-0 overflow-hidden" style={{ maxWidth: "1px", width: "100%" }}>
-            <div className="rounded-xl border border-slate-200 bg-white shadow-md overflow-hidden flex flex-col w-full min-w-0">
-              <div className="bg-slate-100 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 flex justify-between items-center">
-                <h4 className="text-sm md:text-lg font-black tracking-wider text-slate-700">Vulnerabilities</h4>
-                {isFallback && (
-                  <span className="text-[10px] md:text-sm text-amber-600 font-bold bg-amber-50 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-amber-200 shadow-sm">
-                    Showing all vca services
-                  </span>
-                )}
-              </div>
-              {linkedServices.length > 0 ? (
-                <div className="w-full relative overflow-hidden">
-                  <div
-                    ref={topScrollRef}
-                    className="w-full overflow-x-auto overflow-y-hidden h-6 bg-slate-50 border-b border-slate-200 scrollbar-thin shadow-inner z-10"
-                  >
-                    <div style={{ width: tableWidth || '1200px' }} className="h-px" />
-                  </div>
-                  <div ref={bottomScrollRef} className="w-full overflow-x-auto no-scrollbar">
-                    <Table className="min-w-[1200px] table-fixed">
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent bg-slate-50/50">
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 w-32 md:w-40 border-r border-slate-100">
-                            Service Date
-                          </TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
-                            Health Services
-                          </TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
-                            HIV Services
-                          </TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
-                            Other Health
-                          </TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
-                            Safe
-                          </TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900 border-r border-slate-100">
-                            School Services
-                          </TableHead>
-                          <TableHead className="text-[10px] md:text-sm font-black h-10 md:h-12 text-slate-900">
-                            Stable
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {linkedServices.map((svc: any, i: number) => (
-                          <TableRow key={i} className="transition-colors border-b border-emerald-50/60 hover:bg-gradient-to-r hover:from-emerald-50/40 hover:via-teal-50/20 hover:to-transparent">
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 font-bold text-slate-900 border-r border-slate-100">
-                              {formatServiceDate(svc.service_date || svc.visit_date || svc.date)}
-                            </TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
-                              {cleanArrayString(svc.health_services)}
-                            </TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
-                              {cleanArrayString(svc.hiv_services)}
-                            </TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
-                              {cleanArrayString(svc.other_health_services)}
-                            </TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
-                              {cleanArrayString(svc.safe_services)}
-                            </TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed border-r border-slate-100">
-                              {cleanArrayString(svc.schooled_services)}
-                            </TableCell>
-                            <TableCell className="text-[10px] md:text-sm py-3 md:py-4 whitespace-normal text-slate-700 leading-relaxed">
-                              {cleanArrayString(svc.stable_services)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 text-center text-slate-400 text-[10px] md:text-xs italic font-bold tracking-widest">
-                  No detailed services found.
-                </div>
-              )}
-            </div>
-          </TableCell>
-        </TableRow>
-      )}
-    </>
-  );
-};
+/** Set-1-style item box: label above, icon + value below. */
+const InfoItem = ({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+}) => (
+  <div className="bg-slate-50/50 border border-slate-100/30 rounded-xl p-3 flex flex-col justify-center min-h-[68px] transition-colors hover:bg-slate-100/50">
+    <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1 block px-0.5">
+      {label}
+    </label>
+    <div className="flex items-center gap-2">
+      {icon && <div className="text-slate-400 flex-shrink-0">{icon}</div>}
+      <span
+        className="text-xs font-bold text-slate-700 leading-tight truncate"
+        title={value}
+      >
+        {value || "Not Provided"}
+      </span>
+    </div>
+  </div>
+);
 
 export default VcaProfile;

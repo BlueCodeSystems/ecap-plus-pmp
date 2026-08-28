@@ -37,7 +37,7 @@ const HIDDEN_ROUTES = [
   "/districts",
   "/calendar",
   "/charts",
-  "/weekly-extracts",
+  "/data-pipeline",
   "/support",
   "/documentation",
 ];
@@ -125,7 +125,7 @@ const DashboardHeader = ({
             <Bell className="h-4 w-4 text-primary" />
           ),
           link: isExtract
-            ? "/weekly-extracts"
+            ? "/data-pipeline"
             : n.collection?.startsWith("support") && n.sender
               ? `/support?userId=${n.sender}`
               : undefined,

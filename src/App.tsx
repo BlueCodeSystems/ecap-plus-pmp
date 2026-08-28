@@ -22,52 +22,91 @@ import Dashboard from "./pages/Dashboard";
 // Previously these were all eager (~1.5MB initial bundle). Lazy-loading them
 // shrinks the initial download; each becomes its own chunk fetched on first
 // navigation (a few KB gzipped — effectively instant).
-const HouseholdRegister = lazyWithRetry(() => import("./pages/HouseholdRegister"));
+const HouseholdRegister = lazyWithRetry(
+  () => import("./pages/HouseholdRegister"),
+);
 const VcaRegister = lazyWithRetry(() => import("./pages/VcaRegister"));
-const HouseholdServices = lazyWithRetry(() => import("./pages/HouseholdServices"));
-const HouseholdServicesPage = lazyWithRetry(() => import("./pages/HouseholdServicesPage"));
+const HouseholdServices = lazyWithRetry(
+  () => import("./pages/HouseholdServices"),
+);
+const HouseholdServicesPage = lazyWithRetry(
+  () => import("./pages/HouseholdServicesPage"),
+);
 const VcaServices = lazyWithRetry(() => import("./pages/VcaServices"));
-const CaregiverServices = lazyWithRetry(() => import("./pages/CaregiverServices"));
+const CaregiverServices = lazyWithRetry(
+  () => import("./pages/CaregiverServices"),
+);
 const HTSRegister = lazyWithRetry(() => import("./pages/HTSRegister"));
 const PMTCTRegister = lazyWithRetry(() => import("./pages/PMTCTRegister"));
-const MotherIndexRegister = lazyWithRetry(() => import("./pages/MotherIndexRegister"));
+const Referrals = lazyWithRetry(() => import("./pages/Referrals"));
+const MotherIndexRegister = lazyWithRetry(
+  () => import("./pages/MotherIndexRegister"),
+);
 const Users = lazyWithRetry(() => import("./pages/Users"));
 const Profile = lazyWithRetry(() => import("./pages/Profile"));
-const HouseholdProfile = lazyWithRetry(() => import("./pages/HouseholdProfile"));
+const HouseholdProfile = lazyWithRetry(
+  () => import("./pages/HouseholdProfile"),
+);
 const VcaProfile = lazyWithRetry(() => import("./pages/VcaProfile"));
 const HTSProfile = lazyWithRetry(() => import("./pages/HTSProfile"));
 const PMTCTProfile = lazyWithRetry(() => import("./pages/PMTCTProfile"));
-const MotherIndexDetails = lazyWithRetry(() => import("./pages/MotherIndexDetails"));
-const VcaServiceProfile = lazyWithRetry(() => import("./pages/VcaServiceProfile"));
-const HouseholdServiceProfile = lazyWithRetry(() => import("./pages/HouseholdServiceProfile"));
-const CaregiverServiceProfile = lazyWithRetry(() => import("./pages/CaregiverServiceProfile"));
-const CaregiverRiskRegister = lazyWithRetry(() => import("./pages/CaregiverRiskRegister"));
+const MotherIndexDetails = lazyWithRetry(
+  () => import("./pages/MotherIndexDetails"),
+);
+const VcaServiceProfile = lazyWithRetry(
+  () => import("./pages/VcaServiceProfile"),
+);
+const HouseholdServiceProfile = lazyWithRetry(
+  () => import("./pages/HouseholdServiceProfile"),
+);
+const CaregiverServiceProfile = lazyWithRetry(
+  () => import("./pages/CaregiverServiceProfile"),
+);
+const CaregiverRiskRegister = lazyWithRetry(
+  () => import("./pages/CaregiverRiskRegister"),
+);
 const VcaRiskRegister = lazyWithRetry(() => import("./pages/VcaRiskRegister"));
-const HouseholdRiskRegister = lazyWithRetry(() => import("./pages/HouseholdRiskRegister"));
+const HouseholdRiskRegister = lazyWithRetry(
+  () => import("./pages/HouseholdRiskRegister"),
+);
 const HTSRiskRegister = lazyWithRetry(() => import("./pages/HTSRiskRegister"));
-const CaseworkerProfile = lazyWithRetry(() => import("./pages/CaseworkerProfile"));
+const CaseworkerProfile = lazyWithRetry(
+  () => import("./pages/CaseworkerProfile"),
+);
 const Performance = lazyWithRetry(() => import("./pages/Performance"));
-
 
 // --- SECONDARY / HEAVY PAGES (Lazy Loaded to keep initial bundle size optimized) ---
 const Districts = lazyWithRetry(() => import("./pages/Districts"));
 const Flags = lazyWithRetry(() => import("./pages/Flags"));
-const HouseholdArchivedRegister = lazyWithRetry(() => import("./pages/HouseholdArchivedRegister"));
-const VcaArchivedRegister = lazyWithRetry(() => import("./pages/VcaArchivedRegister"));
+const HouseholdArchivedRegister = lazyWithRetry(
+  () => import("./pages/HouseholdArchivedRegister"),
+);
+const VcaArchivedRegister = lazyWithRetry(
+  () => import("./pages/VcaArchivedRegister"),
+);
 const Charts = lazyWithRetry(() => import("./pages/Charts"));
 const AddUser = lazyWithRetry(() => import("./pages/AddUser"));
 const EditUser = lazyWithRetry(() => import("./pages/EditUser"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const AcceptInvite = lazyWithRetry(() => import("./pages/AcceptInvite"));
 const ChangePassword = lazyWithRetry(() => import("./pages/ChangePassword"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
-const FlaggedRecordForm = lazyWithRetry(() => import("./pages/FlaggedRecordForm"));
-const WeeklyExtracts = lazyWithRetry(() => import("./pages/WeeklyExtracts"));
+const FlaggedRecordForm = lazyWithRetry(
+  () => import("./pages/FlaggedRecordForm"),
+);
+const DataPipelinePage = lazyWithRetry(
+  () => import("./pages/DataPipelinePage"),
+);
 const SupportCenter = lazyWithRetry(() => import("./pages/SupportCenter"));
 const Calendar = lazyWithRetry(() => import("./pages/Calendar"));
 const Documentation = lazyWithRetry(() => import("./pages/Documentation"));
-const DocumentationArticle = lazyWithRetry(() => import("./pages/DocumentationArticle"));
-const CaseworkerJourneys = lazyWithRetry(() => import("./pages/CaseworkerJourneys"));
+const DocumentationArticle = lazyWithRetry(
+  () => import("./pages/DocumentationArticle"),
+);
+const CaseworkerJourneys = lazyWithRetry(
+  () => import("./pages/CaseworkerJourneys"),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -129,7 +168,10 @@ const PageLoader = () => null;
 // reload, the error reaches here and we show an explicit message instead of a
 // blank screen. We do NOT auto-reload here — that would defeat the guard and
 // loop forever.
-class ChunkErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
+class ChunkErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
   state = { hasError: false };
 
   static getDerivedStateFromError(error: unknown) {
@@ -145,7 +187,9 @@ class ChunkErrorBoundary extends Component<{ children: React.ReactNode }, { hasE
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
           <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-            <h1 className="text-lg font-bold text-slate-900">Reload required</h1>
+            <h1 className="text-lg font-bold text-slate-900">
+              Reload required
+            </h1>
             <p className="mt-2 text-sm text-slate-600">
               A new version of the app is available. Please reload to continue.
             </p>
@@ -189,340 +233,352 @@ const App = () => (
               <ChunkErrorBoundary>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route
-                  path="/change-password"
-                  element={
-                    <ProtectedRoute>
-                      <ChangePassword />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/districts"
-                  element={
-                    <ProtectedRoute>
-                      <Districts />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/households"
-                  element={
-                    <ProtectedRoute>
-                      <HouseholdRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vcas"
-                  element={
-                    <ProtectedRoute>
-                      <VcaRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/registers/hts"
-                  element={
-                    <ProtectedRoute>
-                      <HTSRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/registers/hts-risk"
-                  element={
-                    <ProtectedRoute>
-                      <HTSRiskRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/registers/pmtct"
-                  element={
-                    <ProtectedRoute>
-                      <PMTCTRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/registers/mother-index"
-                  element={
-                    <ProtectedRoute>
-                      <MotherIndexRegister />
-                    </ProtectedRoute>
-                  }
-                />
+                    <Route path="/" element={<Index />} />
+                    <Route
+                      path="/forgot-password"
+                      element={<ForgotPassword />}
+                    />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/accept-invite" element={<AcceptInvite />} />
+                    <Route
+                      path="/change-password"
+                      element={
+                        <ProtectedRoute>
+                          <ChangePassword />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/districts"
+                      element={
+                        <ProtectedRoute>
+                          <Districts />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/households"
+                      element={
+                        <ProtectedRoute>
+                          <HouseholdRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/vcas"
+                      element={
+                        <ProtectedRoute>
+                          <VcaRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/registers/hts"
+                      element={
+                        <ProtectedRoute>
+                          <HTSRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/registers/hts-risk"
+                      element={
+                        <ProtectedRoute>
+                          <HTSRiskRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/registers/pmtct"
+                      element={
+                        <ProtectedRoute>
+                          <PMTCTRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/registers/mother-index"
+                      element={
+                        <ProtectedRoute>
+                          <MotherIndexRegister />
+                        </ProtectedRoute>
+                      }
+                    />
 
-                <Route
-                  path="/vca-services"
-                  element={
-                    <ProtectedRoute>
-                      <VcaServices />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/registers/vca-risk"
-                  element={
-                    <ProtectedRoute>
-                      <VcaRiskRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/household-services"
-                  element={
-                    <ProtectedRoute>
-                      <HouseholdServices />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/registers/household-risk"
-                  element={
-                    <ProtectedRoute>
-                      <HouseholdRiskRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/caregiver-services"
-                  element={
-                    <ProtectedRoute>
-                      <CaregiverServices />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/registers/caregiver-risk"
-                  element={
-                    <ProtectedRoute>
-                      <CaregiverRiskRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/caseworker-details"
-                  element={
-                    <ProtectedRoute>
-                      <CaseworkerProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/services/household-services"
-                  element={
-                    <ProtectedRoute>
-                      <HouseholdServicesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/flags"
-                  element={
-                    <ProtectedRoute>
-                      <Flags />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/households/archived"
-                  element={
-                    <ProtectedRoute>
-                      <HouseholdArchivedRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vcas/archived"
-                  element={
-                    <ProtectedRoute>
-                      <VcaArchivedRegister />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/charts"
-                  element={
-                    <ProtectedRoute>
-                      <Charts />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/users"
-                  element={
-                    <ProtectedRoute>
-                      <Users />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/users/new"
-                  element={
-                    <ProtectedRoute>
-                      <AddUser />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/users/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      <EditUser />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/household-details"
-                  element={
-                    <ProtectedRoute>
-                      <HouseholdProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/vca-details"
-                  element={
-                    <ProtectedRoute>
-                      <VcaProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/hts-details"
-                  element={
-                    <ProtectedRoute>
-                      <HTSProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/pmtct-details"
-                  element={
-                    <ProtectedRoute>
-                      <PMTCTProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/mother-index-details"
-                  element={
-                    <ProtectedRoute>
-                      <MotherIndexDetails />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/vca-service-details"
-                  element={
-                    <ProtectedRoute>
-                      <VcaServiceProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/household-service-details"
-                  element={
-                    <ProtectedRoute>
-                      <HouseholdServiceProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/profile/caregiver-service-details"
-                  element={
-                    <ProtectedRoute>
-                      <CaregiverServiceProfile />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/flagged-record-form"
-                  element={
-                    <ProtectedRoute>
-                      <FlaggedRecordForm />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/weekly-extracts"
-                  element={
-                    <ProtectedRoute>
-                      <WeeklyExtracts />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/support"
-                  element={
-                    <ProtectedRoute>
-                      <SupportCenter />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/calendar"
-                  element={
-                    <ProtectedRoute>
-                      <Calendar />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/documentation"
-                  element={
-                    <ProtectedRoute>
-                      <Documentation />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/documentation/:slug"
-                  element={
-                    <ProtectedRoute>
-                      <DocumentationArticle />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/caseworker-journeys"
-                  element={
-                    <ProtectedRoute>
-                      <CaseworkerJourneys />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/performance"
-                  element={
-                    <ProtectedRoute>
-                      <Performance />
-                    </ProtectedRoute>
-                  }
-                />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
+                    <Route
+                      path="/vca-services"
+                      element={
+                        <ProtectedRoute>
+                          <VcaServices />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/registers/vca-risk"
+                      element={
+                        <ProtectedRoute>
+                          <VcaRiskRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/household-services"
+                      element={
+                        <ProtectedRoute>
+                          <HouseholdServices />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/registers/household-risk"
+                      element={
+                        <ProtectedRoute>
+                          <HouseholdRiskRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/caregiver-services"
+                      element={
+                        <ProtectedRoute>
+                          <CaregiverServices />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/registers/caregiver-risk"
+                      element={
+                        <ProtectedRoute>
+                          <CaregiverRiskRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/caseworker-details"
+                      element={
+                        <ProtectedRoute>
+                          <CaseworkerProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/services/household-services"
+                      element={
+                        <ProtectedRoute>
+                          <HouseholdServicesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/flags"
+                      element={
+                        <ProtectedRoute>
+                          <Flags />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/households/archived"
+                      element={
+                        <ProtectedRoute>
+                          <HouseholdArchivedRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/vcas/archived"
+                      element={
+                        <ProtectedRoute>
+                          <VcaArchivedRegister />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/charts"
+                      element={
+                        <ProtectedRoute>
+                          <Charts />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/users"
+                      element={
+                        <ProtectedRoute>
+                          <Users />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/users/new"
+                      element={
+                        <ProtectedRoute>
+                          <AddUser />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/users/:id/edit"
+                      element={
+                        <ProtectedRoute>
+                          <EditUser />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile"
+                      element={
+                        <ProtectedRoute>
+                          <Profile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/household-details"
+                      element={
+                        <ProtectedRoute>
+                          <HouseholdProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/vca-details"
+                      element={
+                        <ProtectedRoute>
+                          <VcaProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/hts-details"
+                      element={
+                        <ProtectedRoute>
+                          <HTSProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/pmtct-details"
+                      element={
+                        <ProtectedRoute>
+                          <PMTCTProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/mother-index-details"
+                      element={
+                        <ProtectedRoute>
+                          <MotherIndexDetails />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/vca-service-details"
+                      element={
+                        <ProtectedRoute>
+                          <VcaServiceProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/household-service-details"
+                      element={
+                        <ProtectedRoute>
+                          <HouseholdServiceProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/profile/caregiver-service-details"
+                      element={
+                        <ProtectedRoute>
+                          <CaregiverServiceProfile />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/flagged-record-form"
+                      element={
+                        <ProtectedRoute>
+                          <FlaggedRecordForm />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/data-pipeline"
+                      element={
+                        <ProtectedRoute>
+                          <DataPipelinePage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/support"
+                      element={
+                        <ProtectedRoute>
+                          <SupportCenter />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/calendar"
+                      element={
+                        <ProtectedRoute>
+                          <Calendar />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/documentation"
+                      element={
+                        <ProtectedRoute>
+                          <Documentation />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/documentation/:slug"
+                      element={
+                        <ProtectedRoute>
+                          <DocumentationArticle />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/caseworker-journeys"
+                      element={
+                        <ProtectedRoute>
+                          <CaseworkerJourneys />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/performance"
+                      element={
+                        <ProtectedRoute>
+                          <Performance />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/referrals"
+                      element={
+                        <ProtectedRoute>
+                          <Referrals />
+                        </ProtectedRoute>
+                      }
+                    />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
               </ChunkErrorBoundary>
