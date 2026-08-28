@@ -38,6 +38,7 @@ const CaregiverServices = lazyWithRetry(
 );
 const HTSRegister = lazyWithRetry(() => import("./pages/HTSRegister"));
 const PMTCTRegister = lazyWithRetry(() => import("./pages/PMTCTRegister"));
+const Referrals = lazyWithRetry(() => import("./pages/Referrals"));
 const MotherIndexRegister = lazyWithRetry(
   () => import("./pages/MotherIndexRegister"),
 );
@@ -94,7 +95,9 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const FlaggedRecordForm = lazyWithRetry(
   () => import("./pages/FlaggedRecordForm"),
 );
-const WeeklyExtracts = lazyWithRetry(() => import("./pages/WeeklyExtracts"));
+const DataPipelinePage = lazyWithRetry(
+  () => import("./pages/DataPipelinePage"),
+);
 const SupportCenter = lazyWithRetry(() => import("./pages/SupportCenter"));
 const Calendar = lazyWithRetry(() => import("./pages/Calendar"));
 const Documentation = lazyWithRetry(() => import("./pages/Documentation"));
@@ -511,10 +514,10 @@ const App = () => (
                       }
                     />
                     <Route
-                      path="/weekly-extracts"
+                      path="/data-pipeline"
                       element={
                         <ProtectedRoute>
-                          <WeeklyExtracts />
+                          <DataPipelinePage />
                         </ProtectedRoute>
                       }
                     />
@@ -563,6 +566,14 @@ const App = () => (
                       element={
                         <ProtectedRoute>
                           <Performance />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/referrals"
+                      element={
+                        <ProtectedRoute>
+                          <Referrals />
                         </ProtectedRoute>
                       }
                     />
