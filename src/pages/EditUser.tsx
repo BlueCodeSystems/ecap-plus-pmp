@@ -19,8 +19,8 @@ import {
   getUser,
   listRoles,
   updateUser,
-  type DirectusRole,
-} from "@/lib/directus";
+  type StrapiRole,
+} from "@/lib/strapi";
 import { getHouseholdsByDistrict, getFacilityList } from "@/lib/api";
 import MultiFacilityPicker, { parseFacilitiesCsv } from "@/components/MultiFacilityPicker";
 import { useNavigate, useParams } from "react-router-dom";
@@ -124,7 +124,7 @@ const EditUser = () => {
   }, [householdsListQuery.data]);
 
   const rolesQuery = useQuery({
-    queryKey: ["directus", "roles"],
+    queryKey: ["strapi", "roles"],
     queryFn: listRoles,
   });
 
@@ -152,10 +152,10 @@ const EditUser = () => {
   useEffect(() => {
     if (rolesQuery.data) {
       const ecapRole = rolesQuery.data.find(
-        (r: DirectusRole) => r.name.toLowerCase().includes("ecap+") && !r.name.toLowerCase().includes("support")
+        (r: StrapiRole) => r.name.toLowerCase().includes("ecap+") && !r.name.toLowerCase().includes("support")
       );
       const supportRole = rolesQuery.data.find(
-        (r: DirectusRole) => r.name.toLowerCase().includes("ecap+") && r.name.toLowerCase().includes("support")
+        (r: StrapiRole) => r.name.toLowerCase().includes("ecap+") && r.name.toLowerCase().includes("support")
       );
 
       if (ecapRole) setEcapUserRoleId(ecapRole.id);
@@ -164,7 +164,7 @@ const EditUser = () => {
   }, [rolesQuery.data]);
 
   const userQuery = useQuery({
-    queryKey: ["directus", "user", id],
+    queryKey: ["strapi", "user", id],
     queryFn: () => getUser(id ?? ""),
     enabled: Boolean(id),
   });
@@ -209,7 +209,7 @@ const EditUser = () => {
   }, [userQuery.data]);
 
   const rolesById = useMemo(() => {
-    const entries: [string, string][] = (rolesQuery.data ?? []).map((role: DirectusRole) => [
+    const entries: [string, string][] = (rolesQuery.data ?? []).map((role: StrapiRole) => [
       role.id,
       role.name,
     ]);
@@ -219,8 +219,8 @@ const EditUser = () => {
   const updateMutation = useMutation({
     mutationFn: (payload: Partial<UserFormState> & { description?: string, title?: string, location?: string }) => updateUser(id ?? "", payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
-      queryClient.invalidateQueries({ queryKey: ["directus", "user", id] });
+      queryClient.invalidateQueries({ queryKey: ["strapi", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["strapi", "user", id] });
       toast.success("User updated successfully");
       navigate("/users");
     },
@@ -232,7 +232,7 @@ const EditUser = () => {
   const trashMutation = useMutation({
     mutationFn: () => updateUser(id ?? "", { status: "suspended" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["strapi", "users"] });
       toast.success("User moved to trash");
       navigate("/users");
     },
@@ -318,7 +318,7 @@ const EditUser = () => {
             </div>
             <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
               <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-700 bg-clip-text text-transparent">
-                Edit Directus account
+                Edit user account
               </span>
               <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
                 <Sparkles className="h-3 w-3" /> Profile · Access · Credentials

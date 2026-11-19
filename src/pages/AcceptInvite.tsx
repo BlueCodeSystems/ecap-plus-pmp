@@ -7,7 +7,7 @@ import RightImageSlider from "@/components/RightImageSlider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
-import { acceptUserInvite } from "@/lib/directus";
+import { acceptUserInvite } from "@/lib/strapi";
 
 const AcceptInvite = () => {
   const [searchParams] = useSearchParams();

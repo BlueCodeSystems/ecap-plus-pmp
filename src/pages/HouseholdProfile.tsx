@@ -59,7 +59,7 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFlaggedRecord } from "@/lib/api";
-import { notifyUsersOfFlag, notifyUsersOfFlagResolution } from "@/lib/directus";
+import { notifyUsersOfFlag, notifyUsersOfFlagResolution } from "@/lib/strapi";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Building2, X, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Parses the CSV string stored on Directus user.facility into a string[].
+// Parses the CSV string stored on the Strapi user's facility field into a string[].
 // Whitespace-tolerant; drops empties.
 export const parseFacilitiesCsv = (raw: string | undefined | null): string[] => {
   if (!raw) return [];

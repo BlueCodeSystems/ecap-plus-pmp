@@ -7,7 +7,7 @@ import { toast } from "@/components/ui/sonner";
 import AuroraBackground from "@/components/aceternity/AuroraBackground";
 import VersionFooter from "@/components/VersionFooter";
 import RightImageSlider from "@/components/RightImageSlider";
-import { getDirectusBaseUrl } from "@/lib/env";
+import { getStrapiBaseUrl } from "@/lib/env";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -25,16 +25,15 @@ const ForgotPassword = () => {
         return;
       }
 
-      const resetUrlBase = (import.meta.env.VITE_RESET_PASSWORD_URL || window.location.origin).replace(/\/$/, "");
-      const resetUrl = `${resetUrlBase}/reset-password`;
-      const directusUrl = getDirectusBaseUrl();
-
-      const response = await fetch(`${directusUrl}/auth/password/request`, {
+      // Strapi builds the reset link itself from its own email-template
+      // config (Settings > Users & Permissions > Email Templates) — there's
+      // no reset_url param to pass like Directus had.
+      const response = await fetch(`${getStrapiBaseUrl()}/api/auth/forgot-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: emailToRequest, reset_url: resetUrl }),
+        body: JSON.stringify({ email: emailToRequest }),
       });
 
       if (!response.ok) {
@@ -43,8 +42,7 @@ const ForgotPassword = () => {
 
         // Internal logging for dev
         if (import.meta.env.DEV) {
-          const firstError = data?.errors?.[0];
-          const errorMessage = firstError?.message || "Request failed";
+          const errorMessage = data?.error?.message || "Request failed";
           throw new Error(`[DEV-ONLY] ${errorMessage}`);
         }
         // In prod, falling through to success message is safer

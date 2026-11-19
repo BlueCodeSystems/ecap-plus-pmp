@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { getCalendarEvents } from "@/lib/directus";
+import { getCalendarEvents } from "@/lib/strapi";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";

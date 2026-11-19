@@ -1,6 +1,11 @@
 import { getStoredToken } from "@/lib/auth";
 import { getCacheEntry, setCacheEntry } from "@/lib/indexedDbCache";
-import { getBackendBaseUrl, getDirectusBaseUrl } from "@/lib/env";
+import { getBackendBaseUrl, getStrapiBaseUrl } from "@/lib/env";
+
+// ASSUMPTION: guessed kebab-case Strapi route name for the Directus
+// `flagged_forms_ecapplus_pmp` collection — verify against the live Strapi
+// schema and adjust below if the real content-type uses a different API id.
+const FLAGGED_FORMS_ECAPPLUS_PATH = "flagged-forms-ecapplus-pmp";
 
 const DQA_BASE_URL = getBackendBaseUrl();
 
@@ -606,13 +611,21 @@ export const getFlaggedRecords = async () => {
   if (!token) return [];
 
   try {
-    // Expand Directus user references so flagged_by / user_created / created_by
-    // come back with first_name + last_name instead of bare UUIDs (matches the
-    // dqa-dashboard fetch shape).
-    const fields =
-      "*,flagged_by.first_name,flagged_by.last_name,user_created.first_name,user_created.last_name,created_by.first_name,created_by.last_name";
+    // Expand user references so flagged_by / user_created / created_by come
+    // back with first_name + last_name instead of bare ids (matches the
+    // dqa-dashboard fetch shape). Strapi v4 populate syntax, not Directus's
+    // dotted `fields` list.
+    const params = new URLSearchParams({
+      "populate[flagged_by][fields][0]": "first_name",
+      "populate[flagged_by][fields][1]": "last_name",
+      "populate[user_created][fields][0]": "first_name",
+      "populate[user_created][fields][1]": "last_name",
+      "populate[created_by][fields][0]": "first_name",
+      "populate[created_by][fields][1]": "last_name",
+      "pagination[limit]": "1000",
+    });
     const response = await fetch(
-      `${getDirectusBaseUrl()}/items/flagged_forms_ecapplus_pmp?fields=${encodeURIComponent(fields)}`,
+      `${getStrapiBaseUrl()}/api/${FLAGGED_FORMS_ECAPPLUS_PATH}?${params.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -620,7 +633,7 @@ export const getFlaggedRecords = async () => {
       },
     );
     const data = await safeJson(response);
-    return getListValue(data);
+    return getListValue(data).map((r: any) => ({ ...r, id: r.documentId ?? r.id }));
   } catch (error) {
     console.error("Error fetching flagged records:", error);
     return [];
@@ -632,14 +645,14 @@ export const createFlaggedRecord = async (payload: any) => {
   if (!token) throw new Error("Not authenticated");
 
   const response = await fetch(
-    `${getDirectusBaseUrl()}/items/flagged_forms_ecapplus_pmp`,
+    `${getStrapiBaseUrl()}/api/${FLAGGED_FORMS_ECAPPLUS_PATH}`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ data: payload }),
     },
   );
 
@@ -1275,14 +1288,14 @@ export const updateFlagStatus = async (flagId: string, status: string) => {
   if (!token) throw new Error("Not authenticated");
 
   const response = await fetch(
-    `${getDirectusBaseUrl()}/items/flagged_forms_ecapplus_pmp/${flagId}`,
+    `${getStrapiBaseUrl()}/api/${FLAGGED_FORMS_ECAPPLUS_PATH}/${encodeURIComponent(flagId)}`,
     {
-      method: "PATCH",
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ data: { status } }),
     },
   );
 

@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Camera, Upload, X, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { uploadFile, updateUserAvatar, getFileUrl } from "@/lib/directus";
+import { uploadFile, updateUserAvatar, getFileUrl } from "@/lib/strapi";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -56,7 +56,7 @@ export const ProfilePictureModal = ({
     setUploading(true);
     try {
       const uploadedFile = await uploadFile(selectedFile);
-      await updateUserAvatar(userId, uploadedFile.id);
+      await updateUserAvatar(userId, uploadedFile.url);
 
       queryClient.invalidateQueries({ queryKey: ["users-list-chat"] });
       queryClient.invalidateQueries({ queryKey: ["current-user"] });

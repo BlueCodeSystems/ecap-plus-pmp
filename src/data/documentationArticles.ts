@@ -17,7 +17,7 @@ export const articles: Article[] = [
     title: "Platform overview",
     slug: toSlug("Platform overview"),
     category: "Getting Started",
-    content: `The ECAP+ Program Management Platform (PMP) is a web-based data quality and program monitoring tool designed for PEPFAR-funded OVC programs in Zambia.\n\nIt connects to Directus and a backend DQA API to provide real-time visibility into household registrations, child (VCA) records, service delivery, HIV tracking, and caseworker performance.\n\nKey capabilities:\n- Household, VCA, HTS, and PMTCT registers\n- Service delivery tracking across health, schooled, safe, and stable domains\n- Data quality insight cards that flag issues in real time\n- Role-based access for district, provincial, and national users\n- CSV export on every table for offline analysis`,
+    content: `The ECAP+ Program Management Platform (PMP) is a web-based data quality and program monitoring tool designed for PEPFAR-funded OVC programs in Zambia.\n\nIt connects to Strapi and a backend DQA API to provide real-time visibility into household registrations, child (VCA) records, service delivery, HIV tracking, and caseworker performance.\n\nKey capabilities:\n- Household, VCA, HTS, and PMTCT registers\n- Service delivery tracking across health, schooled, safe, and stable domains\n- Data quality insight cards that flag issues in real time\n- Role-based access for district, provincial, and national users\n- CSV export on every table for offline analysis`,
   },
   {
     title: "Logging in and navigation",
