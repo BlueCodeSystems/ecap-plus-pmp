@@ -721,10 +721,10 @@ export const listPmpUsers = async (): Promise<PmpUser[]> => {
 // flag's facility name. Fetch just enough to count flags per facility.
 export type FlaggedFormFacilityRef = { id: string; facility?: string | null };
 
-// ASSUMPTION: guessed kebab-case Strapi route name for the Directus
-// `flagged_forms_ecapii` collection — verify against the live Strapi schema
-// and adjust if the real content-type uses a different API id.
-const FLAGGED_FORMS_ECAPII_PATH = "flagged-forms-ecapii";
+// Confirmed against the live pmp-strapi schema (src/api/ecap-flag):
+// singularName "ecap-flag" / pluralName "ecap-flags", migrated from Directus
+// `flagged_forms_ecapii`.
+const FLAGGED_FORMS_ECAPII_PATH = "ecap-flags";
 
 export const listFlaggedFormFacilities = async (): Promise<FlaggedFormFacilityRef[]> => {
   const params = new URLSearchParams({ fields: "facility", "pagination[limit]": "1000" });
