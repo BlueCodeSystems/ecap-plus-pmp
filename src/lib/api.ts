@@ -2,10 +2,12 @@ import { getStoredToken } from "@/lib/auth";
 import { getCacheEntry, setCacheEntry } from "@/lib/indexedDbCache";
 import { getBackendBaseUrl, getStrapiBaseUrl } from "@/lib/env";
 
-// ASSUMPTION: guessed kebab-case Strapi route name for the Directus
-// `flagged_forms_ecapplus_pmp` collection — verify against the live Strapi
-// schema and adjust below if the real content-type uses a different API id.
-const FLAGGED_FORMS_ECAPPLUS_PATH = "flagged-forms-ecapplus-pmp";
+// Confirmed against the live pmp-strapi schema (src/api/ecapplus-flag):
+// singularName "ecapplus-flag" / pluralName "ecapplus-flags", migrated from
+// Directus `flagged_forms_ecapplus_pmp`. Note: that content-type has no
+// `flagged_by` field (only `user_created`/`user_updated`) — the
+// `populate[flagged_by]` params below resolve to nothing server-side.
+const FLAGGED_FORMS_ECAPPLUS_PATH = "ecapplus-flags";
 
 const DQA_BASE_URL = getBackendBaseUrl();
 
