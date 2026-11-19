@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import LoadingDots from "@/components/aceternity/LoadingDots";
 import MultiFacilityPicker, { parseFacilitiesCsv } from "@/components/MultiFacilityPicker";
-import { createUser, getUserByEmail, listRoles, requestPasswordReset, updateUser, type DirectusRole } from "@/lib/directus";
+import { createUser, getUserByEmail, listRoles, requestPasswordReset, updateUser, type StrapiRole } from "@/lib/strapi";
 import { getHouseholdsByDistrict, getFacilityList } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -231,7 +231,7 @@ const AddUser = () => {
   }, [householdsListQuery.data]);
 
   const rolesQuery = useQuery({
-    queryKey: ["directus", "roles"],
+    queryKey: ["strapi", "roles"],
     queryFn: listRoles,
   });
 
@@ -259,12 +259,12 @@ const AddUser = () => {
   useEffect(() => {
     if (rolesQuery.data) {
       const ecapRole = rolesQuery.data.find(
-        (r: DirectusRole) =>
+        (r: StrapiRole) =>
           r.name.toLowerCase().includes("ecap+") &&
           !r.name.toLowerCase().includes("support")
       );
       const supportRole = rolesQuery.data.find(
-        (r: DirectusRole) =>
+        (r: StrapiRole) =>
           r.name.toLowerCase().includes("ecap+") &&
           r.name.toLowerCase().includes("support")
       );
@@ -324,7 +324,7 @@ const AddUser = () => {
       return { mode, existed: Boolean(existingUser?.id) };
     },
     onSuccess: ({ mode, existed }) => {
-      queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["strapi", "users"] });
       toast.success(
         mode === "invite"
           ? "Setup email sent"
@@ -371,7 +371,7 @@ const AddUser = () => {
     }
 
     if (!finalRoleId) {
-      toast.error("Could not find a matching role in Directus.");
+      toast.error("Could not find a matching role in Strapi.");
       return;
     }
 
@@ -435,7 +435,7 @@ const AddUser = () => {
             </div>
             <h1 className="mt-1 text-xl sm:text-2xl font-extrabold tracking-tight">
               <span className="bg-gradient-to-r from-emerald-700 via-teal-600 to-sky-700 bg-clip-text text-transparent">
-                Add a new Directus account
+                Add a new user account
               </span>
               <Badge variant="outline" className="ml-2 gap-1 border-emerald-200 bg-white/70 align-middle text-[10px] text-emerald-700 shadow-sm">
                 <Sparkles className="h-3 w-3" /> Roles · Districts · Facilities

@@ -25,9 +25,9 @@ import {
   updateUser,
   requestPasswordReset,
   UserHasLinkedRecordsError,
-  type DirectusRole,
-  type DirectusUser,
-} from "@/lib/directus";
+  type StrapiRole,
+  type StrapiUser,
+} from "@/lib/strapi";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 // Helpers
 // ---------------------------------------------------------------------------
 function resolveRoleName(
-  role: DirectusUser["role"],
+  role: StrapiUser["role"],
   rolesById: Map<string, string>,
 ): string {
   if (!role) return "User";
@@ -73,28 +73,28 @@ const Users = () => {
   const [activeTab, setActiveTab] = useState("active");
   const [userToTrash, setUserToTrash] = useState<string | null>(null);
   const [userToWipe, setUserToWipe] = useState<string | null>(null);
-  const [userToReset, setUserToReset] = useState<DirectusUser | null>(null);
+  const [userToReset, setUserToReset] = useState<StrapiUser | null>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const usersQuery = useQuery({
-    queryKey: ["directus", "users"],
+    queryKey: ["strapi", "users"],
     queryFn: () => listUsers(),
   });
 
   const rolesQuery = useQuery({
-    queryKey: ["directus", "roles"],
+    queryKey: ["strapi", "roles"],
     queryFn: listRoles,
   });
 
   const rolesById = useMemo<Map<string, string>>(() => {
     return new Map(
-      (rolesQuery.data ?? []).map((r: DirectusRole) => [r.id, r.name]),
+      (rolesQuery.data ?? []).map((r: StrapiRole) => [r.id, r.name]),
     );
   }, [rolesQuery.data]);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const invalidateUsers = () =>
-    queryClient.invalidateQueries({ queryKey: ["directus", "users"] });
+    queryClient.invalidateQueries({ queryKey: ["strapi", "users"] });
 
   const softDeleteMutation = useMutation({
     mutationFn: (id: string) => updateUser(id, { status: "suspended" }),
@@ -163,7 +163,7 @@ const Users = () => {
     const isAdmin = myRoleName === "Administrator";
     const isSupport = myRoleName.toLowerCase().includes("support");
 
-    return (usersQuery.data ?? []).filter((user: DirectusUser) => {
+    return (usersQuery.data ?? []).filter((user: StrapiUser) => {
       if (!currentUser) return true;
       const targetRole = resolveRoleName(user.role, rolesById);
       const targetIsAdmin = targetRole === "Administrator";
@@ -179,7 +179,7 @@ const Users = () => {
 
   const filteredUsers = useMemo(() => {
     const searchLower = debouncedSearch.toLowerCase();
-    return visibleUsers.filter((user: DirectusUser) => {
+    return visibleUsers.filter((user: StrapiUser) => {
       const isActive = user.status === "active" || !user.status;
 
       // active tab shows active users, trash tab shows suspended users
@@ -260,7 +260,7 @@ const Users = () => {
               </Badge>
             </h1>
             <p className="mt-1 text-xs text-slate-600">
-              Create Directus accounts, assign roles, and monitor platform
+              Create user accounts, assign roles, and monitor platform
               access.
             </p>
           </div>
@@ -405,7 +405,7 @@ const Users = () => {
                   )}
 
                   {/* Rows */}
-                  {filteredUsers.map((user: DirectusUser) => (
+                  {filteredUsers.map((user: StrapiUser) => (
                     <tr
                       key={user.id}
                       className="border-b border-emerald-50/60 transition-colors duration-150 hover:bg-emerald-50/40"

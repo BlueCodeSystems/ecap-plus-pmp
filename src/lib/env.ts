@@ -10,8 +10,8 @@ const pickFirstEnv = (...keys: string[]) => {
   return "";
 };
 
-export const getDirectusBaseUrl = () =>
-  pickFirstEnv("REACT_APP_BASE_URL");
+export const getStrapiBaseUrl = () =>
+  pickFirstEnv("VITE_STRAPI_API_URL");
 
 export const getBackendBaseUrl = () =>
   pickFirstEnv("REACT_PUBLIC_API_URL");

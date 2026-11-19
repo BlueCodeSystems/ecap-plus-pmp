@@ -44,7 +44,7 @@ import {
   updateCalendarEvent,
   deleteCalendarEvent,
   CalendarEvent,
-} from "@/lib/directus";
+} from "@/lib/strapi";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {

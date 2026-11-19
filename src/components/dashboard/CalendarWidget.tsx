@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCalendarEvents } from "@/lib/directus";
+import { getCalendarEvents } from "@/lib/strapi";
 import { useAuth } from "@/context/AuthContext";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GlowCard from "@/components/aceternity/GlowCard";

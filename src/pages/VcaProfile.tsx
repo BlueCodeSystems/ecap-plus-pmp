@@ -20,7 +20,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { notifyUsersOfFlag, notifyUsersOfFlagResolution } from "@/lib/directus";
+import { notifyUsersOfFlag, notifyUsersOfFlagResolution } from "@/lib/strapi";
 import { format } from "date-fns";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";

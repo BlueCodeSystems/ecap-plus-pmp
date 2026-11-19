@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createFlaggedRecord } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { notifyUsersOfFlag } from "@/lib/directus";
+import { notifyUsersOfFlag } from "@/lib/strapi";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import PageIntro from "@/components/dashboard/PageIntro";

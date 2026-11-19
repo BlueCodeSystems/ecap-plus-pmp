@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listUsers, getChatMessages, sendChatMessage, uploadFile, getFileUrl, DirectusUser, deleteChatMessage } from "@/lib/directus";
+import { listUsers, getChatMessages, sendChatMessage, uploadFile, getFileUrl, StrapiUser, deleteChatMessage } from "@/lib/strapi";
 import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
@@ -64,7 +64,7 @@ const SupportCenter = () => {
   });
 
   // Fetch users list
-  const { data: rawUsers = [] } = useQuery<DirectusUser[]>({
+  const { data: rawUsers = [] } = useQuery<StrapiUser[]>({
     queryKey: ["users-list-chat"],
     queryFn: () => listUsers("active"),
     refetchInterval: 30000, // Refetch users every 30s to update presence
@@ -88,7 +88,7 @@ const SupportCenter = () => {
     // Support and Admin users can see everyone
     if (isMyRoleSupport || isMyRoleAdmin) return rawUsers;
 
-    // Standard ECAP+ Users: hide ECAP II Support and Directus Admins
+    // Standard ECAP+ Users: hide ECAP II Support and Administrators
     return rawUsers.filter((u) => {
       let targetRoleName = "User";
       if (typeof u.role === "string") {

@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { clearStoredToken, getStoredToken, setStoredToken } from "@/lib/auth";
-import { getDirectusBaseUrl } from "@/lib/env";
+import { getStrapiBaseUrl } from "@/lib/env";
 
 export type AuthUser = {
   id: string;
@@ -41,31 +41,45 @@ const safeJson = async (response: Response) => {
   }
 };
 
-const requireDirectusUrl = () => {
-  const directusUrl = getDirectusBaseUrl();
-  if (!directusUrl) {
-    throw new Error("REACT_APP_BASE_URL is not set");
+const requireStrapiUrl = () => {
+  const strapiUrl = getStrapiBaseUrl();
+  if (!strapiUrl) {
+    throw new Error("VITE_STRAPI_API_URL is not set");
   }
-  return directusUrl;
+  return strapiUrl;
 };
 
-const fetchProfile = async (token: string) => {
-  const response = await fetch(
-    `${requireDirectusUrl()}/users/me?fields=id,email,first_name,last_name,role.id,role.name,location,avatar,description,title,password_change_required`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+// Strapi's stock GET /api/users/me strips the `role` relation via its field
+// sanitizer no matter what you pass to ?populate — a small custom endpoint
+// (/api/my-profile/me) returns the same caller's own record with role
+// actually populated, so we use that instead.
+const fetchProfile = async (token: string): Promise<AuthUser | null> => {
+  const response = await fetch(`${requireStrapiUrl()}/api/my-profile/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
 
   const data = await safeJson(response);
 
   if (!response.ok) {
-    throw new Error(data?.errors?.[0]?.message ?? "Failed to load profile");
+    throw new Error(data?.error?.message ?? "Failed to load profile");
   }
 
-  return data?.data ?? null;
+  if (!data) return null;
+
+  return {
+    id: String(data.id),
+    email: data.email,
+    first_name: data.first_name ?? undefined,
+    last_name: data.last_name ?? undefined,
+    role: data.role ? { id: String(data.role.id), name: data.role.name } : undefined,
+    location: data.location ?? undefined,
+    avatar: data.avatar ?? undefined,
+    description: data.description ?? undefined,
+    title: data.title ?? undefined,
+    password_change_required: !!data.password_change_required,
+  };
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -111,23 +125,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await fetch(`${requireDirectusUrl()}/auth/login`, {
+      const response = await fetch(`${requireStrapiUrl()}/api/auth/local`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier: email, password }),
       });
 
       const data = await safeJson(response);
 
       if (!response.ok) {
-        throw new Error(data?.errors?.[0]?.message ?? "Login failed");
+        throw new Error(data?.error?.message ?? "Login failed");
       }
 
-      const token = data?.data?.access_token ?? data?.access_token;
+      const token = data?.jwt;
       if (!token) {
-        throw new Error("No access token returned from Directus");
+        throw new Error("No access token returned from Strapi");
       }
 
       setStoredToken(token);

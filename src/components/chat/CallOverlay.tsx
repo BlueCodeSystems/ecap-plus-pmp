@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CallState } from "@/hooks/useWebRTC";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getFileUrl } from "@/lib/directus";
+import { getFileUrl } from "@/lib/strapi";
 
 interface CallOverlayProps {
   state: CallState;

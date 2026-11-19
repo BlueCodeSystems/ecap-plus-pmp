@@ -24,8 +24,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { GlobalSearch } from "./GlobalSearch";
 import FyFilter from "@/components/FyFilter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getFileUrl } from "@/lib/directus";
-import { markNotificationRead, clearAllNotifications } from "@/lib/directus";
+import { getFileUrl } from "@/lib/strapi";
+import { markNotificationRead, clearAllNotifications } from "@/lib/strapi";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -89,10 +89,10 @@ const DashboardHeader = ({
   const queryClient = useQueryClient();
   const district = user?.location ?? "";
 
-  const { data: directusNotifications } = useQuery({
-    queryKey: ["directus-notifications", user?.id],
+  const { data: strapiNotifications } = useQuery({
+    queryKey: ["strapi-notifications", user?.id],
     queryFn: async () => {
-      const { getNotifications } = await import("@/lib/directus");
+      const { getNotifications } = await import("@/lib/strapi");
       return getNotifications(user?.id); // Pass user.id for security
     },
     staleTime: 1000 * 25,
@@ -110,7 +110,7 @@ const DashboardHeader = ({
   const firstLoadRef = useRef(true);
 
   const notifications = useMemo(() => {
-    return (directusNotifications ?? [])
+    return (strapiNotifications ?? [])
       .filter((n: any) => n.recipient === user?.id) // Extra safety check for confidentiality
       .map((n: any) => {
         const isExtract = n.collection === "weekly_extracts";
@@ -131,7 +131,7 @@ const DashboardHeader = ({
               : undefined,
         };
       });
-  }, [directusNotifications, user?.id]);
+  }, [strapiNotifications, user?.id]);
 
   const unreadCount = notifications.length;
 
@@ -196,7 +196,7 @@ const DashboardHeader = ({
     e.stopPropagation();
     try {
       await markNotificationRead(id);
-      queryClient.invalidateQueries({ queryKey: ["directus-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["strapi-notifications"] });
     } catch (error) {
       console.error("Failed to dismiss notification:", error);
       toast.error("Couldn't dismiss notification");
@@ -209,7 +209,7 @@ const DashboardHeader = ({
     if (!user?.id) return;
     try {
       const cleared = await clearAllNotifications(user.id);
-      queryClient.invalidateQueries({ queryKey: ["directus-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["strapi-notifications"] });
       toast.success(
         cleared > 0
           ? `Cleared ${cleared} notification${cleared === 1 ? "" : "s"}`

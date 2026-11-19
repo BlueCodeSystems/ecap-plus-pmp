@@ -114,7 +114,7 @@ const Documentation = () => {
         title: "User Management",
         icon: User,
         description:
-          "Create Directus accounts, assign roles (Administrator, Provincial, District, Facility, Support), and scope users by location.",
+          "Create Strapi accounts, assign roles (Administrator, Provincial, District, Facility, Support), and scope users by location.",
         links: [
           "Adding new users",
           "Assigning districts and provinces",

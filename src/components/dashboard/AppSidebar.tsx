@@ -40,7 +40,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getFileUrl } from "@/lib/directus";
+import { getFileUrl } from "@/lib/strapi";
 
 const sections = [
   {
