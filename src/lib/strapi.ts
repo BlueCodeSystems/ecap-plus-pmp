@@ -494,6 +494,13 @@ export const broadcastAnnouncement = async (
 // Roles that should be notified when a record is flagged / a flag is
 // resolved. Anything else (caseworkers, viewers) gets filtered out so we
 // stop blasting a notification to every active user in the system.
+//
+// None of the FLAG_NOTIFY_ROLE_KEYWORDS below ever match a real Strapi role
+// name ("ECAP+ Support/Users", "ECAPII Support/Users") — "Administrator"
+// lives in `description`, not `role.name` — so this used to match nobody.
+// Same elevated-visibility pattern already used correctly elsewhere in this
+// app (e.g. Users.tsx's isSupport check): any Support role, or an
+// Administrator by description.
 const FLAG_NOTIFY_ROLE_KEYWORDS = [
   "admin",
   "administrator",
@@ -508,9 +515,10 @@ const isFlagNotifyRecipient = (u: StrapiUser) => {
     typeof u.role === "object" && u.role !== null
       ? String((u.role as { name?: string }).name ?? "")
       : "";
-  if (!roleName) return false;
   const lower = roleName.toLowerCase();
-  return FLAG_NOTIFY_ROLE_KEYWORDS.some((k) => lower.includes(k));
+  const isSupport = lower.includes("support");
+  const isAdmin = String(u.description ?? "").trim().toLowerCase() === "administrator";
+  return isSupport || isAdmin || FLAG_NOTIFY_ROLE_KEYWORDS.some((k) => lower.includes(k));
 };
 
 export const notifyUsersOfFlag = async (
