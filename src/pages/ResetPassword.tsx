@@ -7,12 +7,14 @@ import { toast } from "@/components/ui/sonner";
 import AuroraBackground from "@/components/aceternity/AuroraBackground";
 import VersionFooter from "@/components/VersionFooter";
 import RightImageSlider from "@/components/RightImageSlider";
-import { getDirectusBaseUrl } from "@/lib/env";
+import { getStrapiBaseUrl } from "@/lib/env";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get("token");
+  // Strapi's reset link uses a `code` query param; `token` is kept as a
+  // fallback in case an old Directus-issued email link is still in flight.
+  const token = searchParams.get("code") || searchParams.get("token");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -38,17 +40,17 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${getDirectusBaseUrl()}/auth/password/reset`, {
+      const response = await fetch(`${getStrapiBaseUrl()}/api/auth/reset-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ code: token, password, passwordConfirmation: password }),
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.errors?.[0]?.message ?? "Reset failed");
+        throw new Error(data?.error?.message ?? "Reset failed");
       }
 
       toast.success("Password reset successful. Redirecting to sign in page...");

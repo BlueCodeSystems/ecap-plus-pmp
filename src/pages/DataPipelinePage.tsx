@@ -67,9 +67,9 @@ import {
   listPmpUsers,
   listFlaggedFormFacilities,
   broadcastAnnouncement,
-  type DirectusActivityEntry,
+  type StrapiActivityEntry,
   type PmpUser,
-} from "@/lib/directus";
+} from "@/lib/strapi";
 
 import { cn } from "@/lib/utils";
 
@@ -247,7 +247,7 @@ const DataPipelinePage = () => {
   }, []);
 
   const activityQuery = useQuery({
-    queryKey: ["directus", "user-activity"],
+    queryKey: ["strapi", "user-activity"],
     queryFn: () => listUserActivity(500),
     enabled: activeTab === "activity",
     staleTime: 60_000,
@@ -255,7 +255,7 @@ const DataPipelinePage = () => {
   const activityEntries = activityQuery.data;
 
   const pmpUsersQuery = useQuery({
-    queryKey: ["directus", "pmp-users"],
+    queryKey: ["strapi", "pmp-users"],
     queryFn: listPmpUsers,
     enabled: activeTab === "activity",
     staleTime: 60_000,
@@ -263,7 +263,7 @@ const DataPipelinePage = () => {
   const pmpUsers = pmpUsersQuery.data;
 
   const flaggedFormsQuery = useQuery({
-    queryKey: ["directus", "flagged-form-facilities"],
+    queryKey: ["strapi", "flagged-form-facilities"],
     queryFn: listFlaggedFormFacilities,
     enabled: activeTab === "activity",
     staleTime: 60_000,

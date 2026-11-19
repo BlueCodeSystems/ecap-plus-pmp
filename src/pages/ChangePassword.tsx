@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/context/AuthContext";
-import { updateCurrentUserPassword } from "@/lib/directus";
+import { updateCurrentUserPassword } from "@/lib/strapi";
 import { cn } from "@/lib/utils";
 
 const scorePassword = (password: string) => {
@@ -24,6 +24,7 @@ const scorePassword = (password: string) => {
 const ChangePassword = () => {
   const navigate = useNavigate();
   const { user, refreshProfile, logout } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -42,6 +43,11 @@ const ChangePassword = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    if (!currentPassword) {
+      toast.error("Enter your current (temporary) password");
+      return;
+    }
+
     if (password.length < 8) {
       toast.error("Password too short", {
         description: "Use at least 8 characters.",
@@ -56,7 +62,7 @@ const ChangePassword = () => {
 
     setIsSaving(true);
     try {
-      await updateCurrentUserPassword(password);
+      await updateCurrentUserPassword(password, currentPassword);
       await refreshProfile();
       toast.success("Password updated", {
         description: "You can now continue to ECAP+ PMP.",
@@ -101,6 +107,21 @@ const ChangePassword = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-700">Current (temporary) password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="The temporary password you just signed in with"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      className="h-12 border-slate-200 bg-white pl-11 font-mono text-slate-900 placeholder:text-slate-400 focus-visible:ring-emerald-300/80"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-700">New password</label>
                   <div className="relative">

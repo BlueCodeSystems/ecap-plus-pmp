@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useRef } from "react";
-import { uploadFile, updateUserAvatar, getFileUrl, requestPasswordReset } from "@/lib/directus";
+import { uploadFile, updateUserAvatar, getFileUrl, requestPasswordReset } from "@/lib/strapi";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,7 +32,7 @@ const Profile = () => {
     setUploading(true);
     try {
       const uploadedFile = await uploadFile(file);
-      await updateUserAvatar(user.id, uploadedFile.id);
+      await updateUserAvatar(user.id, uploadedFile.url);
 
       queryClient.invalidateQueries({ queryKey: ["current-user"] });
       queryClient.invalidateQueries({ queryKey: ["users-list-chat"] });

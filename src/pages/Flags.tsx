@@ -23,7 +23,7 @@ import { getFlaggedRecords, updateFlagStatus } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { notifyUsersOfFlagResolution } from "@/lib/directus";
+import { notifyUsersOfFlagResolution } from "@/lib/strapi";
 import { Flag, Search, CheckCircle, CheckCircle2, XCircle, Download, AlertTriangle, RefreshCw } from "lucide-react";
 
 const Flags = () => {
@@ -107,7 +107,7 @@ const Flags = () => {
     for (const key of keys) {
       const value = record[key];
       if (value === null || value === undefined || value === "") continue;
-      // Directus user reference — extract first_name + last_name when present.
+      // Strapi user reference — extract first_name + last_name when present.
       if (typeof value === "object") {
         const v = value as { first_name?: string; last_name?: string };
         const full = `${v.first_name ?? ""} ${v.last_name ?? ""}`.trim();
